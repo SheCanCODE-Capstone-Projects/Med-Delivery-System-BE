@@ -31,3 +31,22 @@ build/
 
 ### VS Code ###
 .vscode/
+.idea/
+.iml
+
+### Environment Variables ###
+.env
+
+### Firebase ###
+src/main/resources/firebase-service-account.json
+
+### OS ###
+.DS_Store
+Thumbs.db
+
+### Logs ###
+*.log
+logs/
+
+### Spring Boot ###
+spring-shell.log
