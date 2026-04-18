@@ -1,0 +1,29 @@
+# ── Maven build output ─────────────────────────
+target/
+
+# ── Git ────────────────────────────────────────
+.git/
+.gitignore
+
+# ── Environment variables ──────────────────────
+.env
+
+# ── Firebase credentials ───────────────────────
+src/main/resources/firebase-service-account.json
+
+# ── IDE ────────────────────────────────────────
+.vscode/
+.idea/
+*.iml
+
+# ── OS ─────────────────────────────────────────
+.DS_Store
+Thumbs.db
+
+# ── Logs ───────────────────────────────────────
+*.log
+logs/
+
+# ── Docker files (not needed in build context) ─
+docker-compose.yml
+Dockerfile
