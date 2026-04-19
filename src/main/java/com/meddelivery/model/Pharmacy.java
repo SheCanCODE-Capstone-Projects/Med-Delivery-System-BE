@@ -47,9 +47,11 @@ public class Pharmacy {
     private ManagerProfile managerProfile;
 
     @OneToMany(mappedBy = "pharmacy", cascade = CascadeType.ALL)
+    @Builder.Default
     private List<PharmacistProfile> pharmacists = new ArrayList<>();
 
     @OneToMany(mappedBy = "pharmacy", cascade = CascadeType.ALL)
+    @Builder.Default
     private List<PharmacyInventory> inventory = new ArrayList<>();
 
     @ManyToMany
@@ -58,11 +60,14 @@ public class Pharmacy {
         joinColumns = @JoinColumn(name = "pharmacy_id"),
         inverseJoinColumns = @JoinColumn(name = "insurance_provider_id")
     )
+    @Builder.Default
     private List<InsuranceProvider> supportedInsuranceProviders = new ArrayList<>();
 
     @OneToMany(mappedBy = "assignedPharmacy")
+    @Builder.Default
     private List<Order> orders = new ArrayList<>();
 
     @OneToMany(mappedBy = "pharmacy")
+    @Builder.Default
     private List<PharmacyMatchResult> matchResults = new ArrayList<>();
 }

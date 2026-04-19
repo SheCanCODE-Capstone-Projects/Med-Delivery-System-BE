@@ -30,11 +30,14 @@ public class PharmacistProfile {
     private Pharmacy pharmacy;
 
     @OneToMany(mappedBy = "pharmacistProfile", cascade = CascadeType.ALL)
+    @Builder.Default
     private List<PharmacistActionLog> actionLogs = new ArrayList<>();
 
     @OneToMany(mappedBy = "assignedPharmacist")
+    @Builder.Default
     private List<Order> assignedOrders = new ArrayList<>();
 
     @OneToMany(mappedBy = "pharmacistProfile")
+    @Builder.Default
     private List<SubstitutionRequest> substitutionRequests = new ArrayList<>();
 }

@@ -25,5 +25,6 @@ public class InsuranceProvider {
     private String code;
 
     @ManyToMany(mappedBy = "supportedInsuranceProviders")
+    @Builder.Default
     private List<Pharmacy> pharmacies = new ArrayList<>();
 }

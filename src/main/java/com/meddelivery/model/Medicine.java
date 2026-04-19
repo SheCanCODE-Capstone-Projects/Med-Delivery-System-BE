@@ -27,5 +27,6 @@ public class Medicine {
     private boolean requiresPrescription;
 
     @OneToMany(mappedBy = "medicine", cascade = CascadeType.ALL)
+    @Builder.Default
     private List<PharmacyInventory> inventories = new ArrayList<>();
 }

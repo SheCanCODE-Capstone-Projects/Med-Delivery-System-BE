@@ -41,8 +41,11 @@ public class User implements UserDetails, OAuth2User {
     private UserRole role;
 
     @Column(nullable = false)
+    @Builder.Default
     private boolean isActive = false;
 
+    @Column(nullable = false)
+    @Builder.Default
     private boolean isVerified = false;
 
     @CreationTimestamp
@@ -51,9 +54,11 @@ public class User implements UserDetails, OAuth2User {
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
+    // ── OAuth2 attributes (never saved to DB) ───
     @Transient
     private Map<String, Object> attributes;
 
+    // ── Profiles ────────────────────────────────
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private PatientProfile patientProfile;
 
@@ -63,8 +68,12 @@ public class User implements UserDetails, OAuth2User {
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private ManagerProfile managerProfile;
 
+    // ── Auth Providers ───────────────────────────
+    @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    @Builder.Default
     private List<UserAuthProvider> authProviders = new ArrayList<>();
 
+    // ── OAuth2User ───────────────────────────────
     @Override
     public Map<String, Object> getAttributes() {
         return attributes;
@@ -79,6 +88,7 @@ public class User implements UserDetails, OAuth2User {
         return email != null ? email : phoneNumber;
     }
 
+    // ── UserDetails ──────────────────────────────
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
         return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));

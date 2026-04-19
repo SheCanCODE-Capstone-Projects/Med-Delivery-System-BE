@@ -62,11 +62,14 @@ public class Order {
     private MedicineRequest medicineRequest;
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
+    @Builder.Default
     private List<OrderItem> orderItems = new ArrayList<>();
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
+    @Builder.Default
     private List<PharmacyMatchResult> matchResults = new ArrayList<>();
 
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
+    @Builder.Default
     private List<SubstitutionRequest> substitutionRequests = new ArrayList<>();
 }

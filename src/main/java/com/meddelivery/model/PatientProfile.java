@@ -28,14 +28,18 @@ public class PatientProfile {
     private PatientLocation location;
 
     @OneToMany(mappedBy = "patientProfile", cascade = CascadeType.ALL)
+    @Builder.Default
     private List<InsuranceCard> insuranceCards = new ArrayList<>();
 
     @OneToMany(mappedBy = "patientProfile", cascade = CascadeType.ALL)
+    @Builder.Default
     private List<Prescription> prescriptions = new ArrayList<>();
 
     @OneToMany(mappedBy = "patientProfile", cascade = CascadeType.ALL)
+    @Builder.Default
     private List<MedicineRequest> medicineRequests = new ArrayList<>();
 
     @OneToMany(mappedBy = "patientProfile", cascade = CascadeType.ALL)
+    @Builder.Default
     private List<Order> orders = new ArrayList<>();
 }
