@@ -13,7 +13,7 @@ MedDelivery Backend is a Spring Boot-based system designed to:
 * Connect patients with nearby pharmacies
 * Enable pharmacists to validate and dispense medicines
 * Support intelligent pharmacy matching and substitution flow
-  
+   
 
 #  System Architecture
 
@@ -251,5 +251,3 @@ Statuses:
 # 📄 License
 
 MIT License
-
-

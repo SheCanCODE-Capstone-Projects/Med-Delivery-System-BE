@@ -17,6 +17,7 @@ public class OtpService {
 
     private final RedisTemplate<String, String> redisTemplate;
     private final JavaMailSender mailSender;
+    private final RateLimitService rateLimitService;
 
     private static final int OTP_LENGTH = 6;
     private static final long OTP_EXPIRY_MINUTES = 5;
@@ -43,6 +44,13 @@ public class OtpService {
 
     // ── Validate OTP ─────────────────────────────
     public boolean validateOtp(String username, String otp) {
+        // Check rate limit for verification attempts
+        if (!rateLimitService.isOtpVerifyAllowed(username)) {
+            int remaining = rateLimitService.getRemainingOtpVerifyAttempts(username);
+            throw new RuntimeException(
+                    "Too many verification attempts. Please try again later.");
+        }
+
         String key = OTP_PREFIX + username;
         String storedOtp = redisTemplate.opsForValue().get(key);
 
@@ -58,6 +66,8 @@ public class OtpService {
 
         // Delete OTP after successful validation
         redisTemplate.delete(key);
+        // Clear verification attempts on success
+        rateLimitService.clearOtpVerifyAttempts(username);
         log.info("OTP validated successfully for: {}", username);
         return true;
     }
@@ -86,6 +96,13 @@ public class OtpService {
 
     // ── Send OTP (auto detect email or phone) ────
     public void sendOtp(String username) {
+        // Check rate limit
+        if (!rateLimitService.isOtpSendAllowed(username)) {
+            int remaining = rateLimitService.getRemainingOtpSendAttempts(username);
+            throw new RuntimeException(
+                    "Too many OTP requests. Please try again later.");
+        }
+
         String otp = generateOtp();
         saveOtp(username, otp);
 

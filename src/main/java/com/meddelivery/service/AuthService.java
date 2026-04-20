@@ -31,6 +31,7 @@ public class AuthService {
     private final AuthenticationManager authenticationManager;
     private final OtpService otpService;
     private final FirebaseOtpService firebaseOtpService;
+    private final RefreshTokenService refreshTokenService;
 
     // ── FLOW 1: Login with Email/Password ────────
     public AuthResponse login(LoginRequest request) {
@@ -55,11 +56,13 @@ public class AuthService {
         }
 
         String token = jwtService.generateToken(user);
+        String refreshToken = refreshTokenService.generateRefreshToken(user.getUsername());
 
         log.info("User logged in: {}", user.getEmail());
 
         return AuthResponse.builder()
                 .token(token)
+                .refreshToken(refreshToken)
                 .role(user.getRole().name())
                 .email(user.getEmail())
                 .phoneNumber(user.getPhoneNumber())
@@ -154,11 +157,13 @@ public class AuthService {
         userRepository.save(user);
 
         String token = jwtService.generateToken(user);
+        String refreshToken = refreshTokenService.generateRefreshToken(user.getUsername());
 
         log.info("OTP verified for: {}", request.getUsername());
 
         return AuthResponse.builder()
                 .token(token)
+                .refreshToken(refreshToken)
                 .role(user.getRole().name())
                 .email(user.getEmail())
                 .phoneNumber(user.getPhoneNumber())
@@ -211,11 +216,13 @@ public class AuthService {
         userRepository.save(user);
 
         String token = jwtService.generateToken(user);
+        String refreshToken = refreshTokenService.generateRefreshToken(user.getUsername());
 
         log.info("Password set for: {}", request.getUsername());
 
         return AuthResponse.builder()
                 .token(token)
+                .refreshToken(refreshToken)
                 .role(user.getRole().name())
                 .email(user.getEmail())
                 .phoneNumber(user.getPhoneNumber())
@@ -261,14 +268,32 @@ public class AuthService {
         }
 
         String token = jwtService.generateToken(user);
+        String refreshToken = refreshTokenService.generateRefreshToken(user.getUsername());
 
         log.info("Firebase phone login: {}", phoneNumber);
 
         return AuthResponse.builder()
                 .token(token)
+                .refreshToken(refreshToken)
                 .role(user.getRole().name())
                 .phoneNumber(user.getPhoneNumber())
                 .fullName(user.getFullName())
                 .build();
+    }
+
+    // ── FLOW 7: Refresh Token ─────────────────────
+    public AuthResponse refreshToken(String refreshToken) {
+        String newAccessToken = refreshTokenService.refreshAccessToken(refreshToken);
+        
+        return AuthResponse.builder()
+                .token(newAccessToken)
+                .refreshToken(refreshToken)
+                .build();
+    }
+
+    // ── FLOW 8: Logout ──────────────────────────────
+    public void logout(String refreshToken) {
+        refreshTokenService.revokeRefreshToken(refreshToken);
+        log.info("User logged out");
     }
 }

@@ -79,6 +79,29 @@ public class AuthController {
                         response));
     }
 
+    // ── Refresh Token ────────────────────────────
+    // Used by: ALL authenticated users
+    @PostMapping("/refresh")
+    public ResponseEntity<ApiResponse<AuthResponse>> refreshToken(
+            @RequestParam String refreshToken) {
+
+        AuthResponse response = authService.refreshToken(refreshToken);
+        return ResponseEntity.ok(
+                ApiResponse.success("Token refreshed successfully",
+                        response));
+    }
+
+    // ── Logout ───────────────────────────────────
+    // Used by: ALL authenticated users
+    @PostMapping("/logout")
+    public ResponseEntity<ApiResponse<String>> logout(
+            @RequestParam String refreshToken) {
+
+        authService.logout(refreshToken);
+        return ResponseEntity.ok(
+                ApiResponse.success("Logged out successfully"));
+    }
+
     // ── Firebase Phone Login ─────────────────────
     // Used by: PATIENT (phone number login)
     @PostMapping("/firebase-phone-login")

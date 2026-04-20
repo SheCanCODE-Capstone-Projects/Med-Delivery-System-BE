@@ -5,6 +5,7 @@ import com.meddelivery.model.User;
 import com.meddelivery.model.UserAuthProvider;
 import com.meddelivery.model.enums.UserRole;
 import com.meddelivery.repository.UserRepository;
+import com.meddelivery.service.RefreshTokenService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -27,6 +28,7 @@ public class OAuth2SuccessHandler
 
     private final UserRepository userRepository;
     private final JwtService jwtService;
+    private final RefreshTokenService refreshTokenService;
 
     @Override
     @Transactional
@@ -50,14 +52,16 @@ public class OAuth2SuccessHandler
         User user = findOrCreateUser(
                 email, name, providerId, provider);
 
-        // ── Generate JWT ─────────────────────────
+        // ── Generate JWT & Refresh Token ────────────
         String token = jwtService.generateToken(user);
+        String refreshToken = refreshTokenService.generateRefreshToken(user.getUsername());
 
         // ── Redirect with token ──────────────────
         // In production redirect to frontend with token
         response.setContentType("application/json");
         response.getWriter().write(
                 "{\"token\":\"" + token + "\"," +
+                "\"refreshToken\":\"" + refreshToken + "\"," +
                 "\"role\":\"" + user.getRole().name() + "\"," +
                 "\"email\":\"" + user.getEmail() + "\"," +
                 "\"fullName\":\"" + user.getFullName() + "\"}"
