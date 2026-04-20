@@ -5,10 +5,6 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
-import org.springframework.security.core.GrantedAuthority;
-import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.oauth2.core.user.OAuth2User;
 
 import java.time.LocalDateTime;
 import java.util.*;
@@ -19,7 +15,7 @@ import java.util.*;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-public class User implements UserDetails, OAuth2User {
+public class User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -54,10 +50,6 @@ public class User implements UserDetails, OAuth2User {
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
-    // ── OAuth2 attributes (never saved to DB) ───
-    @Transient
-    private Map<String, Object> attributes;
-
     // ── Profiles ────────────────────────────────
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private PatientProfile patientProfile;
@@ -72,42 +64,4 @@ public class User implements UserDetails, OAuth2User {
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @Builder.Default
     private List<UserAuthProvider> authProviders = new ArrayList<>();
-
-    // ── OAuth2User ───────────────────────────────
-    @Override
-    public Map<String, Object> getAttributes() {
-        return attributes;
-    }
-
-    public void setAttributes(Map<String, Object> attributes) {
-        this.attributes = attributes;
-    }
-
-    @Override
-    public String getName() {
-        return email != null ? email : phoneNumber;
-    }
-
-    // ── UserDetails ──────────────────────────────
-    @Override
-    public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
-    }
-
-    @Override
-    public String getUsername() {
-        return email != null ? email : phoneNumber;
-    }
-
-    @Override
-    public boolean isAccountNonExpired() { return true; }
-
-    @Override
-    public boolean isAccountNonLocked() { return true; }
-
-    @Override
-    public boolean isCredentialsNonExpired() { return true; }
-
-    @Override
-    public boolean isEnabled() { return isActive; }
 }
