@@ -7,7 +7,10 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "manager_profiles")
-@Data
+@Getter
+@Setter
+@ToString(onlyExplicitlyIncluded = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -15,6 +18,8 @@ public class ManagerProfile {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @ToString.Include
+    @EqualsAndHashCode.Include
     private Long id;
 
     private LocalDateTime activatedAt;

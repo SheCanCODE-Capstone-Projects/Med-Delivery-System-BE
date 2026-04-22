@@ -9,7 +9,10 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "insurance_cards")
-@Data
+@Getter
+@Setter
+@ToString(onlyExplicitlyIncluded = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -17,6 +20,8 @@ public class InsuranceCard {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @ToString.Include
+    @EqualsAndHashCode.Include
     private Long id;
 
     @Column(nullable = false)
