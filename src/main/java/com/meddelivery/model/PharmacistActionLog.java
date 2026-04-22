@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 @Table(name = "pharmacist_action_logs")
 @Getter
 @Setter
-@ToString(exclude = {"pharmacistProfile", "order"})
+@ToString(onlyExplicitlyIncluded = true)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @NoArgsConstructor
 @AllArgsConstructor
@@ -20,6 +20,7 @@ public class PharmacistActionLog {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @ToString.Include
     @EqualsAndHashCode.Include
     private Long id;
 

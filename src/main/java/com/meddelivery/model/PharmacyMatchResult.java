@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 @Table(name = "pharmacy_match_results")
 @Getter
 @Setter
-@ToString(exclude = {"order", "pharmacy"})
+@ToString(onlyExplicitlyIncluded = true)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @NoArgsConstructor
 @AllArgsConstructor
@@ -20,6 +20,7 @@ public class PharmacyMatchResult {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @ToString.Include
     @EqualsAndHashCode.Include
     private Long id;
 

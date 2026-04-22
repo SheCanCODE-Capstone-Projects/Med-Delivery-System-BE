@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 @Table(name = "substitution_requests")
 @Getter
 @Setter
-@ToString(exclude = {"order", "originalMedicine", "suggestedMedicine", "pharmacistProfile"})
+@ToString(onlyExplicitlyIncluded = true)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @NoArgsConstructor
 @AllArgsConstructor
@@ -20,6 +20,7 @@ public class SubstitutionRequest {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @ToString.Include
     @EqualsAndHashCode.Include
     private Long id;
 

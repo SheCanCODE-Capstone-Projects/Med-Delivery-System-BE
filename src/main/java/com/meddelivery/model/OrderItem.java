@@ -10,7 +10,7 @@ import java.math.BigDecimal;
 @Table(name = "order_items")
 @Getter
 @Setter
-@ToString(exclude = {"order", "medicine"})
+@ToString(onlyExplicitlyIncluded = true)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @NoArgsConstructor
 @AllArgsConstructor
@@ -19,6 +19,7 @@ public class OrderItem {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @ToString.Include
     @EqualsAndHashCode.Include
     private Long id;
 

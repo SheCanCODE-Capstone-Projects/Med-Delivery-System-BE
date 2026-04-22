@@ -13,7 +13,7 @@ import java.util.List;
 @Table(name = "pharmacies")
 @Getter
 @Setter
-@ToString(exclude = {"managerProfile", "pharmacists", "inventory", "supportedInsuranceProviders", "orders", "matchResults"})
+@ToString(onlyExplicitlyIncluded = true)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @NoArgsConstructor
 @AllArgsConstructor
@@ -22,6 +22,7 @@ public class Pharmacy {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @ToString.Include
     @EqualsAndHashCode.Include
     private Long id;
 

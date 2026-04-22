@@ -11,7 +11,7 @@ import java.time.LocalDateTime;
 @Table(name = "insurance_cards")
 @Getter
 @Setter
-@ToString(exclude = "patientProfile")
+@ToString(onlyExplicitlyIncluded = true)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @NoArgsConstructor
 @AllArgsConstructor
@@ -20,6 +20,7 @@ public class InsuranceCard {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @ToString.Include
     @EqualsAndHashCode.Include
     private Long id;
 

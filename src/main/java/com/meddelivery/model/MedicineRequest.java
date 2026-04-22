@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 @Table(name = "medicine_requests")
 @Getter
 @Setter
-@ToString(exclude = {"patientProfile", "order"})
+@ToString(onlyExplicitlyIncluded = true)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @NoArgsConstructor
 @AllArgsConstructor
@@ -19,6 +19,7 @@ public class MedicineRequest {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @ToString.Include
     @EqualsAndHashCode.Include
     private Long id;
 

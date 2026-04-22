@@ -17,7 +17,7 @@ import java.util.*;
 @Table(name = "users")
 @Getter
 @Setter
-@ToString(exclude = {"patientProfile", "pharmacistProfile", "managerProfile", "authProviders", "attributes"})
+@ToString(onlyExplicitlyIncluded = true)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @NoArgsConstructor
 @AllArgsConstructor
@@ -26,6 +26,7 @@ public class User implements UserDetails, OAuth2User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @ToString.Include
     @EqualsAndHashCode.Include
     private Long id;
 

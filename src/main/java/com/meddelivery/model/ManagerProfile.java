@@ -9,7 +9,7 @@ import java.time.LocalDateTime;
 @Table(name = "manager_profiles")
 @Getter
 @Setter
-@ToString(exclude = {"user", "pharmacy"})
+@ToString(onlyExplicitlyIncluded = true)
 @EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @NoArgsConstructor
 @AllArgsConstructor
@@ -18,6 +18,7 @@ public class ManagerProfile {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @ToString.Include
     @EqualsAndHashCode.Include
     private Long id;
 
