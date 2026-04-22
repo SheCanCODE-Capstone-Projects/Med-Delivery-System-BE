@@ -76,6 +76,7 @@ public class OtpService {
     public void sendOtpEmail(String email, String otp) {
         try {
             SimpleMailMessage message = new SimpleMailMessage();
+            message.setFrom("MedDelivery <noreply@meddelivery.com>");
             message.setTo(email);
             message.setSubject("MedDelivery - Your OTP Code");
             message.setText(
@@ -86,14 +87,12 @@ public class OtpService {
                     "please ignore this email."
             );
             mailSender.send(message);
-            log.info("OTP email sent to: {}", email);
+            log.info("OTP email sent successfully to: {}", email);
         } catch (Exception e) {
-            log.error("Failed to send OTP email to {}: {}",
-                    email, e.getMessage());
+            log.error("Failed to send OTP email to {}: {}", email, e.getMessage());
+            e.printStackTrace();
             // DEV MODE: Log OTP for testing when email fails
             log.warn("⚠️ DEV MODE - OTP for {} is: {} ⚠️", email, otp);
-            // Uncomment below line for production:
-            // throw new RuntimeException("Failed to send OTP email");
         }
     }
 
