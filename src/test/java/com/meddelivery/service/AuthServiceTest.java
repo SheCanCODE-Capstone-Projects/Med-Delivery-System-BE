@@ -46,6 +46,9 @@ class AuthServiceTest {
     @Mock
     private OtpService otpService;
 
+    @Mock
+    private RefreshTokenService refreshTokenService;
+
     @InjectMocks
     private AuthService authService;
 
@@ -81,6 +84,8 @@ class AuthServiceTest {
                 .thenReturn(Optional.of(mockUser));
         when(jwtService.generateToken(mockUser))
                 .thenReturn("mock.jwt.token");
+        when(refreshTokenService.generateRefreshToken(anyString()))
+                .thenReturn("mock.refresh.token");
 
         // Act
         AuthResponse response = authService.login(request);
@@ -88,12 +93,14 @@ class AuthServiceTest {
         // Assert
         assertNotNull(response);
         assertEquals("mock.jwt.token", response.getToken());
+        assertEquals("mock.refresh.token", response.getRefreshToken());
         assertEquals("PATIENT", response.getRole());
         assertEquals("test@gmail.com", response.getEmail());
 
         verify(authenticationManager).authenticate(any());
         verify(userRepository).findByEmail("test@gmail.com");
         verify(jwtService).generateToken(mockUser);
+        verify(refreshTokenService).generateRefreshToken(anyString());
     }
 
     @Test
@@ -235,6 +242,8 @@ class AuthServiceTest {
                 .thenReturn(mockUser);
         when(jwtService.generateToken(any()))
                 .thenReturn("mock.jwt.token");
+        when(refreshTokenService.generateRefreshToken(anyString()))
+                .thenReturn("mock.refresh.token");
 
         // Act
         AuthResponse response = authService.verifyOtp(request);
@@ -242,6 +251,7 @@ class AuthServiceTest {
         // Assert
         assertNotNull(response);
         assertEquals("mock.jwt.token", response.getToken());
+        assertEquals("mock.refresh.token", response.getRefreshToken());
         assertTrue(mockUser.isActive());
         assertTrue(mockUser.isVerified());
     }

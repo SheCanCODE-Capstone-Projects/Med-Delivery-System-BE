@@ -1,5 +1,6 @@
 package com.meddelivery.service;
 
+import com.meddelivery.exception.OtpException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -89,10 +90,8 @@ public class OtpService {
             mailSender.send(message);
             log.info("OTP email sent successfully to: {}", email);
         } catch (Exception e) {
-            log.error("Failed to send OTP email to {}: {}", email, e.getMessage());
-            e.printStackTrace();
-            // DEV MODE: Log OTP for testing when email fails
-            log.warn("⚠️ DEV MODE - OTP for {} is: {} ⚠️", email, otp);
+            log.error("Failed to send OTP email to: {}", email);
+            throw new OtpException("Failed to deliver OTP to email: " + email);
         }
     }
 

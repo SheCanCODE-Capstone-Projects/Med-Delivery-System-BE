@@ -199,6 +199,14 @@
 					<enableDirtyTracking>true</enableDirtyTracking>
 					<enableAssociationManagement>false</enableAssociationManagement>
 				</configuration>
+				<executions>
+					<execution>
+						<goals>
+							<goal>enhance</goal>
+						</goals>
+						<phase>process-classes</phase>
+					</execution>
+				</executions>
 			</plugin>
 			<plugin>
 				<groupId>org.springframework.boot</groupId>

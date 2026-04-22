@@ -55,6 +55,10 @@ public class User implements UserDetails, OAuth2User {
     @Builder.Default
     private boolean isVerified = false;
 
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean mustChangePassword = false;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 

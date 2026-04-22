@@ -3,6 +3,7 @@ package com.meddelivery.config;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -24,6 +25,16 @@ public class JwtService {
 
     @Value("${jwt.expiration}")
     private long jwtExpiration;
+
+    @PostConstruct
+    public void validateSecretKey() {
+        if (secretKey == null || secretKey.isBlank()) {
+            log.error("JWT_SECRET environment variable is not set. Application cannot start without a valid signing key.");
+            throw new IllegalStateException(
+                "FATAL: JWT_SECRET environment variable is required. " +
+                "Set the JWT_SECRET env var with a secure signing key (minimum 256 bits / 32 characters).");
+        }
+    }
 
     // ── Generate Token ───────────────────────────
     public String generateToken(UserDetails userDetails) {

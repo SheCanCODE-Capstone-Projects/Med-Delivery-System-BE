@@ -50,3 +50,7 @@ logs/
 
 ### Spring Boot ###
 spring-shell.log
+
+### Development Profiles ###
+src/main/resources/application-dev.properties
+application-dev.properties

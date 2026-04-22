@@ -245,10 +245,24 @@ mvn spring-boot:run
 
 ## Default Super Admin
 
-On first startup, a default super admin is created:
+On first startup, a default super admin account is created with the following default email:
 
 - **Email:** admin@meddelivery.com
-- **Password:** Admin@4321
+
+**Password setup** is handled securely via one of these options:
+
+1. **Environment variable** (recommended for production):
+   ```bash
+   ADMIN_INITIAL_PASSWORD=YourSecurePassword123!
+   ```
+
+2. **Generated one-time password** (development only):
+   The system generates a one-time password logged to the console on first startup. The password must be changed on first login.
+
+3. **Forced setup flow**:
+   If no password is configured via env var, the super admin account is created in a disabled state and must be enabled via an OTP flow or manual DB update by a trusted operator.
+
+No reusable credentials are published in this documentation. Ensure `ADMIN_INITIAL_PASSWORD` is set via a secret management system (e.g., HashiCorp Vault, AWS Secrets Manager) before deploying.
 
 
 ---

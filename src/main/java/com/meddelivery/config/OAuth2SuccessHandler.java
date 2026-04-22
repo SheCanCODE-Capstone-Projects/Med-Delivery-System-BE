@@ -10,6 +10,8 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
@@ -80,8 +82,12 @@ public class OAuth2SuccessHandler
 
         if (existingUser.isPresent()) {
             User user = existingUser.get();
-            user.setActive(true);
-            return userRepository.save(user);
+            if (!user.isActive()) {
+                log.warn("OAuth2 login rejected for disabled user: {}", email);
+                throw new BadCredentialsException(
+                    "Account is disabled. Contact an administrator to reactivate.");
+            }
+            return user;
         }
 
         // Create new patient user
