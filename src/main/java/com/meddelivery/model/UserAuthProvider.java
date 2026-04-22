@@ -7,8 +7,18 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "user_auth_providers")
-@Data
+@Table(name = "user_auth_providers",
+    uniqueConstraints = {
+        @UniqueConstraint(name = "uk_auth_provider_external",
+            columnNames = {"provider", "provider_user_id"}),
+        @UniqueConstraint(name = "uk_auth_provider_user",
+            columnNames = {"user_id", "provider"})
+    }
+)
+@Getter
+@Setter
+@ToString(exclude = "user")
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -16,6 +26,7 @@ public class UserAuthProvider {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @EqualsAndHashCode.Include
     private Long id;
 
     @Column(nullable = false)

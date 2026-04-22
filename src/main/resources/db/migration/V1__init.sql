@@ -36,14 +36,17 @@ CREATE TABLE user_auth_providers
     CONSTRAINT fk_auth_provider_user
         FOREIGN KEY (user_id)
             REFERENCES users (id)
-            ON DELETE CASCADE
+            ON DELETE CASCADE,
+
+    CONSTRAINT uk_auth_provider_external
+        UNIQUE (provider, provider_user_id),
+
+    CONSTRAINT uk_auth_provider_user
+        UNIQUE (user_id, provider)
 );
 
 CREATE INDEX idx_auth_provider_user_id
     ON user_auth_providers (user_id);
-
-CREATE INDEX idx_auth_provider_provider
-    ON user_auth_providers (provider, provider_user_id);
 
 -- ═══════════════════════════════════════════════
 --                PATIENT PROFILES
@@ -272,7 +275,7 @@ CREATE TABLE pharmacy_inventory
 (
     id                  BIGSERIAL PRIMARY KEY,
     quantity            INTEGER          NOT NULL,
-    price               DOUBLE PRECISION NOT NULL,
+    price               NUMERIC(12, 2)   NOT NULL,
     dosage_instructions VARCHAR(500),
     last_updated        TIMESTAMP WITHOUT TIME ZONE,
     pharmacy_id         BIGINT           NOT NULL,
@@ -387,7 +390,7 @@ CREATE TABLE orders
     CONSTRAINT fk_order_patient_profile
         FOREIGN KEY (patient_profile_id)
             REFERENCES patient_profiles (id)
-            ON DELETE CASCADE,
+            ON DELETE RESTRICT,
 
     CONSTRAINT fk_order_assigned_pharmacy
         FOREIGN KEY (assigned_pharmacy_id)
@@ -452,7 +455,7 @@ CREATE TABLE order_items
 (
     id          BIGSERIAL PRIMARY KEY,
     quantity    INTEGER          NOT NULL,
-    unit_price  DOUBLE PRECISION,
+    unit_price  NUMERIC(12, 2),
     status      VARCHAR(20)      NOT NULL,
     order_id    BIGINT           NOT NULL,
     medicine_id BIGINT           NOT NULL,
@@ -511,6 +514,30 @@ CREATE TABLE pharmacy_match_results
             'SELECTED',
             'REJECTED'
         )
+    ),
+
+    CONSTRAINT chk_coverage_percentage CHECK (
+        coverage_percentage IS NULL OR (
+            coverage_percentage >= 0 AND coverage_percentage <= 100
+        )
+    ),
+
+    CONSTRAINT chk_medicines_count CHECK (
+        available_medicines_count IS NULL OR available_medicines_count >= 0
+    ),
+
+    CONSTRAINT chk_total_medicines_count CHECK (
+        total_medicines_count IS NULL OR total_medicines_count >= 0
+    ),
+
+    CONSTRAINT chk_medicines_count_order CHECK (
+        available_medicines_count IS NULL
+        OR total_medicines_count IS NULL
+        OR available_medicines_count <= total_medicines_count
+    ),
+
+    CONSTRAINT chk_distance CHECK (
+        distance_in_km IS NULL OR distance_in_km >= 0
     )
 );
 
@@ -582,12 +609,12 @@ CREATE TABLE pharmacist_action_logs
     CONSTRAINT fk_action_log_pharmacist
         FOREIGN KEY (pharmacist_profile_id)
             REFERENCES pharmacist_profiles (id)
-            ON DELETE CASCADE,
+            ON DELETE RESTRICT,
 
     CONSTRAINT fk_action_log_order
         FOREIGN KEY (order_id)
             REFERENCES orders (id)
-            ON DELETE CASCADE,
+            ON DELETE RESTRICT,
 
     CONSTRAINT chk_pharmacist_action CHECK (
         action IN (

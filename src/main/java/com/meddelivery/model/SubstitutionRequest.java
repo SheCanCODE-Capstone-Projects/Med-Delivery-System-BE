@@ -9,7 +9,10 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "substitution_requests")
-@Data
+@Getter
+@Setter
+@ToString(exclude = {"order", "originalMedicine", "suggestedMedicine", "pharmacistProfile"})
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -17,6 +20,7 @@ public class SubstitutionRequest {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @EqualsAndHashCode.Include
     private Long id;
 
     private String reason;

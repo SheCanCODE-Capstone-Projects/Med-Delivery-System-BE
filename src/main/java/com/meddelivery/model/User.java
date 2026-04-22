@@ -15,7 +15,10 @@ import java.util.*;
 
 @Entity
 @Table(name = "users")
-@Data
+@Getter
+@Setter
+@ToString(exclude = {"patientProfile", "pharmacistProfile", "managerProfile", "authProviders", "attributes"})
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -23,6 +26,7 @@ public class User implements UserDetails, OAuth2User {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @EqualsAndHashCode.Include
     private Long id;
 
     @Column(nullable = false)
@@ -34,6 +38,8 @@ public class User implements UserDetails, OAuth2User {
     @Column(unique = true)
     private String email;
 
+    @ToString.Exclude
+    @EqualsAndHashCode.Exclude
     private String password;
 
     @Enumerated(EnumType.STRING)
@@ -90,7 +96,19 @@ public class User implements UserDetails, OAuth2User {
 
     // ── UserDetails ──────────────────────────────
     @Override
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
+        if (role == null) {
+            return List.of();
+        }
         return List.of(new SimpleGrantedAuthority("ROLE_" + role.name()));
     }
 
