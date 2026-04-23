@@ -4,9 +4,14 @@ import com.meddelivery.model.enums.OrderItemStatus;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
+
 @Entity
 @Table(name = "order_items")
-@Data
+@Getter
+@Setter
+@ToString(onlyExplicitlyIncluded = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -14,12 +19,15 @@ public class OrderItem {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @ToString.Include
+    @EqualsAndHashCode.Include
     private Long id;
 
     @Column(nullable = false)
     private Integer quantity;
 
-    private Double unitPrice;
+    @Column(precision = 12, scale = 2)
+    private BigDecimal unitPrice;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

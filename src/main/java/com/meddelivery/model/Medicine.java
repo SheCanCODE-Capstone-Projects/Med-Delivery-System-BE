@@ -8,7 +8,10 @@ import java.util.List;
 
 @Entity
 @Table(name = "medicines")
-@Data
+@Getter
+@Setter
+@ToString(onlyExplicitlyIncluded = true)
+@EqualsAndHashCode(onlyExplicitlyIncluded = true)
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
@@ -16,6 +19,8 @@ public class Medicine {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
+    @ToString.Include
+    @EqualsAndHashCode.Include
     private Long id;
 
     @Column(nullable = false)
@@ -26,7 +31,7 @@ public class Medicine {
     @Column(nullable = false)
     private boolean requiresPrescription;
 
-    @OneToMany(mappedBy = "medicine", cascade = CascadeType.ALL)
+    @OneToMany(mappedBy = "medicine", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @Builder.Default
     private List<PharmacyInventory> inventories = new ArrayList<>();
 }
