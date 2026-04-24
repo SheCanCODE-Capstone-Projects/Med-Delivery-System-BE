@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-interface InsuranceCardRepository extends JpaRepository<InsuranceCard, Long> {
+public interface InsuranceCardRepository extends JpaRepository<InsuranceCard, Long> {
 
     List<InsuranceCard> findAllByPatientProfileId(Long patientProfileId);
 
