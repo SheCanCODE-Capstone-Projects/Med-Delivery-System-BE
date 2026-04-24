@@ -9,7 +9,7 @@ import java.util.List;
 import java.util.Optional;
 
 @Repository
-interface MedicineRequestRepository extends JpaRepository<MedicineRequest, Long> {
+public interface MedicineRequestRepository extends JpaRepository<MedicineRequest, Long> {
 
     List<MedicineRequest> findAllByPatientProfileIdOrderByCreatedAtDesc(
             Long patientProfileId);
