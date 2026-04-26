@@ -1,60 +1,107 @@
 package com.meddelivery.exception;
 
+import com.meddelivery.dto.response.ApiResponse;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authorization.AuthorizationDeniedException;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import java.time.LocalDateTime;
+
 import java.util.HashMap;
 import java.util.Map;
 
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    // ── Validation Errors ────────────────────────
+    @ExceptionHandler(MethodArgumentNotValidException.class)
+    public ResponseEntity<ApiResponse<Map<String, String>>>
+    handleValidationErrors(MethodArgumentNotValidException ex) {
+
+        Map<String, String> errors = new HashMap<>();
+        ex.getBindingResult()
+          .getAllErrors()
+          .forEach(error -> {
+              String field = ((FieldError) error).getField();
+              String message = error.getDefaultMessage();
+              errors.put(field, message);
+          });
+
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.<Map<String, String>>builder()
+                        .success(false)
+                        .message("Validation failed")
+                        .data(errors)
+                        .build());
+    }
+
+    // ── Pharmacy Exceptions ───────────────────────
     @ExceptionHandler(PharmacyNotFoundException.class)
-    public ResponseEntity<Map<String, Object>> handlePharmacyNotFound(PharmacyNotFoundException ex) {
-        return buildResponse(HttpStatus.NOT_FOUND, ex.getMessage());
+    public ResponseEntity<ApiResponse<Void>>
+    handlePharmacyNotFound(PharmacyNotFoundException ex) {
+
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(ex.getMessage()));
     }
 
     @ExceptionHandler(PharmacyNotApprovedException.class)
-    public ResponseEntity<Map<String, Object>> handlePharmacyNotApproved(PharmacyNotApprovedException ex) {
-        return buildResponse(HttpStatus.FORBIDDEN, ex.getMessage());
+    public ResponseEntity<ApiResponse<Void>>
+    handlePharmacyNotApproved(PharmacyNotApprovedException ex) {
+
+        return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error(ex.getMessage()));
     }
 
-    @ExceptionHandler(IllegalArgumentException.class)
-    public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
-        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
+    // ── Bad Credentials ──────────────────────────
+    @ExceptionHandler(BadCredentialsException.class)
+    public ResponseEntity<ApiResponse<Void>>
+    handleBadCredentials(BadCredentialsException ex) {
+
+        return ResponseEntity
+                .status(HttpStatus.UNAUTHORIZED)
+                .body(ApiResponse.error("Invalid credentials"));
     }
 
-    @ExceptionHandler(IllegalStateException.class)
-    public ResponseEntity<Map<String, Object>> handleIllegalState(IllegalStateException ex) {
-        return buildResponse(HttpStatus.BAD_REQUEST, ex.getMessage());
+    // ── Access Denied ────────────────────────────
+    @ExceptionHandler(AuthorizationDeniedException.class)
+    public ResponseEntity<ApiResponse<Void>>
+    handleAccessDenied(AuthorizationDeniedException ex) {
+
+        return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error("Access denied"));
     }
 
-    @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex) {
-        Map<String, String> fieldErrors = new HashMap<>();
-        ex.getBindingResult().getFieldErrors().forEach(error ->
-                fieldErrors.put(error.getField(), error.getDefaultMessage())
-        );
+    // ── Runtime Exceptions ───────────────────────
+    @ExceptionHandler(RuntimeException.class)
+    public ResponseEntity<ApiResponse<Void>>
+    handleRuntimeException(RuntimeException ex) {
 
-        Map<String, Object> body = new HashMap<>();
-        body.put("success", false);
-        body.put("status", 400);
-        body.put("message", "Validation failed. Please check the errors below.");
-        body.put("errors", fieldErrors);
-        body.put("timestamp", LocalDateTime.now().toString());
+        log.error("Runtime exception: {}", ex.getMessage());
 
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(body);
+        return ResponseEntity
+                .status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(ex.getMessage()));
     }
 
-    private ResponseEntity<Map<String, Object>> buildResponse(HttpStatus status, String message) {
-        Map<String, Object> body = new HashMap<>();
-        body.put("success", false);
-        body.put("status", status.value());
-        body.put("message", message);
-        body.put("timestamp", LocalDateTime.now().toString());
-        return ResponseEntity.status(status).body(body);
+    // ── Generic Exceptions ───────────────────────
+    @ExceptionHandler(Exception.class)
+    public ResponseEntity<ApiResponse<Void>>
+    handleGenericException(Exception ex) {
+
+        log.error("Unexpected error: {}", ex.getMessage());
+
+        return ResponseEntity
+                .status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error(
+                        "Something went wrong. Please try again."));
     }
 }
