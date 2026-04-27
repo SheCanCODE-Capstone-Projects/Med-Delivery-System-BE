@@ -16,6 +16,8 @@ public class ApiResponse<T> {
     private T data;
 
     // ── Static helpers ───────────────────────────
+    
+    // For returning data with a message
     public static <T> ApiResponse<T> success(String message, T data) {
         return ApiResponse.<T>builder()
                 .success(true)
@@ -24,10 +26,21 @@ public class ApiResponse<T> {
                 .build();
     }
 
+    // For returning data without a message (e.g., GET requests)
+    public static <T> ApiResponse<T> success(T data) {
+        return ApiResponse.<T>builder()
+                .success(true)
+                .message("Success")
+                .data(data)
+                .build();
+    }
+
+    // For void operations (e.g., DELETE, UPDATE status)
     public static <T> ApiResponse<T> success(String message) {
         return ApiResponse.<T>builder()
                 .success(true)
                 .message(message)
+                .data(null)
                 .build();
     }
 
@@ -35,6 +48,7 @@ public class ApiResponse<T> {
         return ApiResponse.<T>builder()
                 .success(false)
                 .message(message)
+                .data(null)
                 .build();
     }
 }
