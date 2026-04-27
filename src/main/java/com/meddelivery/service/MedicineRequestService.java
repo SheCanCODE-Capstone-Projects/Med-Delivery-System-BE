@@ -37,28 +37,12 @@ public class MedicineRequestService {
     private final PatientProfileService profileService;
     private final PatientMapper mapper;
 
-    // ════════════════════════════════════════════════════════════════════════
-    // SUBMIT — main entry point for both flows
-    // ════════════════════════════════════════════════════════════════════════
-
-    /**
-     * Handles both PRIVATE_PURCHASE and PRESCRIPTION_BASED flows.
-     *
-     * Validations performed (in order):
-     *  1. Patient must have a profile
-     *  2. Flow-specific validation (medicine name OR prescription)
-     *  3. DELIVERY requests must have a saved location
-     *  4. No duplicate active request for the same medicine
-     *  5. If insurance used → card must belong to this patient
-     */
     @Transactional
     public MedicineRequestResponse submit(MedicineRequestRequest request) {
         PatientProfile profile = profileService.resolveCurrentProfile();
 
-        // ── Step 1: Flow-specific validation ─────────────────────────────────
         Prescription prescription = validateFlow(request, profile);
 
-        // ── Step 2: Delivery requires location ───────────────────────────────
         if (request.getFulfillmentType() == FulfillmentType.DELIVERY) {
             boolean hasLocation = locationRepository
                     .findByPatientProfileId(profile.getId())
@@ -68,9 +52,6 @@ public class MedicineRequestService {
             }
         }
 
-        // ── Step 3: Duplicate active request guard ────────────────────────────
-        // Only apply for PRIVATE_PURCHASE — prescription-based requests
-        // are unique per prescription naturally
         if (request.getOrderType() == OrderType.PRIVATE_PURCHASE
                 && request.getMedicineName() != null) {
 
@@ -93,7 +74,6 @@ public class MedicineRequestService {
             }
         }
 
-        // ── Step 4: Resolve optional insurance card ───────────────────────────
         InsuranceCard insuranceCard = null;
         if (request.getInsuranceCardId() != null) {
             insuranceCard = insuranceCardRepository
@@ -102,7 +82,6 @@ public class MedicineRequestService {
                             "Insurance card not found or does not belong to your profile"));
         }
 
-        // ── Step 5: Build and save the request ────────────────────────────────
         MedicineRequest medicineRequest = MedicineRequest.builder()
                 .patientProfile(profile)
                 .medicineName(request.getMedicineName() != null
@@ -125,13 +104,6 @@ public class MedicineRequestService {
         return mapper.toMedicineRequestResponse(saved);
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // READ
-    // ════════════════════════════════════════════════════════════════════════
-
-    /**
-     * Patient views all their past and active medicine requests.
-     */
     @Transactional(readOnly = true)
     public List<MedicineRequestResponse> getMyRequests() {
         PatientProfile profile = profileService.resolveCurrentProfile();
@@ -142,10 +114,7 @@ public class MedicineRequestService {
                 .collect(Collectors.toList());
     }
 
-    /**
-     * Patient views a single request by ID.
-     * Ownership enforced — patient can only see their own requests.
-     */
+
     @Transactional(readOnly = true)
     public MedicineRequestResponse getById(Long requestId) {
         PatientProfile profile = profileService.resolveCurrentProfile();
@@ -155,7 +124,6 @@ public class MedicineRequestService {
         return mapper.toMedicineRequestResponse(medicineRequest);
     }
 
-    // CONFIRM — patient approves the matched pharmacy
 
     @Transactional
     public MedicineRequestResponse confirm(Long requestId) {
@@ -176,25 +144,11 @@ public class MedicineRequestService {
 
         log.info("MedicineRequest {} confirmed by patientProfileId={}", requestId, profile.getId());
 
-        /*
-         * NOTE FOR ORDERS TEAM:
-         * Listen for MedicineRequest status = CONFIRMED.
-         * At this point, create the Order linked to this MedicineRequest.
-         * The Order gets: patientProfile, pharmacy (from PharmacyMatchResult),
-         * fulfillmentType, prescription (if PRESCRIPTION_BASED).
-         */
+
 
         return mapper.toMedicineRequestResponse(saved);
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // CANCEL — patient cancels before an order is created
-    // ════════════════════════════════════════════════════════════════════════
-
-    /**
-     * Patient can cancel a request only while it hasn't yet become an Order.
-     * Allowed statuses for cancellation: PENDING, MATCHING, MATCHED.
-     */
     @Transactional
     public MedicineRequestResponse cancel(Long requestId) {
         PatientProfile profile = profileService.resolveCurrentProfile();
@@ -222,14 +176,7 @@ public class MedicineRequestService {
         return mapper.toMedicineRequestResponse(saved);
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // PRIVATE HELPERS
-    // ════════════════════════════════════════════════════════════════════════
 
-    /**
-     * Validates the request based on its flow type and returns the linked
-     * Prescription entity (null for PRIVATE_PURCHASE).
-     */
     private Prescription validateFlow(MedicineRequestRequest request, PatientProfile profile) {
 
         if (request.getOrderType() == OrderType.PRIVATE_PURCHASE) {

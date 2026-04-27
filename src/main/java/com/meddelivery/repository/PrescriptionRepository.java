@@ -19,7 +19,6 @@ public interface PrescriptionRepository extends JpaRepository<Prescription, Long
 
     boolean existsByIdAndPatientProfileId(Long id, Long patientProfileId);
 
-    // Used by MedicineRequestService to validate prescription is still usable
     List<Prescription> findByIdAndPatientProfileIdAndStatus(
             Long id, Long patientProfile_id, PrescriptionStatus status);
 

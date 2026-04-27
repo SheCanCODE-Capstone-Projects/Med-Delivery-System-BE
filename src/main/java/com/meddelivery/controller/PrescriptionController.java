@@ -13,12 +13,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 
-/**
- * Base path: /api/patient/prescriptions
- *
- * File upload is handled by the client (Firebase/S3).
- * This controller only receives the resulting URL + metadata.
- */
+
 @RestController
 @RequestMapping("/api/patient/prescriptions")
 @RequiredArgsConstructor
@@ -27,10 +22,7 @@ public class PrescriptionController {
 
     private final PrescriptionService prescriptionService;
 
-    /**
-     * POST /api/patient/prescriptions
-     * Record a prescription after client uploads the file to storage.
-     */
+
     @PostMapping
     public ResponseEntity<ApiResponse<String>> upload(
             @Valid @RequestBody PrescriptionRequest request) {
@@ -41,19 +33,14 @@ public class PrescriptionController {
                 .body(ApiResponse.success(response, "Prescription uploaded successfully"));
     }
 
-    /**
-     * GET /api/patient/prescriptions
-     * All prescriptions for the authenticated patient, newest first.
-     */
+
     @GetMapping
     public ResponseEntity<ApiResponse<List<PrescriptionResponse>>> getAll() {
         return ResponseEntity.ok(
                 ApiResponse.success(prescriptionService.getMyPrescriptions().toString()));
     }
 
-    /**
-     * GET /api/patient/prescriptions/{id}
-     */
+
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<PrescriptionResponse>> getById(
             @PathVariable Long id) {
@@ -62,10 +49,7 @@ public class PrescriptionController {
                 ApiResponse.success(prescriptionService.getById(id)));
     }
 
-    /**
-     * DELETE /api/patient/prescriptions/{id}
-     * Only allowed if prescription status is still UPLOADED.
-     */
+
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<String>> delete(
             @PathVariable Long id) {

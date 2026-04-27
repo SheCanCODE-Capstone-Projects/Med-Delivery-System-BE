@@ -31,14 +31,7 @@ public class PatientProfileController {
 
     private final PatientProfileService profileService;
 
-    // ════════════════════════════════════════════════════════════════════════
-    // PROFILE
-    // ════════════════════════════════════════════════════════════════════════
 
-    /**
-     * POST /api/patient/profile
-     * Called once after registration to complete the patient's profile.
-     */
     @PostMapping("/profile")
     public ResponseEntity<ApiResponse<String>> createProfile(
             @Valid @RequestBody PatientProfileRequest request) {
@@ -49,20 +42,13 @@ public class PatientProfileController {
                 .body(ApiResponse.success(response, "Profile created successfully"));
     }
 
-    /**
-     * GET /api/patient/profile
-     * Get the authenticated patient's own profile.
-     */
+
     @GetMapping("/profile")
     public ResponseEntity<ApiResponse<PatientProfileResponse>> getMyProfile() {
         return ResponseEntity.ok(
                 ApiResponse.success(profileService.getMyProfile()));
     }
 
-    /**
-     * GET /api/patient/profile/{id}
-     * ADMIN only — get any patient profile by ID.
-     */
     @GetMapping("/profile/{id}")
     @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('MANAGER')")
     public ResponseEntity<ApiResponse<PatientProfileResponse>> getProfileById(
@@ -72,14 +58,7 @@ public class PatientProfileController {
                 ApiResponse.success(profileService.getProfileById(id)));
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // LOCATION
-    // ════════════════════════════════════════════════════════════════════════
 
-    /**
-     * POST /api/patient/profile/location
-     * Create or update location (upsert — patient has exactly one location).
-     */
     @PostMapping("/profile/location")
     public ResponseEntity<ApiResponse<String>> saveLocation(
             @Valid @RequestBody PatientLocationRequest request) {
@@ -90,18 +69,14 @@ public class PatientProfileController {
                 .body(ApiResponse.success(response, "Location saved successfully"));
     }
 
-    /**
-     * GET /api/patient/profile/location
-     */
+
     @GetMapping("/profile/location")
     public ResponseEntity<ApiResponse<PatientLocationResponse>> getMyLocation() {
         return ResponseEntity.ok(
                 ApiResponse.success(profileService.getMyLocation()));
     }
 
-    /**
-     * DELETE /api/patient/profile/location
-     */
+
     @DeleteMapping("/profile/location")
     public ResponseEntity<ApiResponse<String>> deleteLocation() {
         profileService.deleteLocation();
@@ -109,14 +84,7 @@ public class PatientProfileController {
                 ApiResponse.success(null, "Location removed successfully"));
     }
 
-    // ════════════════════════════════════════════════════════════════════════
-    // INSURANCE CARDS
-    // ════════════════════════════════════════════════════════════════════════
 
-    /**
-     * POST /api/patient/profile/insurance
-     * Add a new insurance card. Status starts as PENDING (admin verifies).
-     */
     @PostMapping("/profile/insurance")
     public ResponseEntity<ApiResponse<String>> addInsuranceCard(
             @Valid @RequestBody InsuranceCardRequest request) {
@@ -127,18 +95,14 @@ public class PatientProfileController {
                 .body(ApiResponse.success(response, "Insurance card added. Pending verification."));
     }
 
-    /**
-     * GET /api/patient/profile/insurance
-     */
+
     @GetMapping("/profile/insurance")
     public ResponseEntity<ApiResponse<List<InsuranceCardResponse>>> getMyInsuranceCards() {
         return ResponseEntity.ok(
                 ApiResponse.success(profileService.getMyInsuranceCards().toString()));
     }
 
-    /**
-     * GET /api/patient/profile/insurance/{id}
-     */
+
     @GetMapping("/profile/insurance/{id}")
     public ResponseEntity<ApiResponse<InsuranceCardResponse>> getInsuranceCardById(
             @PathVariable Long id) {
@@ -147,9 +111,7 @@ public class PatientProfileController {
                 ApiResponse.success(profileService.getInsuranceCardById(id)));
     }
 
-    /**
-     * DELETE /api/patient/profile/insurance/{id}
-     */
+
     @DeleteMapping("/profile/insurance/{id}")
     public ResponseEntity<ApiResponse<String>> deleteInsuranceCard(
             @PathVariable Long id) {
