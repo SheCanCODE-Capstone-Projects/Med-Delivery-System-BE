@@ -11,6 +11,7 @@ CREATE TABLE users
     role         VARCHAR(20)  NOT NULL,
     is_active    BOOLEAN      NOT NULL DEFAULT FALSE,
     is_verified  BOOLEAN      NOT NULL DEFAULT FALSE,
+    must_change_password BOOLEAN NOT NULL DEFAULT FALSE,
     created_at   TIMESTAMP WITHOUT TIME ZONE,
     updated_at   TIMESTAMP WITHOUT TIME ZONE,
 
