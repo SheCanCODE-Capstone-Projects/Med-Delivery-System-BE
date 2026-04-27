@@ -68,7 +68,7 @@ public class PatientProfileService {
 
 //      Returns the full profile summary for the authenticated patient.
     @Transactional(readOnly = true)
-    public String getMyProfile() {
+    public PatientProfileResponse getMyProfile() {
         PatientProfile profile = resolveCurrentProfile();
         return mapper.toProfileResponse(profile);
     }
@@ -77,7 +77,7 @@ public class PatientProfileService {
 //     ADMIN: get any patient's profile by profile ID.
 
     @Transactional(readOnly = true)
-    public String getProfileById(Long profileId) {
+    public PatientProfileResponse getProfileById(Long profileId) {
         PatientProfile profile = profileRepository.findById(profileId)
                 .orElseThrow(() -> new ResourceNotFoundException("PatientProfile", profileId));
         return mapper.toProfileResponse(profile);
@@ -106,7 +106,7 @@ public class PatientProfileService {
     }
 
     @Transactional(readOnly = true)
-    public String getMyLocation() {
+    public PatientLocationResponse getMyLocation() {
         PatientProfile profile = resolveCurrentProfile();
         PatientLocation location = locationRepository
                 .findByPatientProfileId(profile.getId())
@@ -155,7 +155,7 @@ public class PatientProfileService {
     }
 
     @Transactional(readOnly = true)
-    public String getInsuranceCardById(Long cardId) {
+    public InsuranceCardResponse getInsuranceCardById(Long cardId) {
         PatientProfile profile = resolveCurrentProfile();
         InsuranceCard card = insuranceCardRepository
                 .findByIdAndPatientProfileId(cardId, profile.getId())

@@ -33,20 +33,20 @@ public class PatientProfileController {
 
 
     @PostMapping("/profile")
-    public ResponseEntity<ApiResponse<String>> createProfile(
+    public ResponseEntity<ApiResponse<PatientProfileResponse>> createProfile(
             @Valid @RequestBody PatientProfileRequest request) {
 
-        String response = String.valueOf(profileService.createProfile(request));
+        PatientProfileResponse response = profileService.createProfile(request);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(ApiResponse.success(response, "Profile created successfully"));
+                .body(ApiResponse.success("Profile created successfully", response));
     }
 
 
     @GetMapping("/profile")
     public ResponseEntity<ApiResponse<PatientProfileResponse>> getMyProfile() {
         return ResponseEntity.ok(
-                ApiResponse.success(profileService.getMyProfile()));
+                ApiResponse.success("Profile retrieved successfully", profileService.getMyProfile()));
     }
 
     @GetMapping("/profile/{id}")
@@ -55,25 +55,25 @@ public class PatientProfileController {
             @PathVariable Long id) {
 
         return ResponseEntity.ok(
-                ApiResponse.success(profileService.getProfileById(id)));
+                ApiResponse.success("Profile retrieved successfully", profileService.getProfileById(id)));
     }
 
 
     @PostMapping("/profile/location")
-    public ResponseEntity<ApiResponse<String>> saveLocation(
+    public ResponseEntity<ApiResponse<PatientLocationResponse>> saveLocation(
             @Valid @RequestBody PatientLocationRequest request) {
 
-        String response = String.valueOf(profileService.saveLocation(request));
+        PatientLocationResponse response = profileService.saveLocation(request);
         return ResponseEntity
                 .status(HttpStatus.OK)
-                .body(ApiResponse.success(response, "Location saved successfully"));
+                .body(ApiResponse.success("Location saved successfully", response));
     }
 
 
     @GetMapping("/profile/location")
     public ResponseEntity<ApiResponse<PatientLocationResponse>> getMyLocation() {
         return ResponseEntity.ok(
-                ApiResponse.success(profileService.getMyLocation()));
+                ApiResponse.success("Location retrieved successfully", profileService.getMyLocation()));
     }
 
 
@@ -86,20 +86,20 @@ public class PatientProfileController {
 
 
     @PostMapping("/profile/insurance")
-    public ResponseEntity<ApiResponse<String>> addInsuranceCard(
+    public ResponseEntity<ApiResponse<InsuranceCardResponse>> addInsuranceCard(
             @Valid @RequestBody InsuranceCardRequest request) {
 
-        String response = String.valueOf(profileService.addInsuranceCard(request));
+        InsuranceCardResponse response = profileService.addInsuranceCard(request);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(ApiResponse.success(response, "Insurance card added. Pending verification."));
+                .body(ApiResponse.success("Insurance card added. Pending verification.", response));
     }
 
 
     @GetMapping("/profile/insurance")
     public ResponseEntity<ApiResponse<List<InsuranceCardResponse>>> getMyInsuranceCards() {
         return ResponseEntity.ok(
-                ApiResponse.success(profileService.getMyInsuranceCards().toString()));
+                ApiResponse.success("Insurance cards retrieved successfully", profileService.getMyInsuranceCards()));
     }
 
 
@@ -108,7 +108,7 @@ public class PatientProfileController {
             @PathVariable Long id) {
 
         return ResponseEntity.ok(
-                ApiResponse.success(profileService.getInsuranceCardById(id)));
+                ApiResponse.success("Insurance card retrieved successfully", profileService.getInsuranceCardById(id)));
     }
 
 

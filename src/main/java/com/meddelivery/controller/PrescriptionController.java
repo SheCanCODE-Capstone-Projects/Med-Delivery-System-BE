@@ -24,20 +24,20 @@ public class PrescriptionController {
 
 
     @PostMapping
-    public ResponseEntity<ApiResponse<String>> upload(
+    public ResponseEntity<ApiResponse<PrescriptionResponse>> upload(
             @Valid @RequestBody PrescriptionRequest request) {
 
-        String response = String.valueOf(prescriptionService.upload(request));
+        PrescriptionResponse response = prescriptionService.upload(request);
         return ResponseEntity
                 .status(HttpStatus.CREATED)
-                .body(ApiResponse.success(response, "Prescription uploaded successfully"));
+                .body(ApiResponse.success("Prescription uploaded successfully", response));
     }
 
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<PrescriptionResponse>>> getAll() {
         return ResponseEntity.ok(
-                ApiResponse.success(prescriptionService.getMyPrescriptions().toString()));
+                ApiResponse.success("Prescriptions retrieved successfully", prescriptionService.getMyPrescriptions()));
     }
 
 
@@ -46,7 +46,7 @@ public class PrescriptionController {
             @PathVariable Long id) {
 
         return ResponseEntity.ok(
-                ApiResponse.success(prescriptionService.getById(id)));
+                ApiResponse.success("Prescription retrieved successfully", prescriptionService.getById(id)));
     }
 
 

@@ -60,7 +60,7 @@ public class PrescriptionService {
     }
 
     @Transactional(readOnly = true)
-    public String getById(Long prescriptionId) {
+    public PrescriptionResponse getById(Long prescriptionId) {
         PatientProfile profile = profileService.resolveCurrentProfile();
         Prescription prescription = prescriptionRepository
                 .findByIdAndPatientProfileId(prescriptionId, profile.getId())
