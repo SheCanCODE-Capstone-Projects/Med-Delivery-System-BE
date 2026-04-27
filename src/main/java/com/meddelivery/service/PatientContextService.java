@@ -6,15 +6,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
-/**
- * Single responsibility: extract the authenticated User from the SecurityContext.
- *
- * Your Auth team's JwtAuthFilter sets the principal as the User object directly
- * (since User implements UserDetails). This service simply casts and returns it.
- *
- * Used by all services in this module — avoids passing the principal through
- * every method signature.
- */
 @Service
 @RequiredArgsConstructor
 public class PatientContextService {

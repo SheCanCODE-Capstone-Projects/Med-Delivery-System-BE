@@ -6,15 +6,8 @@ import jakarta.validation.constraints.Past;
 import lombok.Data;
 import java.time.LocalDate;
 
-// ─────────────────────────────────────────────────────────────────────────────
-// PatientProfileRequest.java
-// Used to CREATE or UPDATE the patient's profile after registration.
-// ─────────────────────────────────────────────────────────────────────────────
 
-/**
- * POST /api/patient/profile
- * PUT  /api/patient/profile
- */
+
 @Data
 public class PatientProfileRequest {
 

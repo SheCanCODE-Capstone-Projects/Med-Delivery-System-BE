@@ -16,7 +16,7 @@ public interface PatientProfileRepository extends JpaRepository<PatientProfile, 
     boolean existsByUserId(Long userId);
 
     @Query("""
-        SELECT p FROM PatientProfile p
+        SELECT DISTINCT p FROM PatientProfile p
         LEFT JOIN FETCH p.location
         WHERE p.user.id = :userId
     """)
@@ -24,7 +24,7 @@ public interface PatientProfileRepository extends JpaRepository<PatientProfile, 
 
 
     @Query("""
-        SELECT p FROM PatientProfile p
+        SELECT DISTINCT p FROM PatientProfile p
         LEFT JOIN FETCH p.insuranceCards
         WHERE p.user.id = :userId
     """)

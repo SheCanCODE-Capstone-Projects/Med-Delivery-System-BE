@@ -26,13 +26,7 @@ public class PrescriptionService {
     private final PatientProfileService profileService;
     private final PatientMapper mapper;
 
-    // ── Upload ────────────────────────────────────────────────────────────────
 
-    /**
-     * Patient uploads a prescription.
-     * The file is already stored on Firebase/S3 by the client — we just record
-     * the URL and metadata. Status starts as UPLOADED.
-     */
     @Transactional
     public PrescriptionResponse upload(PrescriptionRequest request) {
         PatientProfile profile = profileService.resolveCurrentProfile();
@@ -55,8 +49,6 @@ public class PrescriptionService {
         return mapper.toPrescriptionResponse(saved);
     }
 
-    // ── Read ──────────────────────────────────────────────────────────────────
-
     @Transactional(readOnly = true)
     public List<PrescriptionResponse> getMyPrescriptions() {
         PatientProfile profile = profileService.resolveCurrentProfile();
@@ -68,7 +60,7 @@ public class PrescriptionService {
     }
 
     @Transactional(readOnly = true)
-    public PrescriptionResponse getById(Long prescriptionId) {
+    public String getById(Long prescriptionId) {
         PatientProfile profile = profileService.resolveCurrentProfile();
         Prescription prescription = prescriptionRepository
                 .findByIdAndPatientProfileId(prescriptionId, profile.getId())
@@ -76,12 +68,6 @@ public class PrescriptionService {
         return mapper.toPrescriptionResponse(prescription);
     }
 
-    // ── Delete ────────────────────────────────────────────────────────────────
-
-    /**
-     * Patient can delete a prescription only if it is in UPLOADED status
-     * (not yet sent to a pharmacy or linked to an active order).
-     */
     @Transactional
     public void delete(Long prescriptionId) {
         PatientProfile profile = profileService.resolveCurrentProfile();
@@ -98,14 +84,10 @@ public class PrescriptionService {
         log.info("Prescription {} deleted by patientProfileId={}", prescriptionId, profile.getId());
     }
 
-    // ── Internal: validate prescription belongs to patient and is usable ───────
 
-    /**
-     * Called by MedicineRequestService before linking a prescription to a request.
-     */
     public Prescription validateAndGetPrescription(Long prescriptionId, Long patientProfileId) {
-        return prescriptionRepository
-                .findByIdAndPatientProfileId(prescriptionId, patientProfileId)
-                .orElseThrow(() -> new ResourceNotFoundException("Prescription", prescriptionId));
+        return (Prescription) prescriptionRepository
+                .findByIdAndPatientProfileIdAndStatus(prescriptionId, patientProfileId,PrescriptionStatus.VALIDATED);
+
     }
 }

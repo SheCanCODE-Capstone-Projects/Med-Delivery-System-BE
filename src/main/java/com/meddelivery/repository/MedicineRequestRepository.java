@@ -17,12 +17,11 @@ public interface MedicineRequestRepository extends JpaRepository<MedicineRequest
     Optional<MedicineRequest> findByIdAndPatientProfileId(
             Long id, Long patientProfileId);
 
-    // Used to prevent duplicate active requests for same medicine
-    boolean existsByPatientProfileIdAndMedicineNameAndStatusIn(
-            Long patientProfileId,
-            String medicineName,
-            List<MedicineRequestStatus> activeStatuses);
 
-    // Used by matching service to pick up PENDING requests
+    boolean existsByPatientProfileIdAndMedicineNameIgnoreCaseAndStatusIn(Long id, String trim, List<MedicineRequestStatus> statuses);
+    // Used by Pharmacy team's matching service to pick up new requests
     List<MedicineRequest> findAllByStatus(MedicineRequestStatus status);
+
+    // Used by Pharmacy team to update a specific request after matching
+    Optional<MedicineRequest> findByIdAndStatus(Long id, MedicineRequestStatus status);
 }

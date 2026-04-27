@@ -2,21 +2,17 @@ package com.meddelivery.mapper;
 
 import com.meddelivery.dto.response.*;
 import com.meddelivery.model.*;
+import com.meddelivery.model.enums.InsuranceStatus;
 import org.springframework.stereotype.Component;
 
-/**
- * Manual mapper — keeps the service layer clean.
- * No MapStruct dependency needed; easy to debug and extend.
- *
- * Rule: mappers only go entity → response DTO.
- *       request DTO → entity is done in the service layer
- *       (services need access to DB to resolve FK references).
- */
+import static com.meddelivery.model.enums.InsuranceStatus.UNVERIFIED;
+import static com.meddelivery.model.enums.PharmacyStatus.ACTIVE;
+
+
 @Component
 public class PatientMapper {
 
-    // ── PatientProfile ────────────────────────────────────────────────────────
-
+    // PatientProfile
     public PatientProfileResponse toProfileResponse(PatientProfile profile) {
         User user = profile.getUser();
         return PatientProfileResponse.builder()
@@ -25,13 +21,14 @@ public class PatientMapper {
                 .fullName(user.getFullName())
                 .email(user.getEmail())
                 .phoneNumber(user.getPhoneNumber())
-                .hasLocation(profile.getLocation() != null)
-                .hasInsurance(!profile.getInsuranceCards().isEmpty())
+                .hasLocation(profile.getLocation() != null).hasInsurance(
+                        profile.getInsuranceCards().stream()
+                                .anyMatch(card -> card.getStatus() == UNVERIFIED)
+                )
                 .build();
     }
 
-    // ── PatientLocation ───────────────────────────────────────────────────────
-
+    // PatientLocation
     public PatientLocationResponse toLocationResponse(PatientLocation location) {
         return PatientLocationResponse.builder()
                 .id(location.getId())
@@ -43,8 +40,7 @@ public class PatientMapper {
                 .build();
     }
 
-    // ── InsuranceCard ─────────────────────────────────────────────────────────
-
+    // InsuranceCard
     public InsuranceCardResponse toInsuranceResponse(InsuranceCard card) {
         return InsuranceCardResponse.builder()
                 .id(card.getId())
@@ -57,8 +53,7 @@ public class PatientMapper {
                 .build();
     }
 
-    // ── Prescription ──────────────────────────────────────────────────────────
-
+    // Prescription
     public PrescriptionResponse toPrescriptionResponse(Prescription prescription) {
         return PrescriptionResponse.builder()
                 .id(prescription.getId())
@@ -73,8 +68,7 @@ public class PatientMapper {
                 .build();
     }
 
-    // ── MedicineRequest ───────────────────────────────────────────────────────
-
+    //  MedicineRequest
     public MedicineRequestResponse toMedicineRequestResponse(MedicineRequest req) {
         MedicineRequestResponse.MedicineRequestResponseBuilder builder =
                 MedicineRequestResponse.builder()

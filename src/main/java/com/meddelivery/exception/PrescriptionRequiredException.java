@@ -6,7 +6,7 @@ import org.springframework.http.HttpStatus;
 public class PrescriptionRequiredException extends PatientModuleException {
     public PrescriptionRequiredException() {
         super("A valid prescription is required for prescription-based orders.",
-                HttpStatus.UNPROCESSABLE_ENTITY, "PRESCRIPTION_REQUIRED");
+                HttpStatus.UNPROCESSABLE_CONTENT, "PRESCRIPTION_REQUIRED");
     }
 
 }

@@ -6,14 +6,7 @@ import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 
-/**
- * POST /api/patient/profile/location
- * PUT  /api/patient/profile/location
- *
- * Two input modes (mirrors LocationInputType enum):
- *  GPS    → latitude + longitude required
- *  MANUAL → manualAddress required
- */
+
 @Data
 public class PatientLocationRequest {
 

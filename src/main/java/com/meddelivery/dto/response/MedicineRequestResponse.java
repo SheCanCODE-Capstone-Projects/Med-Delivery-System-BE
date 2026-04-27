@@ -18,15 +18,15 @@ public class MedicineRequestResponse {
     private FulfillmentType fulfillmentType;
     private MedicineRequestStatus status;
 
-    // Populated if prescription-based
+    //  if prescription-based
     private Long prescriptionId;
     private String prescriptionFileUrl;
 
-    // Populated if insurance used
+    //  if insurance used
     private Long insuranceCardId;
     private String insuranceProviderName;
 
-    // Populated after matching
+    // after matching
     private Long orderId;
 
     private LocalDateTime createdAt;
