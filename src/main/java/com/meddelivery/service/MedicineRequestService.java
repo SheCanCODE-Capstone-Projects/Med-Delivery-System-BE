@@ -43,14 +43,12 @@ public class MedicineRequestService {
 
         Prescription prescription = validateFlow(request, profile);
 
-        if (request.getFulfillmentType() == FulfillmentType.DELIVERY) {
-            boolean hasLocation = locationRepository
-                    .findByPatientProfileId(profile.getId())
-                    .isPresent();
-            if (!hasLocation) {
-                throw new LocationRequiredException();
-            }
-        }
+         if (request.getFulfillmentType() == FulfillmentType.DELIVERY) {
+             boolean hasLocation = !locationRepository.findByPatientProfileId(profile.getId()).isEmpty();
+             if (!hasLocation) {
+                 throw new LocationRequiredException();
+             }
+         }
 
         if (request.getOrderType() == OrderType.PRIVATE_PURCHASE
                 && request.getMedicineName() != null) {

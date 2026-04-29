@@ -1,10 +1,11 @@
 package com.meddelivery.service;
 
-import com.meddelivery.dto.response.*;
 import com.meddelivery.dto.request.*;
+import com.meddelivery.dto.response.*;
 import com.meddelivery.exception.BusinessException;
 import com.meddelivery.exception.ResourceNotFoundException;
 import com.meddelivery.model.InsuranceProvider;
+import com.meddelivery.model.ManagerProfile;
 import com.meddelivery.model.Order;
 import com.meddelivery.model.Pharmacy;
 import com.meddelivery.model.PharmacyInventory;
@@ -15,6 +16,7 @@ import com.meddelivery.model.enums.PharmacyStatus;
 import com.meddelivery.model.enums.SubstitutionStatus;
 import com.meddelivery.model.enums.UserRole;
 import com.meddelivery.repository.*;
+import com.meddelivery.service.OtpService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
@@ -26,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.stream.Collectors;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -40,6 +43,7 @@ public class AdminService {
     private final InsuranceProviderRepository insuranceProviderRepository;
     private final PharmacyInventoryRepository inventoryRepository;
     private final SubstitutionRequestRepository substitutionRepo;
+    private final OtpService otpService;
 
     // --- A. Executive Summary ---
 
@@ -144,7 +148,17 @@ public class AdminService {
                 .name(pharmacy.getName())
                 .address(pharmacy.getAddress())
                 .contactInfo(pharmacy.getContactInfo())
+                .licenseNumber(pharmacy.getLicenseNumber())
                 .licenseDocumentUrl("/uploads/licenses/" + pharmacy.getPharmacyCode() + ".pdf")
+                .managerName(pharmacy.getManagerProfile() != null
+                        ? pharmacy.getManagerProfile().getUser().getFullName() : null)
+                .managerEmail(pharmacy.getManagerProfile() != null
+                        ? pharmacy.getManagerProfile().getUser().getEmail() : null)
+                .requestedInsurances(pharmacy.getSupportedInsuranceProviders() != null
+                        ? pharmacy.getSupportedInsuranceProviders().stream()
+                                .map(insurance -> insurance.getName())
+                                .collect(Collectors.toList())
+                        : null)
                 .build();
 
         return ApiResponse.success(response);
@@ -157,15 +171,83 @@ public class AdminService {
 
         if ("APPROVE".equalsIgnoreCase(request.getAction())) {
             pharmacy.setStatus(PharmacyStatus.ACTIVE);
+
+            // ── Send OTP to pharmacy manager ─────────────────────────────────
+            ManagerProfile managerProfile = pharmacy.getManagerProfile();
+            if (managerProfile != null && managerProfile.getUser() != null) {
+                User manager = managerProfile.getUser();
+                try {
+                    otpService.sendOtp(manager.getEmail());
+                    log.info("OTP sent to pharmacy manager: {} (pharmacyId: {})",
+                            manager.getEmail(), pharmacyId);
+                } catch (Exception e) {
+                    log.error("Failed to send OTP to manager {}: {}",
+                            manager.getEmail(), e.getMessage());
+                }
+            } else {
+                log.warn("Pharmacy {} has no manager profile", pharmacyId);
+            }
+
         } else if ("REJECT".equalsIgnoreCase(request.getAction())) {
             pharmacy.setStatus(PharmacyStatus.REJECTED);
         } else {
             throw new BusinessException("Invalid action: " + request.getAction());
         }
-        
+
         pharmacyRepository.save(pharmacy);
         logAudit("PHARMACY_APPROVAL", "Pharmacy ID: " + pharmacyId, request.getAction() + " - Reason: " + request.getReason());
         return ApiResponse.success("Pharmacy " + request.getAction().toLowerCase() + "d");
+    }
+
+    @Transactional
+    public ApiResponse<Void> replacePharmacyManager(Long pharmacyId, ManagerUpdateRequest request) {
+        Pharmacy pharmacy = pharmacyRepository.findById(pharmacyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Pharmacy not found with id: " + pharmacyId));
+
+        // ── Deactivate old manager ──────────────────────────────────────────
+        ManagerProfile oldManagerProfile = pharmacy.getManagerProfile();
+        if (oldManagerProfile != null && oldManagerProfile.getUser() != null) {
+            User oldManager = oldManagerProfile.getUser();
+            oldManager.setActive(false);
+            oldManager.setVerified(false);
+            userRepository.save(oldManager);
+            log.info("Old manager deactivated: {} (pharmacyId: {})",
+                    oldManager.getEmail(), pharmacyId);
+        }
+
+        // ── Create new manager user ─────────────────────────────────────────
+        User newManager = User.builder()
+                .fullName(request.getManagerName())
+                .email(request.getManagerEmail())
+                .phoneNumber(request.getManagerPhone())
+                .role(UserRole.MANAGER)
+                .isActive(false)
+                .isVerified(false)
+                .build();
+        userRepository.save(newManager);
+
+        // ── Update pharmacy to point to new manager ─────────────────────────
+        ManagerProfile newManagerProfile = ManagerProfile.builder()
+                .user(newManager)
+                .pharmacy(pharmacy)
+                .build();
+
+        pharmacy.setManagerProfile(newManagerProfile);
+        pharmacyRepository.save(pharmacy);
+
+        // ── Send OTP to new manager ─────────────────────────────────────────
+        try {
+            otpService.sendOtp(newManager.getEmail());
+            log.info("OTP sent to new manager: {} (pharmacyId: {})",
+                    newManager.getEmail(), pharmacyId);
+        } catch (Exception e) {
+            log.error("Failed to send OTP to new manager {}: {}",
+                    newManager.getEmail(), e.getMessage());
+        }
+
+        logAudit("REPLACE_PHARMACY_MANAGER", "Pharmacy ID: " + pharmacyId,
+                "New manager: " + request.getManagerEmail());
+        return ApiResponse.success("Pharmacy manager replaced successfully");
     }
 
     @Transactional

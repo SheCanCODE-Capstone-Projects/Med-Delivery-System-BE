@@ -33,6 +33,9 @@ public class Pharmacy {
     private String pharmacyCode;
 
     @Column(nullable = false)
+    private String licenseNumber;
+
+    @Column(nullable = false)
     private String contactInfo;
 
     private Double latitude;
@@ -48,6 +51,7 @@ public class Pharmacy {
 
     @OneToOne(mappedBy = "pharmacy",
               cascade = CascadeType.ALL,
+              orphanRemoval = true,
               fetch = FetchType.LAZY)
     private ManagerProfile managerProfile;
 

@@ -3,12 +3,14 @@ package com.meddelivery.service;
 import com.meddelivery.exception.OtpException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.core.env.Environment;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
+import java.util.Arrays;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -19,6 +21,7 @@ public class OtpService {
     private final RedisTemplate<String, String> redisTemplate;
     private final JavaMailSender mailSender;
     private final RateLimitService rateLimitService;
+    private final Environment env; // to check active profiles
 
     private static final int OTP_LENGTH = 6;
     private static final long OTP_EXPIRY_MINUTES = 5;
@@ -90,7 +93,7 @@ public class OtpService {
             mailSender.send(message);
             log.info("OTP email sent successfully to: {}", email);
         } catch (Exception e) {
-            log.error("Failed to send OTP email to: {}", email);
+            log.error("Failed to send OTP email to: {}", email, e);
             throw new OtpException("Failed to deliver OTP to email: " + email);
         }
     }
@@ -106,6 +109,13 @@ public class OtpService {
 
         String otp = generateOtp();
         saveOtp(username, otp);
+
+        // Log OTP in dev mode for testing
+        boolean isDev = Arrays.asList(env.getActiveProfiles()).contains("dev");
+        if (isDev) {
+            log.warn("🔑 [DEV OTP] Username: {} | OTP: {} (expires in {} minutes)", 
+                    username, otp, OTP_EXPIRY_MINUTES);
+        }
 
         if (username.contains("@")) {
             // It is an email

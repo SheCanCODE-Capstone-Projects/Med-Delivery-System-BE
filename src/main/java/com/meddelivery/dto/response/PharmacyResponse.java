@@ -14,6 +14,7 @@ public class PharmacyResponse {
     private Long id;
     private String name;
     private String pharmacyCode;
+    private String licenseNumber;
     private String contactInfo;
     private String address;
     private Double latitude;

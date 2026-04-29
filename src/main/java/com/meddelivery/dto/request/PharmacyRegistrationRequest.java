@@ -16,6 +16,9 @@ public class PharmacyRegistrationRequest {
     @NotBlank(message = "Pharmacy code is required")
     private String pharmacyCode;
 
+    @NotBlank(message = "License number is required")
+    private String licenseNumber;
+
     @NotBlank(message = "Contact info is required")
     private String contactInfo;
 
@@ -29,6 +32,8 @@ public class PharmacyRegistrationRequest {
     @NotBlank(message = "Manager email is required")
     @Email(message = "Manager email must be a valid email address")
     private String managerEmail;
+
+    private String managerPhone;
 
     @NotEmpty(message = "At least one insurance provider is required")
     private List<Long> insuranceProviderIds;

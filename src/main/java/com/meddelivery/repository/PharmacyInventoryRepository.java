@@ -1,15 +1,21 @@
-package com.meddelivery.repository;
+ package com.meddelivery.repository;
 
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.stereotype.Repository;
+ import com.meddelivery.model.PharmacyInventory;
+ import org.springframework.data.jpa.repository.JpaRepository;
+ import org.springframework.stereotype.Repository;
 
-import com.meddelivery.model.PharmacyInventory;
+ import java.util.List;
+ import java.util.Optional;
 
-import java.util.List;
+ @Repository
+ public interface PharmacyInventoryRepository extends JpaRepository<PharmacyInventory, Long> {
 
-@Repository
-public interface PharmacyInventoryRepository extends JpaRepository<PharmacyInventory, Long> {
-    
-    // For Low Stock Alerts
-    List<PharmacyInventory> findByQuantityLessThan(int threshold);
-}
+     List<PharmacyInventory> findByPharmacyId(Long pharmacyId);
+
+     List<PharmacyInventory> findByMedicine_Name(String medicineName);
+
+     Optional<PharmacyInventory> findByPharmacyAndMedicine(com.meddelivery.model.Pharmacy pharmacy,
+                                                             com.meddelivery.model.Medicine medicine);
+
+     List<PharmacyInventory> findByQuantityLessThan(int threshold);
+ }

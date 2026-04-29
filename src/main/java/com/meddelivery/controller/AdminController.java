@@ -2,6 +2,7 @@ package com.meddelivery.controller;
 
 import com.meddelivery.dto.response.*;
 import com.meddelivery.dto.request.AdminUserSearchRequest;
+import com.meddelivery.dto.request.ManagerUpdateRequest;
 import com.meddelivery.dto.request.OrderInterventionRequest;
 import com.meddelivery.dto.request.PharmacyApprovalRequest;
 import com.meddelivery.dto.request.UserStatusUpdateRequest;
@@ -75,6 +76,14 @@ public class AdminController {
             @PathVariable Long id,
             @RequestParam String reason) {
         return ResponseEntity.ok(adminService.suspendPharmacy(id, reason));
+    }
+
+    @PutMapping("/pharmacies/{id}/manager")
+    @Operation(summary = "Replace Pharmacy Manager (force transfer)")
+    public ResponseEntity<ApiResponse<Void>> replaceManager(
+            @PathVariable Long id,
+            @Valid @RequestBody ManagerUpdateRequest request) {
+        return ResponseEntity.ok(adminService.replacePharmacyManager(id, request));
     }
 
     @GetMapping("/insurance-providers")

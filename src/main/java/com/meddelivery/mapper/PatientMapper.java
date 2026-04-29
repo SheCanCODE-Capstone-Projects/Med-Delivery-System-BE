@@ -13,32 +13,38 @@ import static com.meddelivery.model.enums.PharmacyStatus.ACTIVE;
 public class PatientMapper {
 
     // PatientProfile
-    public PatientProfileResponse toProfileResponse(PatientProfile profile) {
-        User user = profile.getUser();
-        return PatientProfileResponse.builder()
-                .id(profile.getId())
-                .userId(user.getId())
-                .fullName(user.getFullName())
-                .email(user.getEmail())
-                .phoneNumber(user.getPhoneNumber())
-                .hasLocation(profile.getLocation() != null).hasInsurance(
-                        profile.getInsuranceCards().stream()
-                                .anyMatch(card -> card.getStatus() == UNVERIFIED)
-                )
-                .build();
-    }
+     public PatientProfileResponse toProfileResponse(PatientProfile profile) {
+         User user = profile.getUser();
+         return PatientProfileResponse.builder()
+                 .id(profile.getId())
+                 .userId(user.getId())
+                 .fullName(user.getFullName())
+                 .email(user.getEmail())
+                 .phoneNumber(user.getPhoneNumber())
+                 .dateOfBirth(profile.getDateOfBirth())
+                 .gender(profile.getGender())
+                 .allergies(profile.getAllergies())
+                 .medicalNotes(profile.getMedicalNotes())
+                 .hasLocation(profile.getLocations() != null && !profile.getLocations().isEmpty())
+                 .hasInsurance(profile.getInsuranceCards() != null && profile.getInsuranceCards().stream()
+                         .anyMatch(card -> card.getStatus() == UNVERIFIED))
+                 .createdAt(profile.getCreatedAt())
+                 .updatedAt(profile.getUpdatedAt())
+                 .build();
+     }
 
-    // PatientLocation
-    public PatientLocationResponse toLocationResponse(PatientLocation location) {
-        return PatientLocationResponse.builder()
-                .id(location.getId())
-                .latitude(location.getLatitude())
-                .longitude(location.getLongitude())
-                .manualAddress(location.getManualAddress())
-                .inputType(location.getInputType())
-                .updatedAt(location.getUpdatedAt())
-                .build();
-    }
+     // PatientLocation
+     public PatientLocationResponse toLocationResponse(PatientLocation location) {
+         return PatientLocationResponse.builder()
+                 .id(location.getId())
+                 .latitude(location.getLatitude())
+                 .longitude(location.getLongitude())
+                 .manualAddress(location.getManualAddress())
+                 .inputType(location.getInputType())
+                 .isDefault(location.isDefault())
+                 .updatedAt(location.getUpdatedAt())
+                 .build();
+     }
 
     // InsuranceCard
     public InsuranceCardResponse toInsuranceResponse(InsuranceCard card) {
