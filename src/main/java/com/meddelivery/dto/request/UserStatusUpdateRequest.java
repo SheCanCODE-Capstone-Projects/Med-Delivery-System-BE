@@ -12,5 +12,5 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class UserStatusUpdateRequest {
     @NotNull(message = "Active status is required")
-    private Boolean isActive;
+    private boolean isActive;
 }
