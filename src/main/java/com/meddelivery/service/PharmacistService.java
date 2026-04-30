@@ -11,6 +11,7 @@ import com.meddelivery.model.enums.PharmacyStatus;
 import com.meddelivery.model.enums.UserRole;
 import com.meddelivery.repository.PharmacistRepository;
 import com.meddelivery.repository.PharmacyRepository;
+import com.meddelivery.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -24,6 +25,7 @@ public class PharmacistService {
 
     private final PharmacistRepository pharmacistRepository;
     private final PharmacyRepository pharmacyRepository;
+    private final UserRepository userRepository;
 
     @Transactional
     public PharmacistResponse addPharmacist(Long pharmacyId, AddPharmacistRequest request) {
@@ -42,7 +44,6 @@ public class PharmacistService {
                     "A pharmacist with email \"" + request.getEmail() + "\" already exists."
             );
         }
-
         String pharmacistUniqueId = generatePharmacistUniqueId(pharmacy);
 
         User user = User.builder()
@@ -54,9 +55,11 @@ public class PharmacistService {
                 .isVerified(false)
                 .build();
 
+        User savedUser = userRepository.save(user);
+
         PharmacistProfile pharmacist = PharmacistProfile.builder()
                 .pharmacistUniqueId(pharmacistUniqueId)
-                .user(user)
+                .user(savedUser)
                 .pharmacy(pharmacy)
                 .build();
 
@@ -66,8 +69,14 @@ public class PharmacistService {
     }
 
     @Transactional(readOnly = true)
-    public PharmacistResponse getPharmacist(Long pharmacistId) {
-        return mapToResponse(findByIdOrThrow(pharmacistId));
+    public PharmacistResponse getPharmacist(Long pharmacyId, Long pharmacistId) {
+        PharmacistProfile pharmacist = pharmacistRepository
+                .findByIdAndPharmacyId(pharmacistId, pharmacyId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Pharmacist with ID " + pharmacistId +
+                                " not found in pharmacy " + pharmacyId + "."
+                ));
+        return mapToResponse(pharmacist);
     }
 
     @Transactional(readOnly = true)
@@ -92,13 +101,6 @@ public class PharmacistService {
         }
 
         return code;
-    }
-
-    private PharmacistProfile findByIdOrThrow(Long id) {
-        return pharmacistRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Pharmacist with ID " + id + " not found."
-                ));
     }
 
     private PharmacistResponse mapToResponse(PharmacistProfile pharmacist) {

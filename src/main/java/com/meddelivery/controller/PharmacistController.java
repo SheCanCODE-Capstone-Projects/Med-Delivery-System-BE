@@ -29,10 +29,12 @@ public class PharmacistController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @GetMapping("/{id}")
     @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('MANAGER')")
-    public ResponseEntity<PharmacistResponse> getPharmacist(@PathVariable Long id) {
-        PharmacistResponse response = pharmacistService.getPharmacist(id);
+    public ResponseEntity<PharmacistResponse> getPharmacist(
+            @PathVariable Long pharmacyId,
+            @PathVariable Long id) {
+
+        PharmacistResponse response = pharmacistService.getPharmacist(pharmacyId, id);
         return ResponseEntity.ok(response);
     }
 
