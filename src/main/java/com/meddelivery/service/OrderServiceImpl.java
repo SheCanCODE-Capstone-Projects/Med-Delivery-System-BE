@@ -125,7 +125,7 @@ public class OrderServiceImpl implements OrderDAO {
 
     @Override
     @Transactional(readOnly = true)
-    public OrderResponse getOrderDetails(Long orderId, String userEmail) {
+    public OrderResponse getOrderDetails(long orderId, String userEmail) {
 
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
@@ -149,8 +149,8 @@ public class OrderServiceImpl implements OrderDAO {
                         .medicineId(i.getMedicine().getId())
                         .medicineName(i.getMedicine().getName())
                         .quantity(i.getQuantity())
-                        .unitPrice(i.getUnitPrice())
-                        .build())
+                         .unitPrice(i.getUnitPrice() != null ? i.getUnitPrice().doubleValue() : 0.0)
+                         .build())
                 .collect(Collectors.toList());
 
         return OrderResponse.builder()
@@ -161,7 +161,6 @@ public class OrderServiceImpl implements OrderDAO {
                 .pharmacyName(null)
                 .items(items)
                 .createdAt(order.getCreatedAt())
-                .updatedAt(order.getUpdatedAt())
                 .build();
     }
 

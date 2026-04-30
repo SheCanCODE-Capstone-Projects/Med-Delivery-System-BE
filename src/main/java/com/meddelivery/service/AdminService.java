@@ -122,10 +122,10 @@ public class AdminService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
         
-        user.setActive(request.getIsActive()); // Correct for primitive boolean
+        user.setActive(request.isActive()); // Correct for primitive boolean
         userRepository.save(user);
         
-        logAudit("UPDATE_USER_STATUS", "User ID: " + userId, "Set active: " + request.getIsActive());
+        logAudit("UPDATE_USER_STATUS", "User ID: " + userId, "Set active: " + request.isActive());
         return ApiResponse.success("User status updated");
     }
 

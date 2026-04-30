@@ -1,46 +1,51 @@
 package com.meddelivery.controller;
 
-import com.meddelivery.dto.request.OrderRequest;
+import com.meddelivery.dto.response.ApiResponse;
+import com.meddelivery.dto.response.PagedResponse;
+import com.meddelivery.dto.request.CreateOrderRequest;
 import com.meddelivery.dto.response.OrderResponse;
-import com.meddelivery.dto.response.OrderSummaryResponse;
-import com.meddelivery.service.OrderDAO;
+import com.meddelivery.model.User;
+import com.meddelivery.service.OrderService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.*;
-import org.springframework.http.*;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/v1/orders")
+@RequestMapping("/api/orders")
 @RequiredArgsConstructor
+@Tag(name = "Order Management")
 public class OrderController {
 
-    private final OrderDAO orderService;
+    private final OrderService orderService;
 
     @PostMapping
-    public ResponseEntity<OrderResponse> createOrder(
-            @Valid @RequestBody OrderRequest request,
-            @AuthenticationPrincipal UserDetails userDetails) {
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(orderService.createOrder(request, userDetails.getUsername()));
+    @Operation(summary = "Create a New Order")
+    public ResponseEntity<ApiResponse<OrderResponse>> createOrder(
+            @Valid @RequestBody CreateOrderRequest request,
+            Authentication authentication) {
+        
+        Long userId = ((User) authentication.getPrincipal()).getId();
+        return ResponseEntity.ok(orderService.createOrder(userId, request));
     }
 
-    @GetMapping
-    public ResponseEntity<Page<OrderSummaryResponse>> getMyOrders(
+    @GetMapping("/my-orders")
+    @Operation(summary = "Get My Orders")
+    public ResponseEntity<ApiResponse<PagedResponse<OrderResponse>>> getMyOrders(
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "10") int size,
-            @AuthenticationPrincipal UserDetails userDetails) {
-        return ResponseEntity.ok(
-                orderService.getMyOrders(userDetails.getUsername(), PageRequest.of(page, size)));
+            Authentication authentication) {
+        
+        Long userId = ((User) authentication.getPrincipal()).getId();
+        return ResponseEntity.ok(orderService.getMyOrders(userId, page, size));
     }
 
-    @GetMapping("/{orderId}")
-    public ResponseEntity<OrderResponse> getOrderDetails(
-            @PathVariable long orderId,
-            @AuthenticationPrincipal UserDetails userDetails) {
-        return ResponseEntity.ok(
-                orderService.getOrderDetails(orderId, userDetails.getUsername()));
+    @GetMapping("/{id}")
+    @Operation(summary = "Get Order Details")
+    public ResponseEntity<ApiResponse<OrderResponse>> getOrderDetails(@PathVariable Long id) {
+        return ResponseEntity.ok(orderService.getOrderDetails(id));
     }
 }

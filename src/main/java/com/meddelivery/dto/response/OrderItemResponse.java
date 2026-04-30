@@ -1,12 +1,20 @@
 package com.meddelivery.dto.response;
 
-import lombok.*;
+import com.meddelivery.model.enums.OrderItemStatus;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
 
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
 public class OrderItemResponse {
-    private long id;
-    private long medicineId;
+    private Long id;
+    private Long medicineId;
     private String medicineName;
     private Integer quantity;
     private Double unitPrice;
+    private OrderItemStatus status;
 }

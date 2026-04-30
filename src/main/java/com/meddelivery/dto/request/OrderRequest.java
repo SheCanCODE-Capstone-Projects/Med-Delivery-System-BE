@@ -17,7 +17,7 @@ public class OrderRequest {
     @NotNull(message = "Fulfillment type is required")
     private FulfillmentType fulfillmentType;
 
-    private long prescriptionId;
+    private Long prescriptionId;
 
     @NotEmpty(message = "Order must contain at least one item")
     @Valid
