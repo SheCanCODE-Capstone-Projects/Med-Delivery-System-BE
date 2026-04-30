@@ -1,8 +1,10 @@
 package com.meddelivery.config;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.dao.DaoAuthenticationProvider;
@@ -34,8 +36,12 @@ public class SecurityConfig {
     private final UserDetailsService userDetailsService;
     private final OAuth2SuccessHandler oauth2SuccessHandler;
 
+    @Value("${app.cors.allowed-origins:http://localhost:3000,http://localhost:4200,http://localhost:5173}")
+    private String[] allowedOrigins;
+
     private static final String[] PUBLIC_URLS = {
             "/api/auth/**",
+            "/api/pharmacies/register",
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/api-docs/**",
@@ -58,6 +64,7 @@ public class SecurityConfig {
             // ── Endpoints ───────────────────────
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(PUBLIC_URLS).permitAll()
+                .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
                 .requestMatchers("/api/admin/**")
                     .hasRole("SUPER_ADMIN")
                 .requestMatchers("/api/manager/**")
@@ -96,11 +103,7 @@ public class SecurityConfig {
         CorsConfiguration configuration =
                 new CorsConfiguration();
 
-        configuration.setAllowedOrigins(List.of(
-                "http://localhost:3000",
-                "http://localhost:4200",
-                "http://localhost:5173"
-        ));
+        configuration.setAllowedOrigins(Arrays.asList(allowedOrigins));
 
         configuration.setAllowedMethods(Arrays.asList(
                 "GET", "POST", "PUT",

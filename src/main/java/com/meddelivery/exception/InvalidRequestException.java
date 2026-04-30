@@ -1,7 +1,11 @@
 package com.meddelivery.exception;
 
-public class InvalidRequestException extends RuntimeException {
+import org.springframework.http.HttpStatus;
+
+public class InvalidRequestException extends PatientModuleException {
     public InvalidRequestException(String message) {
-        super(message);
+        super(message, HttpStatus.BAD_REQUEST, "INVALID_REQUEST");
     }
+
+
 }

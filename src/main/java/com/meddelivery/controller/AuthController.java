@@ -1,8 +1,10 @@
 package com.meddelivery.controller;
 
+import com.meddelivery.dto.request.ForgotPasswordRequest;
 import com.meddelivery.dto.request.LoginRequest;
 import com.meddelivery.dto.request.OtpVerifyRequest;
 import com.meddelivery.dto.request.RegisterRequest;
+import com.meddelivery.dto.request.ResetPasswordRequest;
 import com.meddelivery.dto.request.SetPasswordRequest;
 import com.meddelivery.dto.response.ApiResponse;
 import com.meddelivery.dto.response.AuthResponse;
@@ -76,6 +78,29 @@ public class AuthController {
         AuthResponse response = authService.setPassword(request);
         return ResponseEntity.ok(
                 ApiResponse.success("Password set successfully",
+                        response));
+    }
+
+    // ── Forgot Password ───────────────────────────
+    // Used by: ALL users (patient, manager, pharmacist)
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiResponse<String>> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request) {
+
+        authService.forgotPassword(request);
+        return ResponseEntity.ok(
+                ApiResponse.success("OTP sent to your email"));
+    }
+
+    // ── Reset Password ─────────────────────────────
+    // Used by: ALL users after OTP verification
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiResponse<AuthResponse>> resetPassword(
+            @Valid @RequestBody ResetPasswordRequest request) {
+
+        AuthResponse response = authService.resetPassword(request);
+        return ResponseEntity.ok(
+                ApiResponse.success("Password reset successful",
                         response));
     }
 

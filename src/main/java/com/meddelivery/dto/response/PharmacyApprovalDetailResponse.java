@@ -15,6 +15,7 @@ public class PharmacyApprovalDetailResponse {
     private String name;
     private String address;
     private String contactInfo;
+    private String licenseNumber;
     private String managerName;
     private String managerEmail;
     private String licenseDocumentUrl;

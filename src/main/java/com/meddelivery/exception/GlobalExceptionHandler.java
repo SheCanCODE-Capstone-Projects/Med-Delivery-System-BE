@@ -57,8 +57,26 @@ public class GlobalExceptionHandler {
                         .build());
     }
 
-    // ── Security Errors ──────────────────────────
+    // ── Pharmacy Exceptions ───────────────────────
+    @ExceptionHandler(PharmacyNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>>
+    handlePharmacyNotFound(PharmacyNotFoundException ex) {
 
+        return ResponseEntity
+                .status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+
+    @ExceptionHandler(PharmacyNotApprovedException.class)
+    public ResponseEntity<ApiResponse<Void>>
+    handlePharmacyNotApproved(PharmacyNotApprovedException ex) {
+
+        return ResponseEntity
+                .status(HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+
+    // ── Bad Credentials ──────────────────────────
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ApiResponse<Void>>
     handleBadCredentials(BadCredentialsException ex) {

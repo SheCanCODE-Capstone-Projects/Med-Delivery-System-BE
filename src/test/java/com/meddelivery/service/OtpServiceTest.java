@@ -28,6 +28,9 @@ class OtpServiceTest {
     private JavaMailSender mailSender;
 
     @Mock
+    private RateLimitService rateLimitService;
+
+    @Mock
     private ValueOperations<String, String> valueOperations;
 
     @InjectMocks
@@ -84,6 +87,8 @@ class OtpServiceTest {
     @DisplayName("ValidateOtp → Returns true for valid OTP")
     void validateOtp_WithValidOtp_ReturnsTrue() {
 
+        when(rateLimitService.isOtpVerifyAllowed(anyString()))
+                .thenReturn(true);
         when(redisTemplate.opsForValue())
                 .thenReturn(valueOperations);
         when(valueOperations.get("OTP:test@gmail.com"))
@@ -93,6 +98,7 @@ class OtpServiceTest {
                 "test@gmail.com", "123456");
 
         assertTrue(result);
+        verify(rateLimitService).clearOtpVerifyAttempts("test@gmail.com");
         verify(redisTemplate).delete("OTP:test@gmail.com");
     }
 
@@ -100,6 +106,8 @@ class OtpServiceTest {
     @DisplayName("ValidateOtp → Returns false for wrong OTP")
     void validateOtp_WithWrongOtp_ReturnsFalse() {
 
+        when(rateLimitService.isOtpVerifyAllowed(anyString()))
+                .thenReturn(true);
         when(redisTemplate.opsForValue())
                 .thenReturn(valueOperations);
         when(valueOperations.get("OTP:test@gmail.com"))
@@ -110,12 +118,15 @@ class OtpServiceTest {
 
         assertFalse(result);
         verify(redisTemplate, never()).delete(anyString());
+        verify(rateLimitService, never()).clearOtpVerifyAttempts(anyString());
     }
 
     @Test
     @DisplayName("ValidateOtp → Returns false when OTP expired")
     void validateOtp_WithExpiredOtp_ReturnsFalse() {
 
+        when(rateLimitService.isOtpVerifyAllowed(anyString()))
+                .thenReturn(true);
         when(redisTemplate.opsForValue())
                 .thenReturn(valueOperations);
         when(valueOperations.get("OTP:test@gmail.com"))
@@ -125,6 +136,7 @@ class OtpServiceTest {
                 "test@gmail.com", "123456");
 
         assertFalse(result);
+        verify(rateLimitService, never()).clearOtpVerifyAttempts(anyString());
     }
 
     // ── Send Email OTP Tests ─────────────────────
@@ -154,5 +166,7 @@ class OtpServiceTest {
         assertThrows(RuntimeException.class, () ->
                 otpService.sendOtpEmail(
                         "test@gmail.com", "123456"));
+
+        verify(mailSender).send(any(SimpleMailMessage.class));
     }
 }

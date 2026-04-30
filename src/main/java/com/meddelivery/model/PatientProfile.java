@@ -1,10 +1,14 @@
-package com.meddelivery.model;
+ package com.meddelivery.model;
 
-import jakarta.persistence.*;
-import lombok.*;
+ import jakarta.persistence.*;
+ import lombok.*;
+ import org.hibernate.annotations.CreationTimestamp;
+ import org.hibernate.annotations.UpdateTimestamp;
 
-import java.util.ArrayList;
-import java.util.List;
+ import java.time.LocalDate;
+ import java.time.LocalDateTime;
+ import java.util.ArrayList;
+ import java.util.List;
 
 @Entity
 @Table(name = "patient_profiles")
@@ -23,18 +27,17 @@ public class PatientProfile {
     @EqualsAndHashCode.Include
     private Long id;
 
-    @OneToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", unique = true, nullable = false)
-    private User user;
+     @OneToOne(fetch = FetchType.LAZY)
+     @JoinColumn(name = "user_id", unique = true, nullable = false)
+     private User user;
 
-    @OneToOne(mappedBy = "patientProfile",
-              cascade = {CascadeType.PERSIST, CascadeType.MERGE},
-              fetch = FetchType.LAZY)
-    private PatientLocation location;
+     @OneToMany(mappedBy = "patientProfile", cascade = {CascadeType.PERSIST, CascadeType.MERGE}, orphanRemoval = true)
+     @Builder.Default
+     private List<PatientLocation> locations = new ArrayList<>();
 
-    @OneToMany(mappedBy = "patientProfile", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
-    @Builder.Default
-    private List<InsuranceCard> insuranceCards = new ArrayList<>();
+     @OneToMany(mappedBy = "patientProfile", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
+     @Builder.Default
+     private List<InsuranceCard> insuranceCards = new ArrayList<>();
 
     @OneToMany(mappedBy = "patientProfile", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @Builder.Default
@@ -47,4 +50,20 @@ public class PatientProfile {
     @OneToMany(mappedBy = "patientProfile", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @Builder.Default
     private List<Order> orders = new ArrayList<>();
-}
+
+    // Extended profile fields
+    private LocalDate dateOfBirth;
+
+    private String gender;
+
+    private String allergies;
+
+     @Column(columnDefinition = "TEXT")
+     private String medicalNotes;
+
+     @CreationTimestamp
+     private LocalDateTime createdAt;
+
+     @UpdateTimestamp
+     private LocalDateTime updatedAt;
+ }

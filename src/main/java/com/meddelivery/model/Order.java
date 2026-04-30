@@ -1,8 +1,10 @@
 package com.meddelivery.model;
 
-import com.meddelivery.model.enums.*;
 import jakarta.persistence.*;
 import lombok.*;
+import com.meddelivery.model.enums.FulfillmentType;
+import com.meddelivery.model.enums.OrderStatus;
+import com.meddelivery.model.enums.OrderType;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 

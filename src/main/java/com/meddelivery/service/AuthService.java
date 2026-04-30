@@ -1,9 +1,11 @@
 package com.meddelivery.service;
 
 import com.meddelivery.config.JwtService;
+import com.meddelivery.dto.request.ForgotPasswordRequest;
 import com.meddelivery.dto.request.LoginRequest;
 import com.meddelivery.dto.request.OtpVerifyRequest;
 import com.meddelivery.dto.request.RegisterRequest;
+import com.meddelivery.dto.request.ResetPasswordRequest;
 import com.meddelivery.dto.request.SetPasswordRequest;
 import com.meddelivery.dto.response.AuthResponse;
 import com.meddelivery.exception.AuthException;
@@ -219,6 +221,61 @@ public class AuthService {
         String refreshToken = refreshTokenService.generateRefreshToken(user.getUsername());
 
         log.info("Password set for: {}", request.getUsername());
+
+        return AuthResponse.builder()
+                .token(token)
+                .refreshToken(refreshToken)
+                .role(user.getRole().name())
+                .email(user.getEmail())
+                .phoneNumber(user.getPhoneNumber())
+                .fullName(user.getFullName())
+                .build();
+    }
+
+    // ── FLOW 6: Forgot Password ──────────────────
+    public void forgotPassword(ForgotPasswordRequest request) {
+        String username = request.getUsername();
+
+        User user = userRepository.findByEmail(username)
+                .or(() -> userRepository.findByPhoneNumber(username))
+                .orElseThrow(() -> new AuthException("User not found"));
+
+        if (user.getEmail() == null) {
+            throw new AuthException("User has no email registered for OTP");
+        }
+
+        otpService.sendOtp(user.getEmail());
+        log.info("Password reset OTP sent to: {}", user.getEmail());
+    }
+
+    // ── FLOW 7: Reset Password ───────────────────
+    @Transactional
+    public AuthResponse resetPassword(ResetPasswordRequest request) {
+        String username = request.getUsername();
+        String otp = request.getOtp();
+        String newPassword = request.getPassword();
+
+        User user = userRepository.findByEmail(username)
+                .or(() -> userRepository.findByPhoneNumber(username))
+                .orElseThrow(() -> new AuthException("User not found"));
+
+        String emailForOtp = user.getEmail();
+        if (emailForOtp == null) {
+            throw new AuthException("User has no email for OTP verification");
+        }
+
+        boolean valid = otpService.validateOtp(emailForOtp, otp);
+        if (!valid) {
+            throw new OtpException("Invalid or expired OTP");
+        }
+
+        user.setPassword(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+
+        log.info("Password reset successful for user: {}", username);
+
+        String token = jwtService.generateToken(user);
+        String refreshToken = refreshTokenService.generateRefreshToken(user.getUsername());
 
         return AuthResponse.builder()
                 .token(token)
