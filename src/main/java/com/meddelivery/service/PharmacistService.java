@@ -16,7 +16,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -25,7 +24,6 @@ public class PharmacistService {
 
     private final PharmacistRepository pharmacistRepository;
     private final PharmacyRepository pharmacyRepository;
-
 
     @Transactional
     public PharmacistResponse addPharmacist(Long pharmacyId, AddPharmacistRequest request) {
@@ -39,17 +37,13 @@ public class PharmacistService {
             );
         }
 
-        if (pharmacistRepository.existsByUserId(
-                pharmacyRepository.findById(pharmacyId).get().getId())) {
-        }
-
-        if (request.getEmail() == null || request.getEmail().isBlank()) {
-            throw new IllegalArgumentException("Email is required.");
+        if (pharmacistRepository.existsByUserEmail(request.getEmail())) {
+            throw new IllegalArgumentException(
+                    "A pharmacist with email \"" + request.getEmail() + "\" already exists."
+            );
         }
 
         String pharmacistUniqueId = generatePharmacistUniqueId(pharmacy);
-
-        String activationToken = UUID.randomUUID().toString();
 
         User user = User.builder()
                 .fullName(request.getFullName())
@@ -68,17 +62,12 @@ public class PharmacistService {
 
         PharmacistProfile saved = pharmacistRepository.save(pharmacist);
 
-
         return mapToResponse(saved);
     }
 
     @Transactional(readOnly = true)
     public PharmacistResponse getPharmacist(Long pharmacistId) {
-        PharmacistProfile pharmacist = pharmacistRepository.findById(pharmacistId)
-                .orElseThrow(() -> new IllegalArgumentException(
-                        "Pharmacist with ID " + pharmacistId + " not found."
-                ));
-        return mapToResponse(pharmacist);
+        return mapToResponse(findByIdOrThrow(pharmacistId));
     }
 
     @Transactional(readOnly = true)
@@ -93,10 +82,8 @@ public class PharmacistService {
                 .collect(Collectors.toList());
     }
 
-
     private String generatePharmacistUniqueId(Pharmacy pharmacy) {
         long count = pharmacistRepository.countByPharmacyId(pharmacy.getId());
-
         String code = pharmacy.getPharmacyCode() + "-" + String.format("%04d", count + 1);
 
         while (pharmacistRepository.existsByPharmacistUniqueId(code)) {
@@ -105,6 +92,13 @@ public class PharmacistService {
         }
 
         return code;
+    }
+
+    private PharmacistProfile findByIdOrThrow(Long id) {
+        return pharmacistRepository.findById(id)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Pharmacist with ID " + id + " not found."
+                ));
     }
 
     private PharmacistResponse mapToResponse(PharmacistProfile pharmacist) {
@@ -120,6 +114,7 @@ public class PharmacistService {
                 .pharmacyName(pharmacist.getPharmacy().getName())
                 .isActive(user.isActive())
                 .isVerified(user.isVerified())
+                .createdAt(pharmacist.getCreatedAt())
                 .build();
     }
 }

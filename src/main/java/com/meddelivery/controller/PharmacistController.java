@@ -19,7 +19,6 @@ public class PharmacistController {
 
     private final PharmacistService pharmacistService;
 
-    // Only the pharmacy MANAGER can add pharmacists to their pharmacy
     @PostMapping
     @PreAuthorize("hasRole('MANAGER')")
     public ResponseEntity<PharmacistResponse> addPharmacist(
@@ -30,7 +29,6 @@ public class PharmacistController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    // SUPER_ADMIN or pharmacy MANAGER can view a single pharmacist
     @GetMapping("/{id}")
     @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('MANAGER')")
     public ResponseEntity<PharmacistResponse> getPharmacist(@PathVariable Long id) {
@@ -38,7 +36,6 @@ public class PharmacistController {
         return ResponseEntity.ok(response);
     }
 
-    // SUPER_ADMIN or pharmacy MANAGER can list all pharmacists in a pharmacy
     @GetMapping
     @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('MANAGER')")
     public ResponseEntity<List<PharmacistResponse>> getPharmacistsByPharmacy(
