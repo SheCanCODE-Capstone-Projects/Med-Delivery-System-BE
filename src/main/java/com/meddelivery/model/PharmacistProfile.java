@@ -3,6 +3,7 @@ package com.meddelivery.model;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -45,4 +46,8 @@ public class PharmacistProfile {
     @OneToMany(mappedBy = "pharmacistProfile")
     @Builder.Default
     private List<SubstitutionRequest> substitutionRequests = new ArrayList<>();
+
+    public LocalDateTime getCreatedAt() {
+        return null;
+    }
 }
