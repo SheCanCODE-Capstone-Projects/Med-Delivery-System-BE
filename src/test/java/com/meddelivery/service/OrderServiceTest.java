@@ -350,11 +350,13 @@ class OrderServiceTest {
                 .coveragePercentage(50.0)
                 .build();
 
-        when(orderRepository.findById(300L))
+        when(patientProfileRepository.findByUserId(1L))
+                .thenReturn(Optional.of(mockPatient));
+        when(orderRepository.findByIdAndPatientProfile(300L, mockPatient))
                 .thenReturn(Optional.of(order));
 
         // Act
-        var response = orderService.getOrderDetails(300L);
+        var response = orderService.getOrderDetails(300L, 1L);
 
         // Assert
         assertNotNull(response);
@@ -363,20 +365,25 @@ class OrderServiceTest {
         assertEquals(300L, response.getData().getId().longValue());
         assertEquals(OrderStatus.UPLOADED, response.getData().getStatus());
         
-        verify(orderRepository).findById(300L);
+        verify(patientProfileRepository).findByUserId(1L);
+        verify(orderRepository).findByIdAndPatientProfile(300L, mockPatient);
     }
 
     @Test
     @DisplayName("GetOrderDetails → Fails when order not found")
     void getOrderDetails_OrderNotFound_ThrowsException() {
         // Arrange
-        when(orderRepository.findById(999L))
+        when(patientProfileRepository.findByUserId(1L))
+                .thenReturn(Optional.of(mockPatient));
+        when(orderRepository.findByIdAndPatientProfile(999L, mockPatient))
                 .thenReturn(Optional.empty());
 
         // Act & Assert
         ResourceNotFoundException ex = assertThrows(ResourceNotFoundException.class,
-                () -> orderService.getOrderDetails(999L));
+                () -> orderService.getOrderDetails(999L, 1L));
 
         assertTrue(ex.getMessage().contains("Order"));
+        verify(patientProfileRepository).findByUserId(1L);
+        verify(orderRepository).findByIdAndPatientProfile(999L, mockPatient);
     }
 }

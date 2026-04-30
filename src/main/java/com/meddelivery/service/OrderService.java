@@ -19,6 +19,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -60,6 +61,11 @@ public class OrderService {
 
             prescription = prescriptionRepository.findById(request.getPrescriptionId())
                     .orElseThrow(() -> new ResourceNotFoundException("Prescription with id " + request.getPrescriptionId() + " not found"));
+
+            // Ownership check: prescription must belong to the current patient
+            if (!prescription.getPatientProfile().getId().equals(patient.getId())) {
+                throw new AccessDeniedException("This prescription does not belong to you.");
+            }
 
             // ✅ AI VALIDATION STEP
             // Note: We assume prescription.getNotes() contains the OCR text. 
@@ -122,11 +128,12 @@ public class OrderService {
     }
 
     public ApiResponse<PagedResponse<OrderResponse>> getMyOrders(Long userId, int page, int size) {
-        PatientProfile patient = patientProfileRepository.findByUserId(userId)
+        // Verify patient profile exists
+        patientProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Patient profile not found"));
 
         Pageable pageable = PageRequest.of(page, size);
-        Page<Order> orders = orderRepository.findByPatientProfileUserId(patient.getId(), pageable);
+        Page<Order> orders = orderRepository.findByPatientProfileUserId(userId, pageable);
 
         List<OrderResponse> dtos = orders.getContent().stream()
                 .map(this::mapToResponse)
@@ -135,8 +142,11 @@ public class OrderService {
         return ApiResponse.success(PagedResponse.of(dtos, page, size, orders.getTotalElements()));
     }
 
-    public ApiResponse<OrderResponse> getOrderDetails(Long orderId) {
-        Order order = orderRepository.findById(orderId)
+    public ApiResponse<OrderResponse> getOrderDetails(Long orderId, Long userId) {
+        PatientProfile patient = patientProfileRepository.findByUserId(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Patient profile not found"));
+
+        Order order = orderRepository.findByIdAndPatientProfile(orderId, patient)
                 .orElseThrow(() -> new ResourceNotFoundException("Order with id " + orderId + " not found"));
         return ApiResponse.success(mapToResponse(order));
     }

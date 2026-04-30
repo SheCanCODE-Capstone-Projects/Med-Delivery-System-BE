@@ -188,11 +188,17 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- ── OpenAI ───────────────────────────────── -->
-        <dependency>
+         <!-- ── OpenAI ───────────────────────────────── -->
+         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-webflux</artifactId>
-        </dependency>
+         </dependency>
+         
+         <!-- ── Spring Boot RestClient (includes RestTemplate) ───────────────── -->
+         <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-restclient</artifactId>
+         </dependency>
     </dependencies>
 
 	<build>

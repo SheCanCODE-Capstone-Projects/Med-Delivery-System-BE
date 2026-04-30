@@ -9,15 +9,19 @@ import com.meddelivery.service.OrderService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/api/orders")
 @RequiredArgsConstructor
 @Tag(name = "Order Management")
+@Validated
 public class OrderController {
 
     private final OrderService orderService;
@@ -35,8 +39,8 @@ public class OrderController {
     @GetMapping("/my-orders")
     @Operation(summary = "Get My Orders")
     public ResponseEntity<ApiResponse<PagedResponse<OrderResponse>>> getMyOrders(
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(defaultValue = "0") @Min(value = 0, message = "Page must be >= 0") int page,
+            @RequestParam(defaultValue = "10") @Min(value = 1, message = "Size must be >= 1") @Max(value = 100, message = "Size must be <= 100") int size,
             Authentication authentication) {
         
         Long userId = ((User) authentication.getPrincipal()).getId();
@@ -45,7 +49,8 @@ public class OrderController {
 
     @GetMapping("/{id}")
     @Operation(summary = "Get Order Details")
-    public ResponseEntity<ApiResponse<OrderResponse>> getOrderDetails(@PathVariable Long id) {
-        return ResponseEntity.ok(orderService.getOrderDetails(id));
+    public ResponseEntity<ApiResponse<OrderResponse>> getOrderDetails(@PathVariable Long id, Authentication authentication) {
+        Long userId = ((User) authentication.getPrincipal()).getId();
+        return ResponseEntity.ok(orderService.getOrderDetails(id, userId));
     }
 }

@@ -16,7 +16,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Service
@@ -60,10 +62,15 @@ public class OrderServiceImpl implements OrderDAO {
                 .map(OrderItemRequest::getMedicineId)
                 .collect(Collectors.toList());
 
+        // Detect duplicate medicine IDs in request
+        Set<Long> distinctIds = new HashSet<>(medicineIds);
+        if (distinctIds.size() != medicineIds.size()) {
+            throw new InvalidRequestException("Duplicate medicine IDs in request");
+        }
 
-        List<Medicine> medicines = medicineRepository.findAllById(medicineIds);
+        List<Medicine> medicines = medicineRepository.findAllById(distinctIds);
 
-        if (medicines.size() != medicineIds.size())
+        if (medicines.size() != distinctIds.size())
             throw new InvalidRequestException("One or more medicines do not exist.");
 
         if (request.getOrderType() == OrderType.PRESCRIPTION_BASED && prescription != null) {
@@ -99,6 +106,7 @@ public class OrderServiceImpl implements OrderDAO {
                     .medicine(med)
                     .quantity(req.getQuantity())
                     .unitPrice(BigDecimal.ZERO) // FIX: BigDecimal instead of double primitive
+                    .status(com.meddelivery.model.enums.OrderItemStatus.AVAILABLE)
                     .build();
 
         }).collect(Collectors.toList());
@@ -158,7 +166,7 @@ public class OrderServiceImpl implements OrderDAO {
                 .orderType(order.getOrderType())
                 .fulfillmentType(order.getFulfillmentType())
                 .status(order.getStatus())
-                .pharmacyName(null)
+                .pharmacyName(order.getAssignedPharmacy() != null ? order.getAssignedPharmacy().getName() : null)
                 .items(items)
                 .createdAt(order.getCreatedAt())
                 .build();
@@ -169,7 +177,7 @@ public class OrderServiceImpl implements OrderDAO {
                 .id(order.getId())
                 .orderType(order.getOrderType())
                 .status(order.getStatus())
-                .pharmacyName(null)
+                .pharmacyName(order.getAssignedPharmacy() != null ? order.getAssignedPharmacy().getName() : null)
                 .totalItems(order.getOrderItems() != null ? order.getOrderItems().size() : 0)
                 .createdAt(order.getCreatedAt())
                 .build();
