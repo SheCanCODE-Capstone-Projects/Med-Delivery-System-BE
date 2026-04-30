@@ -121,18 +121,6 @@ public class AdminService {
         return ApiResponse.success(pagedResponse);
     }
 
-    @Transactional
-    public ApiResponse<Void> updateUserStatus(Long userId, UserStatusUpdateRequest request) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
-        
-        user.setActive(request.getIsActive()); // Correct for primitive boolean
-        userRepository.save(user);
-        
-        logAudit("UPDATE_USER_STATUS", "User ID: " + userId, "Set active: " + request.getIsActive());
-        return ApiResponse.success("User status updated");
-    }
-
     // --- C. Pharmacy Network ---
 
     public ApiResponse<PharmacyApprovalDetailResponse> getPharmacyForApproval(Long pharmacyId) {
@@ -311,6 +299,23 @@ public class AdminService {
         );
 
         return ApiResponse.success(pagedResponse);
+    }
+
+    @Transactional
+    public ApiResponse<Void> updateUserStatus(Long userId, UserStatusUpdateRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with id: " + userId));
+
+        Boolean isActive = request.getIsActive();
+        if (isActive == null) {
+            throw new BusinessException("Active status is required");
+        }
+
+        user.setActive(isActive);
+        userRepository.save(user);
+
+        logAudit("UPDATE_USER_STATUS", "User ID: " + userId, "Set active: " + isActive);
+        return ApiResponse.success("User status updated");
     }
 
     @Transactional

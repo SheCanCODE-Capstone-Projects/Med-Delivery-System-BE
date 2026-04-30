@@ -1,3 +1,12 @@
+package com.meddelivery.repository;
+
+import com.meddelivery.model.Medicine;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface MedicineRepository extends JpaRepository<Medicine, Long> {
+}
  package com.meddelivery.repository;
 
  import com.meddelivery.model.Medicine;
