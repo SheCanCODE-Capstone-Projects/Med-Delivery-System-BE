@@ -28,7 +28,7 @@ public class PharmacistController {
         PharmacistResponse response = pharmacistService.addPharmacist(pharmacyId, request);
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
-
+    @GetMapping("/{id}")
     @PreAuthorize("hasRole('SUPER_ADMIN') or hasRole('MANAGER')")
     public ResponseEntity<PharmacistResponse> getPharmacist(
             @PathVariable Long pharmacyId,

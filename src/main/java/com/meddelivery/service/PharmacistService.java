@@ -6,10 +6,12 @@ import com.meddelivery.exception.PharmacyNotFoundException;
 import com.meddelivery.exception.PharmacyNotApprovedException;
 import com.meddelivery.model.Pharmacy;
 import com.meddelivery.model.PharmacistProfile;
+import com.meddelivery.model.PharmacistSequence;
 import com.meddelivery.model.User;
 import com.meddelivery.model.enums.PharmacyStatus;
 import com.meddelivery.model.enums.UserRole;
 import com.meddelivery.repository.PharmacistRepository;
+import com.meddelivery.repository.PharmacistSequenceRepository;
 import com.meddelivery.repository.PharmacyRepository;
 import com.meddelivery.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -25,6 +27,7 @@ public class PharmacistService {
 
     private final PharmacistRepository pharmacistRepository;
     private final PharmacyRepository pharmacyRepository;
+    private final PharmacistSequenceRepository sequenceRepository;
     private final UserRepository userRepository;
 
     @Transactional
@@ -44,6 +47,7 @@ public class PharmacistService {
                     "A pharmacist with email \"" + request.getEmail() + "\" already exists."
             );
         }
+
         String pharmacistUniqueId = generatePharmacistUniqueId(pharmacy);
 
         User user = User.builder()
@@ -67,6 +71,7 @@ public class PharmacistService {
 
         return mapToResponse(saved);
     }
+
 
     @Transactional(readOnly = true)
     public PharmacistResponse getPharmacist(Long pharmacyId, Long pharmacistId) {
@@ -92,15 +97,18 @@ public class PharmacistService {
     }
 
     private String generatePharmacistUniqueId(Pharmacy pharmacy) {
-        long count = pharmacistRepository.countByPharmacyId(pharmacy.getId());
-        String code = pharmacy.getPharmacyCode() + "-" + String.format("%04d", count + 1);
+        PharmacistSequence sequence = sequenceRepository
+                .findByPharmacyIdWithLock(pharmacy.getId())
+                .orElse(PharmacistSequence.builder()
+                        .pharmacyId(pharmacy.getId())
+                        .lastNumber(0L)
+                        .build());
 
-        while (pharmacistRepository.existsByPharmacistUniqueId(code)) {
-            count++;
-            code = pharmacy.getPharmacyCode() + "-" + String.format("%04d", count + 1);
-        }
+        sequence.setLastNumber(sequence.getLastNumber() + 1);
+        sequenceRepository.save(sequence);
 
-        return code;
+        return pharmacy.getPharmacyCode() + "-" +
+                String.format("%04d", sequence.getLastNumber());
     }
 
     private PharmacistResponse mapToResponse(PharmacistProfile pharmacist) {
