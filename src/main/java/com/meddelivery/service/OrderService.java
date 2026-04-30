@@ -47,6 +47,12 @@ public class OrderService {
 
     @Transactional
     public ApiResponse<OrderResponse> createOrder(Long userId, CreateOrderRequest request) {
+        if (request == null) {
+            throw new BusinessException("Request cannot be null");
+        }
+        if (request.getItems() == null || request.getItems().isEmpty()) {
+            throw new BusinessException("Order must contain at least one item");
+        }
         
         // 1. Get Patient Profile
         PatientProfile patient = patientProfileRepository.findByUserId(userId)

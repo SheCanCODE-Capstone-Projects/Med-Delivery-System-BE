@@ -23,6 +23,9 @@ public class AiPrescriptionService {
     @Value("${app.ai.enabled:false}")
     private boolean aiEnabled;
 
+    @Value("${app.ai.model:gpt-3.5-turbo}")
+    private String model;
+
     /**
      * Validates if the requested medicines match the prescription content using OpenAI.
      */
@@ -34,7 +37,7 @@ public class AiPrescriptionService {
         }
 
         // 2. Basic Checks
-        if (prescriptionText == null || prescriptionText.isEmpty()) {
+        if (prescriptionText == null || prescriptionText.isBlank()) {
             throw new BusinessException("Prescription text is empty. Cannot validate via AI.");
         }
 
@@ -57,7 +60,7 @@ public class AiPrescriptionService {
                 .header("Authorization", "Bearer " + openAiApiKey)
                 .header("Content-Type", "application/json")
                 .bodyValue(Map.of(
-                    "model", "gpt-3.5-turbo",
+                    "model", model,
                     "messages", List.of(Map.of("role", "user", "content", prompt)),
                     "temperature", 0.1
                 ))

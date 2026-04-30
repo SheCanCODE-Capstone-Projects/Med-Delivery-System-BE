@@ -37,6 +37,12 @@ public class OrderServiceImpl implements OrderDAO {
     @Override
     @Transactional
     public OrderResponse createOrder(OrderRequest request, String userEmail) {
+        if (request == null) {
+            throw new InvalidRequestException("Request cannot be null");
+        }
+        if (request.getItems() == null || request.getItems().isEmpty()) {
+            throw new InvalidRequestException("Order must contain at least one item");
+        }
 
         User user = userRepository.findByEmail(userEmail)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found"));
