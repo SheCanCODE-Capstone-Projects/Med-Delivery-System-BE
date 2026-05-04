@@ -1,4 +1,4 @@
- package com.meddelivery.repository;
+package com.meddelivery.repository;
 
 import com.meddelivery.model.Order;
 import com.meddelivery.model.PatientProfile;
@@ -15,26 +15,10 @@ import java.util.Optional;
 public interface OrderRepository extends JpaRepository<Order, Long> {
     Page<Order> findByPatientProfileUserId(Long userId, Pageable pageable);
     List<Order> findByAssignedPharmacyId(Long pharmacyId);
+    List<Order> findAllByAssignedPharmacyId(Long pharmacyId);
+    List<Order> findByAssignedPharmacistId(Long pharmacistId);
     Page<Order> findByStatus(OrderStatus status, Pageable pageable);
     Page<Order> findByPatientProfile(PatientProfile patientProfile, Pageable pageable);
     Optional<Order> findByIdAndPatientProfile(Long id, PatientProfile patientProfile);
+    Optional<Order> findByIdAndPatientProfile(long id, PatientProfile patientProfile);
 }
- import com.meddelivery.model.enums.OrderStatus;
- import com.meddelivery.model.Order;
- import org.springframework.data.domain.Page;
- import org.springframework.data.domain.Pageable;
- import org.springframework.data.jpa.repository.JpaRepository;
- import org.springframework.stereotype.Repository;
-
- import java.util.List;
-
- @Repository
- public interface OrderRepository extends JpaRepository<Order, Long> {
-     
-     // For Admin Order Table
-     Page<Order> findByStatus(OrderStatus status, Pageable pageable);
-
-     List<Order> findAllByAssignedPharmacyId(Long pharmacyId);
- }
-
-
