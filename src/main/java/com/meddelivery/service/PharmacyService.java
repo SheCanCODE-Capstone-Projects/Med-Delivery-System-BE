@@ -21,7 +21,9 @@ package com.meddelivery.service;
  import com.meddelivery.mapper.PatientMapper;
  import lombok.RequiredArgsConstructor;
  import lombok.extern.slf4j.Slf4j;
- import org.springframework.stereotype.Service;
+ import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.stereotype.Service;
  import org.springframework.transaction.annotation.Transactional;
 
  import java.math.BigDecimal;
@@ -124,6 +126,7 @@ package com.meddelivery.service;
      }
 
      @Transactional(readOnly = true)
+     @Cacheable(value = "activePharmacies")
      public List<PharmacyResponse> getActivePharmacies() {
          return pharmacyRepository.findAllByStatus(PharmacyStatus.ACTIVE)
                  .stream()
@@ -134,6 +137,7 @@ package com.meddelivery.service;
      // ── Inventory Management ────────────────────────────────────────────────
 
      @Transactional
+     @CacheEvict(value = "pharmacyInventory", key = "#pharmacyId")
      public PharmacyInventoryResponse createInventoryItem(Long pharmacyId, PharmacyInventoryRequest request) {
          Pharmacy pharmacy = findByIdOrThrow(pharmacyId);
 
@@ -170,6 +174,7 @@ package com.meddelivery.service;
      }
 
      @Transactional(readOnly = true)
+     @Cacheable(value = "pharmacyInventory", key = "#pharmacyId")
      public List<PharmacyInventoryResponse> getInventoryByPharmacy(Long pharmacyId) {
          Pharmacy pharmacy = findByIdOrThrow(pharmacyId);
          // Authorization: any authenticated user associated with pharmacy (manager/pharmacist) or maybe patients can view?

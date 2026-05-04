@@ -43,6 +43,10 @@ public class InsuranceCard {
     @CreationTimestamp
     private LocalDateTime createdAt;
 
+    private LocalDateTime verifiedAt;
+
+    private String verificationNotes;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "patient_profile_id", nullable = false)
     private PatientProfile patientProfile;

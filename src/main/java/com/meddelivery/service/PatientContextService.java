@@ -30,4 +30,12 @@ public class PatientContextService {
     public Long getCurrentUserId() {
         return getCurrentUser().getId();
     }
+
+    public com.meddelivery.model.PatientProfile getCurrentPatientProfile() {
+        User user = getCurrentUser();
+        if (user.getPatientProfile() == null) {
+            throw new IllegalStateException("Current user does not have a patient profile");
+        }
+        return user.getPatientProfile();
+    }
 }
