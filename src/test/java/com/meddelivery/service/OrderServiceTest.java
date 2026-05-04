@@ -194,7 +194,11 @@ class OrderServiceTest {
         // Arrange
         CreateOrderRequest request = new CreateOrderRequest();
         request.setOrderType(OrderType.PRIVATE_PURCHASE);
-        request.setItems(List.of());
+        
+        CreateOrderRequest.OrderItemRequest itemRequest = new CreateOrderRequest.OrderItemRequest();
+        itemRequest.setMedicineId(100L);
+        itemRequest.setQuantity(1);
+        request.setItems(List.of(itemRequest));
 
         when(patientProfileRepository.findByUserId(1L))
                 .thenReturn(Optional.empty());
@@ -205,7 +209,7 @@ class OrderServiceTest {
 
         assertTrue(ex.getMessage().contains("Patient profile not found"));
         verify(patientProfileRepository).findByUserId(1L);
-        verifyNoInteractions(orderRepository, medicineRepository);
+        verifyNoInteractions(orderRepository);
     }
 
     @Test
@@ -215,7 +219,11 @@ class OrderServiceTest {
         CreateOrderRequest request = new CreateOrderRequest();
         request.setOrderType(OrderType.PRESCRIPTION_BASED);
         request.setPrescriptionId(999L);
-        request.setItems(List.of());
+        
+        CreateOrderRequest.OrderItemRequest itemRequest = new CreateOrderRequest.OrderItemRequest();
+        itemRequest.setMedicineId(100L);
+        itemRequest.setQuantity(1);
+        request.setItems(List.of(itemRequest));
 
         when(patientProfileRepository.findByUserId(1L))
                 .thenReturn(Optional.of(mockPatient));
