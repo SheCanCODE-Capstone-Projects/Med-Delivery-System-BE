@@ -41,6 +41,9 @@ public class OrderService {
     private final PatientProfileRepository patientProfileRepository;
     private final PrescriptionRepository prescriptionRepository;
     private final MedicineRepository medicineRepository;
+    private final PharmacyMatchingEngine pharmacyMatchingEngine;
+    private final WebSocketNotificationService webSocketNotificationService;
+    private final PharmacistProfileRepository pharmacistProfileRepository;
     
     // ✅ Inject AI Service
     private final AiPrescriptionService aiPrescriptionService;
@@ -130,6 +133,30 @@ public class OrderService {
         order.setOrderItems(items);
 
         log.info("Order created and AI validated: {} for User: {}", order.getId(), userId);
+        
+        // 5. Trigger pharmacy matching
+        PatientLocation patientLocation = null;
+        if (patient.getLocations() != null) {
+            patientLocation = patient.getLocations().stream()
+                .filter(PatientLocation::isDefault)
+                .findFirst()
+                .orElse(null);
+        }
+
+        if (patientLocation != null) {
+            Pharmacy matchedPharmacy = pharmacyMatchingEngine.findBestMatch(order, patientLocation);
+            if (matchedPharmacy != null && order.getStatus() == OrderStatus.UPLOADED) {
+                order.setStatus(OrderStatus.MATCHING);
+                order = orderRepository.save(order);
+                webSocketNotificationService.notifyOrderStatusChange(userId, mapToResponse(order));
+                webSocketNotificationService.notifyPharmacyNewOrder(matchedPharmacy.getId(), mapToResponse(order));
+            }
+        } else {
+            order.setStatus(OrderStatus.MATCHING);
+            order = orderRepository.save(order);
+            webSocketNotificationService.notifyOrderStatusChange(userId, mapToResponse(order));
+        }
+
         return ApiResponse.success("Order created successfully", mapToResponse(order));
     }
 
@@ -155,6 +182,47 @@ public class OrderService {
         Order order = orderRepository.findByIdAndPatientProfile(orderId, patient)
                 .orElseThrow(() -> new ResourceNotFoundException("Order with id " + orderId + " not found"));
         return ApiResponse.success(mapToResponse(order));
+    }
+
+    @Transactional
+    public OrderResponse updateOrderStatus(Long orderId, String status, Long userId) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order not found"));
+        
+        // Verify pharmacist belongs to the assigned pharmacy
+        PharmacistProfile pharmacist = pharmacistProfileRepository.findByUserId(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Pharmacist not found"));
+        
+        if (order.getAssignedPharmacy() == null || 
+            !order.getAssignedPharmacy().getId().equals(pharmacist.getPharmacy().getId())) {
+            throw new AccessDeniedException("This order is not assigned to your pharmacy");
+        }
+
+        OrderStatus newStatus = OrderStatus.valueOf(status);
+        order.setStatus(newStatus);
+        order.setUpdatedAt(LocalDateTime.now());
+        order = orderRepository.save(order);
+        
+        OrderResponse response = mapToResponse(order);
+        webSocketNotificationService.notifyOrderStatusChange(order.getPatientProfile().getUser().getId(), response);
+        
+        return response;
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrderResponse> getPharmacyOrders(Long pharmacyId, Long userId) {
+        // Verify pharmacist belongs to this pharmacy
+        PharmacistProfile pharmacist = pharmacistProfileRepository.findByUserId(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Pharmacist not found"));
+        
+        if (!pharmacist.getPharmacy().getId().equals(pharmacyId)) {
+            throw new AccessDeniedException("You don't belong to this pharmacy");
+        }
+
+        List<Order> orders = orderRepository.findByAssignedPharmacyId(pharmacyId);
+        return orders.stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
     }
 
     private OrderResponse mapToResponse(Order order) {

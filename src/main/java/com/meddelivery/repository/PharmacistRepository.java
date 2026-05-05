@@ -14,6 +14,8 @@ public interface PharmacistRepository extends JpaRepository<PharmacistProfile, L
 
     boolean existsByUserEmail(String email);
 
+    Optional<PharmacistProfile> findByUserId(Long userId);
+
     List<PharmacistProfile> findAllByPharmacyId(Long pharmacyId);
 
     Optional<PharmacistProfile> findByIdAndPharmacyId(Long id, Long pharmacyId);

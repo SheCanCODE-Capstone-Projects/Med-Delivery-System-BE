@@ -42,6 +42,13 @@ public class Prescription {
     @Column(nullable = false)
     private PrescriptionStatus status;
 
+    private Boolean validatedByPharmacist;
+    private String validationStatus;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "validator_pharmacist_id")
+    private PharmacistProfile validatorPharmacist;
+
     @CreationTimestamp
     private LocalDateTime uploadedAt;
 

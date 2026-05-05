@@ -7,17 +7,20 @@ import com.meddelivery.exception.PharmacyNotApprovedException;
 import com.meddelivery.model.Pharmacy;
 import com.meddelivery.model.PharmacistProfile;
 import com.meddelivery.model.PharmacistSequence;
+import com.meddelivery.model.Prescription;
 import com.meddelivery.model.User;
 import com.meddelivery.model.enums.PharmacyStatus;
 import com.meddelivery.model.enums.UserRole;
 import com.meddelivery.repository.PharmacistRepository;
 import com.meddelivery.repository.PharmacistSequenceRepository;
 import com.meddelivery.repository.PharmacyRepository;
+import com.meddelivery.repository.PrescriptionRepository;
 import com.meddelivery.repository.UserRepository;
+import com.meddelivery.service.OrderService;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -29,6 +32,8 @@ public class PharmacistService {
     private final PharmacyRepository pharmacyRepository;
     private final PharmacistSequenceRepository sequenceRepository;
     private final UserRepository userRepository;
+    private final PrescriptionRepository prescriptionRepository;
+    private final OrderService orderService;
 
     @Transactional
     public PharmacistResponse addPharmacist(Long pharmacyId, AddPharmacistRequest request) {
@@ -94,6 +99,26 @@ public class PharmacistService {
                 .stream()
                 .map(this::mapToResponse)
                 .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public PharmacistResponse validatePrescription(Long prescriptionId, boolean isValid, Long pharmacistId) {
+        PharmacistProfile pharmacist = pharmacistRepository.findByUserId(pharmacistId)
+                .orElseThrow(() -> new IllegalArgumentException("Pharmacist not found"));
+        
+        Prescription prescription = prescriptionRepository.findById(prescriptionId)
+                .orElseThrow(() -> new IllegalArgumentException("Prescription not found"));
+        
+        // Verify pharmacist belongs to pharmacy that can access this prescription
+        // (This could be enhanced based on business rules)
+        prescription.setValidatedByPharmacist(isValid);
+        prescription.setValidationStatus(isValid ? "VALIDATED" : "REJECTED");
+        prescription.setValidatorPharmacist(pharmacist);
+        prescriptionRepository.save(prescription);
+        
+        System.out.println("Pharmacist " + pharmacistId + " validated prescription " + prescriptionId + " as " + (isValid ? "VALID" : "INVALID"));
+        
+        return mapToResponse(pharmacist);
     }
 
     private String generatePharmacistUniqueId(Pharmacy pharmacy) {
