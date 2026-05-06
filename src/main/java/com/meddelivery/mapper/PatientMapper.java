@@ -21,6 +21,9 @@ public class PatientMapper {
                  .fullName(user.getFullName())
                  .email(user.getEmail())
                  .phoneNumber(user.getPhoneNumber())
+                 .profileImageUrl(user.getProfileImageUrl())
+                 .emailNotifications(user.isEmailNotifications())
+                 .smsNotifications(user.isSmsNotifications())
                  .dateOfBirth(profile.getDateOfBirth())
                  .gender(profile.getGender())
                  .allergies(profile.getAllergies())
@@ -55,6 +58,7 @@ public class PatientMapper {
                 .frontImageUrl(card.getFrontImageUrl())
                 .backImageUrl(card.getBackImageUrl())
                 .status(card.getStatus())
+                .coveragePercentage(card.getCoveragePercentage())
                 .createdAt(card.getCreatedAt())
                 .build();
     }
@@ -67,6 +71,7 @@ public class PatientMapper {
                 .fileType(prescription.getFileType())
                 .notes(prescription.getNotes())
                 .prescriptionDate(prescription.getPrescriptionDate())
+                .expiryDate(prescription.getExpiryDate())
                 .hasStamp(prescription.isHasStamp())
                 .hasSignature(prescription.isHasSignature())
                 .status(prescription.getStatus())

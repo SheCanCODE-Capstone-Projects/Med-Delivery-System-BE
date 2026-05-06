@@ -2,10 +2,9 @@
 -- Add validation columns to prescriptions table
 -- Add validator pharmacist foreign key
 
-ALTER TABLE prescriptions 
+ALTER TABLE prescriptions
     ADD COLUMN IF NOT EXISTS validated_by_pharmacist BOOLEAN,
     ADD COLUMN IF NOT EXISTS validation_status VARCHAR(50),
-    ADD COLUMN IF NOT EXISTS validator_pharmacist_id BIGINT,
     ADD COLUMN IF NOT EXISTS validator_pharmacist_id BIGINT REFERENCES pharmacist_profiles(id);
 
 -- Create index for foreign key

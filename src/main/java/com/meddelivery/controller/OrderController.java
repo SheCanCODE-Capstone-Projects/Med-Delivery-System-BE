@@ -4,6 +4,7 @@ import com.meddelivery.dto.response.ApiResponse;
 import com.meddelivery.dto.response.PagedResponse;
 import com.meddelivery.dto.request.CreateOrderRequest;
 import com.meddelivery.dto.response.OrderResponse;
+import com.meddelivery.dto.response.PaymentResponse;
 import com.meddelivery.model.User;
 import com.meddelivery.service.OrderService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -52,5 +53,19 @@ public class OrderController {
     public ResponseEntity<ApiResponse<OrderResponse>> getOrderDetails(@PathVariable Long id, Authentication authentication) {
         Long userId = ((User) authentication.getPrincipal()).getId();
         return ResponseEntity.ok(orderService.getOrderDetails(id, userId));
+    }
+
+    @PostMapping("/{id}/pay")
+    @Operation(summary = "Confirm and Process Payment for Order")
+    public ResponseEntity<ApiResponse<OrderResponse>> confirmPayment(@PathVariable Long id, Authentication authentication) {
+        Long userId = ((User) authentication.getPrincipal()).getId();
+        return ResponseEntity.ok(orderService.confirmPayment(id, userId));
+    }
+
+    @GetMapping("/{id}/payment")
+    @Operation(summary = "Get Payment Details for Order")
+    public ResponseEntity<ApiResponse<PaymentResponse>> getPaymentDetails(@PathVariable Long id, Authentication authentication) {
+        Long userId = ((User) authentication.getPrincipal()).getId();
+        return ResponseEntity.ok(orderService.getPaymentDetails(id, userId));
     }
 }

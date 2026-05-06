@@ -4,14 +4,19 @@ import com.meddelivery.dto.request.*;
 import com.meddelivery.dto.response.*;
 import com.meddelivery.exception.BusinessException;
 import com.meddelivery.exception.ResourceNotFoundException;
+import com.meddelivery.model.InsuranceCard;
 import com.meddelivery.model.InsuranceProvider;
 import com.meddelivery.model.ManagerProfile;
 import com.meddelivery.model.Order;
+import com.meddelivery.model.Payment;
 import com.meddelivery.model.Pharmacy;
 import com.meddelivery.model.PharmacyInventory;
 import com.meddelivery.model.SubstitutionRequest;
 import com.meddelivery.model.User;
+import com.meddelivery.model.enums.InsuranceStatus;
 import com.meddelivery.model.enums.OrderStatus;
+import com.meddelivery.model.enums.PaymentMethod;
+import com.meddelivery.model.enums.PaymentStatus;
 import com.meddelivery.model.enums.PharmacyStatus;
 import com.meddelivery.model.enums.SubstitutionStatus;
 import com.meddelivery.model.enums.UserRole;
@@ -44,6 +49,8 @@ public class AdminService {
     private final PharmacyInventoryRepository inventoryRepository;
     private final SubstitutionRequestRepository substitutionRepo;
     private final OtpService otpService;
+    private final PaymentRepository paymentRepository;
+    private final InsuranceCardRepository insuranceCardRepository;
 
     // --- A. Executive Summary ---
 
@@ -398,6 +405,109 @@ public class AdminService {
                 .build();
         
         return ApiResponse.success(report);
+    }
+
+    // --- H. Insurance Claims Management ---
+
+    public ApiResponse<PagedResponse<PaymentResponse>> getInsuranceClaims(
+            int page, int size, String status) {
+        Pageable pageable = PageRequest.of(page, size);
+        Page<Payment> paymentsPage;
+
+        if (status != null && !status.isEmpty()) {
+            PaymentStatus paymentStatus = PaymentStatus.valueOf(status.toUpperCase());
+            paymentsPage = paymentRepository.findByStatus(paymentStatus, pageable);
+        } else {
+            paymentsPage = paymentRepository.findByPaymentMethod(PaymentMethod.INSURANCE, pageable);
+        }
+
+        List<PaymentResponse> dtos = paymentsPage.getContent().stream()
+                .map(this::mapToPaymentResponse)
+                .collect(Collectors.toList());
+
+        return ApiResponse.success(PagedResponse.of(dtos, page, size, paymentsPage.getTotalElements()));
+    }
+
+    @Transactional
+    public ApiResponse<PaymentResponse> processInsuranceClaim(Long paymentId, String action) {
+        Payment payment = paymentRepository.findById(paymentId)
+                .orElseThrow(() -> new ResourceNotFoundException("Payment not found"));
+
+        if (payment.getPaymentMethod() != PaymentMethod.INSURANCE) {
+            throw new BusinessException("This payment is not an insurance claim");
+        }
+
+        PaymentStatus newStatus;
+        if ("APPROVE".equalsIgnoreCase(action)) {
+            newStatus = PaymentStatus.PAID;
+        } else if ("REJECT".equalsIgnoreCase(action)) {
+            newStatus = PaymentStatus.FAILED;
+        } else {
+            throw new BusinessException("Invalid action. Use APPROVE or REJECT");
+        }
+
+        payment.setStatus(newStatus);
+        if (newStatus == PaymentStatus.PAID) {
+            payment.setPaidAt(LocalDateTime.now());
+            payment.setTransactionId("INS-" + paymentId + "-" + System.currentTimeMillis());
+        }
+        paymentRepository.save(payment);
+
+        // Update order payment status accordingly
+        Order order = payment.getOrder();
+        order.setPaymentStatus(newStatus);
+        orderRepository.save(order);
+
+        log.info("Insurance claim {} for payment {} by admin", action.toLowerCase(), paymentId);
+
+        return ApiResponse.success("Claim " + action.toLowerCase() + " successfully", mapToPaymentResponse(payment));
+    }
+
+    @Transactional
+    public ApiResponse<InsuranceCardResponse> verifyInsuranceCard(Long cardId, Double coveragePercentage) {
+        InsuranceCard card = insuranceCardRepository.findById(cardId)
+                .orElseThrow(() -> new ResourceNotFoundException("InsuranceCard", cardId));
+
+        if (coveragePercentage == null || coveragePercentage < 0 || coveragePercentage > 100) {
+            throw new BusinessException("Coverage percentage must be between 0 and 100");
+        }
+
+        card.setStatus(InsuranceStatus.VERIFIED);
+        card.setCoveragePercentage(coveragePercentage);
+        insuranceCardRepository.save(card);
+
+        log.info("Insurance card verified: id={}, coverage={}%", cardId, coveragePercentage);
+
+        // Manual mapping to InsuranceCardResponse
+        InsuranceCardResponse response = InsuranceCardResponse.builder()
+                .id(card.getId())
+                .providerName(card.getProviderName())
+                .memberId(card.getMemberId())
+                .frontImageUrl(card.getFrontImageUrl())
+                .backImageUrl(card.getBackImageUrl())
+                .status(card.getStatus())
+                .coveragePercentage(card.getCoveragePercentage())
+                .createdAt(card.getCreatedAt())
+                .build();
+
+        return ApiResponse.success("Insurance card verified successfully", response);
+    }
+
+    private PaymentResponse mapToPaymentResponse(Payment payment) {
+        return PaymentResponse.builder()
+                .id(payment.getId())
+                .orderId(payment.getOrder().getId())
+                .totalAmount(payment.getTotalAmount().doubleValue())
+                .insuranceAmount(payment.getInsuranceAmount().doubleValue())
+                .patientAmount(payment.getPatientAmount().doubleValue())
+                .status(payment.getStatus())
+                .paymentMethod(payment.getPaymentMethod())
+                .transactionId(payment.getTransactionId())
+                .insuranceProvider(payment.getInsuranceProvider())
+                .failureReason(payment.getFailureReason())
+                .createdAt(payment.getCreatedAt())
+                .paidAt(payment.getPaidAt())
+                .build();
     }
 
     // --- Helper ---

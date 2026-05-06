@@ -14,5 +14,6 @@ public class InsuranceCardResponse {
     private String frontImageUrl;
     private String backImageUrl;
     private InsuranceStatus status;
+    private Double coveragePercentage;
     private LocalDateTime createdAt;
 }

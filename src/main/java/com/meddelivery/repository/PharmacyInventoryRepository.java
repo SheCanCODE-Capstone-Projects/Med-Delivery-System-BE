@@ -7,15 +7,17 @@
  import java.util.List;
  import java.util.Optional;
 
- @Repository
- public interface PharmacyInventoryRepository extends JpaRepository<PharmacyInventory, Long> {
+  @Repository
+  public interface PharmacyInventoryRepository extends JpaRepository<PharmacyInventory, Long> {
 
-     List<PharmacyInventory> findByPharmacyId(Long pharmacyId);
+      List<PharmacyInventory> findByPharmacyId(Long pharmacyId);
 
-     List<PharmacyInventory> findByMedicine_Name(String medicineName);
+      List<PharmacyInventory> findByMedicine_Name(String medicineName);
 
-     Optional<PharmacyInventory> findByPharmacyAndMedicine(com.meddelivery.model.Pharmacy pharmacy,
-                                                             com.meddelivery.model.Medicine medicine);
+      Optional<PharmacyInventory> findByPharmacyAndMedicine(com.meddelivery.model.Pharmacy pharmacy,
+                                                              com.meddelivery.model.Medicine medicine);
 
-     List<PharmacyInventory> findByQuantityLessThan(int threshold);
- }
+      List<PharmacyInventory> findByQuantityLessThan(int threshold);
+
+      Optional<PharmacyInventory> findByPharmacyIdAndMedicineId(Long pharmacyId, Long medicineId);
+  }

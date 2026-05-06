@@ -9,14 +9,16 @@
  import com.meddelivery.dto.response.PatientProfileResponse;
  import com.meddelivery.service.FileStorageService;
  import com.meddelivery.service.PatientProfileService;
- import jakarta.validation.Valid;
- import lombok.RequiredArgsConstructor;
- import org.springframework.http.HttpStatus;
- import org.springframework.http.MediaType;
- import org.springframework.http.ResponseEntity;
- import org.springframework.security.access.prepost.PreAuthorize;
- import org.springframework.web.bind.annotation.*;
- import org.springframework.web.multipart.MultipartFile;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
  import java.util.List;
 
@@ -133,7 +135,23 @@
 
          InsuranceCardResponse response = profileService.addInsuranceCard(request);
          return ResponseEntity
-                 .status(HttpStatus.CREATED)
-                 .body(ApiResponse.success("Insurance card uploaded. Pending verification.", response));
-     }
- }
+                  .status(HttpStatus.CREATED)
+                  .body(ApiResponse.success("Insurance card uploaded. Pending verification.", response));
+      }
+
+      @PostMapping(value = "/profile/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+      @Operation(summary = "Upload Profile Image")
+      public ResponseEntity<ApiResponse<PatientProfileResponse>> uploadProfileImage(
+              @RequestPart("file") MultipartFile file) {
+
+          if (file == null || file.isEmpty()) {
+              throw new IllegalArgumentException("File is required");
+          }
+
+          String storedPath = fileStorageService.storeFile(file, "profile");
+          String imageUrl = "/api/files/" + storedPath;
+
+          PatientProfileResponse response = profileService.updateProfileImage(imageUrl);
+          return ResponseEntity.ok(ApiResponse.success("Profile image uploaded successfully", response));
+      }
+  }

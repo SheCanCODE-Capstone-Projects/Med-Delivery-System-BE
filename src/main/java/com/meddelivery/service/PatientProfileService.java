@@ -45,14 +45,23 @@ public class PatientProfileService {
          User user = userRepository.findById(currentUser.getId())
                  .orElseThrow(() -> new ResourceNotFoundException("User", currentUser.getId()));
 
-         // Update user fields if provided
-         if (request.getFullName() != null) {
-             user.setFullName(request.getFullName());
-         }
-         if (request.getPhoneNumber() != null) {
-             user.setPhoneNumber(request.getPhoneNumber());
-         }
-         userRepository.save(user); // persist user changes
+          // Update user fields if provided
+          if (request.getFullName() != null) {
+              user.setFullName(request.getFullName());
+          }
+          if (request.getPhoneNumber() != null) {
+              user.setPhoneNumber(request.getPhoneNumber());
+          }
+          if (request.getProfileImageUrl() != null) {
+              user.setProfileImageUrl(request.getProfileImageUrl());
+          }
+          if (request.getEmailNotifications() != null) {
+              user.setEmailNotifications(request.getEmailNotifications());
+          }
+          if (request.getSmsNotifications() != null) {
+              user.setSmsNotifications(request.getSmsNotifications());
+          }
+          userRepository.save(user); // persist user changes
 
          // Find or create patient profile
          PatientProfile profile = profileRepository.findByUserId(currentUser.getId())
@@ -90,12 +99,23 @@ public class PatientProfileService {
 
 //     ADMIN: get any patient's profile by profile ID.
 
-    @Transactional(readOnly = true)
-    public PatientProfileResponse getProfileById(Long profileId) {
-        PatientProfile profile = profileRepository.findById(profileId)
-                .orElseThrow(() -> new ResourceNotFoundException("PatientProfile", profileId));
-        return mapper.toProfileResponse(profile);
-    }
+     @Transactional(readOnly = true)
+     public PatientProfileResponse getProfileById(Long profileId) {
+         PatientProfile profile = profileRepository.findById(profileId)
+                 .orElseThrow(() -> new ResourceNotFoundException("PatientProfile", profileId));
+         return mapper.toProfileResponse(profile);
+     }
+
+     @Transactional
+     public PatientProfileResponse updateProfileImage(String imageUrl) {
+         User currentUser = contextService.getCurrentUser();
+         currentUser.setProfileImageUrl(imageUrl);
+         userRepository.save(currentUser);
+
+         PatientProfile profile = profileRepository.findByUserId(currentUser.getId())
+                 .orElseThrow(() -> new ResourceNotFoundException("Patient profile not found"));
+         return mapper.toProfileResponse(profile);
+     }
 
 
 
@@ -112,6 +132,7 @@ public class PatientProfileService {
                 .memberId(request.getMemberId())
                 .frontImageUrl(request.getFrontImageUrl())
                 .backImageUrl(request.getBackImageUrl())
+                .coveragePercentage(request.getCoveragePercentage())
                 .status(InsuranceStatus.PENDING_VERIFICATION) // Admin verifies insurance
                 .build();
 
@@ -164,11 +185,14 @@ public class PatientProfileService {
          if (request.getFrontImageUrl() != null) {
              card.setFrontImageUrl(request.getFrontImageUrl());
          }
-         if (request.getBackImageUrl() != null) {
-             card.setBackImageUrl(request.getBackImageUrl());
-         }
+          if (request.getBackImageUrl() != null) {
+              card.setBackImageUrl(request.getBackImageUrl());
+          }
+          if (request.getCoveragePercentage() != null) {
+              card.setCoveragePercentage(request.getCoveragePercentage());
+          }
 
-         InsuranceCard saved = insuranceCardRepository.save(card);
+          InsuranceCard saved = insuranceCardRepository.save(card);
          log.info("Insurance card updated: id={}", cardId);
          return mapper.toInsuranceResponse(saved);
      }

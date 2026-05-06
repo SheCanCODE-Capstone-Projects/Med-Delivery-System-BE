@@ -15,6 +15,7 @@ public class PrescriptionResponse {
     private FileType fileType;
     private String notes;
     private LocalDate prescriptionDate;
+    private LocalDate expiryDate;
     private boolean hasStamp;
     private boolean hasSignature;
     private PrescriptionStatus status;

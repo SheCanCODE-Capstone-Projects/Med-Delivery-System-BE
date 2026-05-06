@@ -9,6 +9,7 @@ import com.meddelivery.repository.MedicineRepository;
 import com.meddelivery.repository.OrderItemRepository;
 import com.meddelivery.repository.OrderRepository;
 import com.meddelivery.repository.SubstitutionRequestRepository;
+import com.meddelivery.service.WebSocketNotificationService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
@@ -29,6 +30,7 @@ public class MedicineSubstitutionService {
     private final OrderItemRepository orderItemRepository;
     private final OrderRepository orderRepository;
     private final MedicineRepository medicineRepository;
+    private final WebSocketNotificationService webSocketNotificationService;
 
     @Transactional
     @CacheEvict(value = "substitutions", allEntries = true)
@@ -60,6 +62,14 @@ public class MedicineSubstitutionService {
         com.meddelivery.model.SubstitutionRequest saved = substitutionRepository.save(substitution);
         log.info("Substitution request created: {} -> {} for order {}",
                 originalMedicine.getName(), substituteMedicine.getName(), orderItem.getOrder().getId());
+
+        // Notify patient of substitution request
+        webSocketNotificationService.notifySubstitutionRequest(
+                orderItem.getOrder().getPatientProfile().getUser().getId(),
+                orderItem.getOrder().getId(),
+                originalMedicine.getName(),
+                substituteMedicine.getName()
+        );
 
         return mapToResponse(saved);
     }

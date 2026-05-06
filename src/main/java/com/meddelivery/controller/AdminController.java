@@ -19,6 +19,8 @@ import com.meddelivery.service.AdminService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -143,5 +145,30 @@ public class AdminController {
     public ResponseEntity<ApiResponse<AnalyticsReportResponse>> getReport(
             @RequestParam(defaultValue = "MONTHLY") String period) {
         return ResponseEntity.ok(adminService.generateReport(period));
+    }
+
+    @GetMapping("/insurance-claims")
+    @Operation(summary = "List Insurance Claims")
+    public ResponseEntity<ApiResponse<PagedResponse<PaymentResponse>>> getInsuranceClaims(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size,
+            @RequestParam(required = false) String status) {
+        return ResponseEntity.ok(adminService.getInsuranceClaims(page, size, status));
+    }
+
+    @PostMapping("/insurance-claims/{id}/process")
+    @Operation(summary = "Process Insurance Claim (APPROVE or REJECT)")
+    public ResponseEntity<ApiResponse<PaymentResponse>> processInsuranceClaim(
+            @PathVariable Long id,
+            @RequestParam String action) {
+        return ResponseEntity.ok(adminService.processInsuranceClaim(id, action));
+    }
+
+    @PostMapping("/insurance-cards/{id}/verify")
+    @Operation(summary = "Verify Insurance Card and Set Coverage Percentage")
+    public ResponseEntity<ApiResponse<InsuranceCardResponse>> verifyInsuranceCard(
+            @PathVariable Long id,
+            @RequestParam @DecimalMin(value = "0.0") @DecimalMax(value = "100.0") Double coveragePercentage) {
+        return ResponseEntity.ok(adminService.verifyInsuranceCard(id, coveragePercentage));
     }
 }

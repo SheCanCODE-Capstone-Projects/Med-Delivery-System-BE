@@ -8,4 +8,5 @@ public class InsuranceCardUpdateRequest {
     private String memberId;
     private String frontImageUrl;
     private String backImageUrl;
+    private Double coveragePercentage;
 }

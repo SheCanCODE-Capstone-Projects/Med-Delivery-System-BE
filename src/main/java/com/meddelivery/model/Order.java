@@ -5,9 +5,12 @@ import lombok.*;
 import com.meddelivery.model.enums.FulfillmentType;
 import com.meddelivery.model.enums.OrderStatus;
 import com.meddelivery.model.enums.OrderType;
+import com.meddelivery.model.enums.PaymentMethod;
+import com.meddelivery.model.enums.PaymentStatus;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -40,7 +43,27 @@ public class Order {
     @Enumerated(EnumType.STRING)
     private FulfillmentType fulfillmentType;
 
+    @Column(columnDefinition = "TEXT")
+    private String deliveryAddress;
+
     private Double coveragePercentage;
+
+    @Column(precision = 12, scale = 2)
+    private java.math.BigDecimal totalAmount;
+
+    @Column(precision = 12, scale = 2)
+    private java.math.BigDecimal patientPayableAmount;
+
+    @Column(precision = 12, scale = 2)
+    private java.math.BigDecimal insurancePayableAmount;
+
+    @Enumerated(EnumType.STRING)
+    private PaymentStatus paymentStatus;
+
+    @Enumerated(EnumType.STRING)
+    private PaymentMethod paymentMethod;
+
+    private String transactionId;
 
     @CreationTimestamp
     private LocalDateTime createdAt;

@@ -28,4 +28,9 @@ public class PatientProfileRequest {
 
     // Optional — chronic conditions, ongoing treatment notes
     private String medicalNotes;
+
+    // User-level settings
+    private String profileImageUrl;
+    private Boolean emailNotifications;
+    private Boolean smsNotifications;
 }

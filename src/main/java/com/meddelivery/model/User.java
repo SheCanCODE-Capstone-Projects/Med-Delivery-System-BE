@@ -59,6 +59,16 @@ public class User implements UserDetails, OAuth2User {
     @Builder.Default
     private boolean mustChangePassword = false;
 
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean emailNotifications = true;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean smsNotifications = true;
+
+    private String profileImageUrl;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 

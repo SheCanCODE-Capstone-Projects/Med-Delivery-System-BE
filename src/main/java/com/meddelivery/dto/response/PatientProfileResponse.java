@@ -20,6 +20,9 @@ public class PatientProfileResponse {
     private String fullName;
     private String email;
     private String phoneNumber;
+    private String profileImageUrl;
+    private boolean emailNotifications;
+    private boolean smsNotifications;
 
     // Profile fields (stored on PatientProfile's linked User or added below)
     private LocalDate dateOfBirth;

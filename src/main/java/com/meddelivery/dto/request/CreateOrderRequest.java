@@ -21,14 +21,18 @@ public class CreateOrderRequest {
     
     @NotNull(message = "Order type is required")
     private OrderType orderType; // PRESCRIPTION_BASED or PRIVATE_PURCHASE
-    
+
     private FulfillmentType fulfillmentType; // PICKUP or DELIVERY
-    
+
     private Long prescriptionId;
-    
+
+    private Long insuranceCardId; // Optional - used for PRESCRIPTION_BASED with insurance
+
     @NotEmpty(message = "At least one item is required")
     @Valid
     private List<OrderItemRequest> items;
+
+    private String deliveryAddress; // Required if fulfillmentType = DELIVERY
 
     @Data
     @Builder

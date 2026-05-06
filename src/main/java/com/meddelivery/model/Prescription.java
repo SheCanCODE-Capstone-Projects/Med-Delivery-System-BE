@@ -35,6 +35,7 @@ public class Prescription {
 
     private String notes;
     private LocalDate prescriptionDate;
+    private LocalDate expiryDate;
     private boolean hasStamp;
     private boolean hasSignature;
 

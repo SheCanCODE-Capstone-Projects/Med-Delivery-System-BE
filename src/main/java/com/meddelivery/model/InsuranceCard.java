@@ -40,6 +40,9 @@ public class InsuranceCard {
     @Column(nullable = false)
     private InsuranceStatus status;
 
+    @Column(nullable = false, precision = 5, scale = 2)
+    private Double coveragePercentage;
+
     @CreationTimestamp
     private LocalDateTime createdAt;
 
