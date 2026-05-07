@@ -62,6 +62,21 @@ class OrderServiceTest {
     @Mock
     private PharmacyInventoryRepository pharmacyInventoryRepository;
 
+    @Mock
+    private PharmacyMatchingEngine pharmacyMatchingEngine;
+
+    @Mock
+    private InsuranceCardRepository insuranceCardRepository;
+
+    @Mock
+    private WebSocketNotificationService webSocketNotificationService;
+
+    @Mock
+    private PaymentRepository paymentRepository;
+
+    @Mock
+    private PharmacistProfileRepository pharmacistProfileRepository;
+
     @InjectMocks
     private OrderService orderService;
 
@@ -70,6 +85,7 @@ class OrderServiceTest {
     private Medicine mockMedicine;
     private Prescription mockPrescription;
     private Pharmacy mockPharmacy;
+    private PatientLocation mockLocation;
 
     @BeforeEach
     void setUp() {
@@ -83,9 +99,17 @@ class OrderServiceTest {
                 .isVerified(true)
                 .build();
 
+        mockLocation = PatientLocation.builder()
+                .id(1L)
+                .isDefault(true)
+                .latitude(40.7128)
+                .longitude(-74.0060)
+                .build();
+
         mockPatient = PatientProfile.builder()
                 .id(1L)
                 .user(mockUser)
+                .locations(List.of(mockLocation))
                 .build();
 
         mockMedicine = Medicine.builder()
@@ -120,6 +144,14 @@ class OrderServiceTest {
         itemRequest.setQuantity(2);
         request.setItems(List.of(itemRequest));
 
+        PharmacyInventory mockInventory = PharmacyInventory.builder()
+                .id(1L)
+                .pharmacy(mockPharmacy)
+                .medicine(mockMedicine)
+                .price(BigDecimal.valueOf(10.0))
+                .quantity(100)
+                .build();
+
         when(patientProfileRepository.findByUserId(1L))
                 .thenReturn(Optional.of(mockPatient));
         when(prescriptionRepository.findById(200L))
@@ -128,18 +160,10 @@ class OrderServiceTest {
                 .thenReturn(Optional.of(mockMedicine));
         when(aiPrescriptionService.validatePrescription(anyString(), any()))
                 .thenReturn(true);
-        
-        // Mock pharmacy inventory to avoid null pharmacy matching
-        PharmacyInventory mockInventory = PharmacyInventory.builder()
-                .id(1L)
-                .pharmacy(mockPharmacy)
-                .medicine(mockMedicine)
-                .price(BigDecimal.valueOf(10.0))
-                .quantity(100)
-                .build();
-        when(pharmacyInventoryRepository.findByPharmacyIdAndMedicineId(anyLong(), eq(100L)))
+        when(pharmacyMatchingEngine.findBestMatch(any(Order.class), any(PatientLocation.class)))
+                .thenReturn(mockPharmacy);
+        when(pharmacyInventoryRepository.findByPharmacyIdAndMedicineId(1L, 100L))
                 .thenReturn(Optional.of(mockInventory));
-        
         when(orderRepository.save(any(Order.class)))
                 .thenAnswer(inv -> {
                     Order order = inv.getArgument(0);
@@ -147,6 +171,8 @@ class OrderServiceTest {
                     return order;
                 });
         when(orderItemRepository.saveAll(any()))
+                .thenAnswer(inv -> inv.getArgument(0));
+        when(paymentRepository.save(any(Payment.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
 
         // Act
@@ -164,7 +190,9 @@ class OrderServiceTest {
         verify(prescriptionRepository).findById(200L);
         verify(medicineRepository, times(2)).findById(100L);
         verify(aiPrescriptionService).validatePrescription(anyString(), any());
-        verify(orderRepository).save(any(Order.class));
+        verify(pharmacyMatchingEngine).findBestMatch(any(Order.class), any(PatientLocation.class));
+        verify(pharmacyInventoryRepository).findByPharmacyIdAndMedicineId(1L, 100L);
+        verify(orderRepository, times(2)).save(any(Order.class));
         verify(orderItemRepository).saveAll(any());
     }
 
@@ -180,12 +208,6 @@ class OrderServiceTest {
         itemRequest.setQuantity(3);
         request.setItems(List.of(itemRequest));
 
-        when(patientProfileRepository.findByUserId(1L))
-                .thenReturn(Optional.of(mockPatient));
-        when(medicineRepository.findById(100L))
-                .thenReturn(Optional.of(mockMedicine));
-        
-        // Mock pharmacy inventory to avoid null pharmacy matching
         PharmacyInventory mockInventory = PharmacyInventory.builder()
                 .id(1L)
                 .pharmacy(mockPharmacy)
@@ -193,9 +215,15 @@ class OrderServiceTest {
                 .price(BigDecimal.valueOf(10.0))
                 .quantity(100)
                 .build();
-        when(pharmacyInventoryRepository.findByPharmacyIdAndMedicineId(anyLong(), eq(100L)))
+
+        when(patientProfileRepository.findByUserId(1L))
+                .thenReturn(Optional.of(mockPatient));
+        when(medicineRepository.findById(100L))
+                .thenReturn(Optional.of(mockMedicine));
+        when(pharmacyMatchingEngine.findBestMatch(any(Order.class), any(PatientLocation.class)))
+                .thenReturn(mockPharmacy);
+        when(pharmacyInventoryRepository.findByPharmacyIdAndMedicineId(1L, 100L))
                 .thenReturn(Optional.of(mockInventory));
-        
         when(orderRepository.save(any(Order.class)))
                 .thenAnswer(inv -> {
                     Order order = inv.getArgument(0);
@@ -203,6 +231,8 @@ class OrderServiceTest {
                     return order;
                 });
         when(orderItemRepository.saveAll(any()))
+                .thenAnswer(inv -> inv.getArgument(0));
+        when(paymentRepository.save(any(Payment.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
 
         // Act
@@ -218,7 +248,9 @@ class OrderServiceTest {
         
         verify(patientProfileRepository).findByUserId(1L);
         verify(medicineRepository).findById(100L);
-        verify(orderRepository).save(any(Order.class));
+        verify(pharmacyMatchingEngine).findBestMatch(any(Order.class), any(PatientLocation.class));
+        verify(pharmacyInventoryRepository).findByPharmacyIdAndMedicineId(1L, 100L);
+        verify(orderRepository, times(2)).save(any(Order.class));
         verifyNoInteractions(aiPrescriptionService);
     }
 
@@ -340,6 +372,7 @@ class OrderServiceTest {
                 .orderType(OrderType.PRIVATE_PURCHASE)
                 .status(OrderStatus.UPLOADED)
                 .createdAt(LocalDateTime.now())
+                .orderItems(new ArrayList<>())
                 .build();
         
         Page<Order> ordersPage = new PageImpl<>(List.of(order));
@@ -390,6 +423,7 @@ class OrderServiceTest {
                 .status(OrderStatus.UPLOADED)
                 .createdAt(LocalDateTime.now())
                 .coveragePercentage(50.0)
+                .orderItems(new ArrayList<>())
                 .build();
 
         when(patientProfileRepository.findByUserId(1L))
