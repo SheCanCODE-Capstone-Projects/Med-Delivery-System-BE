@@ -85,6 +85,10 @@ jobs:
 
       - name: Run Flyway Migrate
         run: mvn flyway:migrate -DskipTests -Dflyway.url=jdbc:postgresql://localhost:5432/testdb -Dflyway.user=testuser -Dflyway.password=testpass
+        env:
+          DB_URL: jdbc:postgresql://localhost:5432/testdb
+          DB_USERNAME: testuser
+          DB_PASSWORD: testpass
 
       - name: Run Maven Tests
         run: mvn test -B -DskipITs
