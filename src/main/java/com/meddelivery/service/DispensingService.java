@@ -17,6 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Objects;
 import java.util.stream.Collectors;
 
 @Service
@@ -76,6 +77,9 @@ public class DispensingService {
             throw new IllegalStateException("Prescription must be validated before confirming stock.");
         }
 
+        // Fix #3: persist STOCK_CONFIRMED so dispenseMedicine() can enforce it
+        order.setStatus(OrderStatus.STOCK_CONFIRMED);
+        orderRepository.save(order);
         logAction(pharmacist, order, PharmacistAction.STOCK_CONFIRMED, null);
         return toDispensingResponse(order);
     }
@@ -89,14 +93,30 @@ public class DispensingService {
         PharmacistProfile pharmacist = resolvePharmacist(pharmacistEmail);
         Order order = resolveAssignedOrder(orderId, pharmacist);
 
-        if (order.getStatus() != OrderStatus.IN_PROGRESS) {
-            throw new IllegalStateException("Order must be IN_PROGRESS to suggest a substitution.");
+        if (order.getStatus() != OrderStatus.IN_PROGRESS &&
+                order.getStatus() != OrderStatus.STOCK_CONFIRMED) {
+            throw new IllegalStateException("Order must be IN_PROGRESS or STOCK_CONFIRMED to suggest a substitution.");
+        }
+
+        // Fix #1: block self-substitution
+        if (request.getOriginalMedicineId().equals(request.getSuggestedMedicineId())) {
+            throw new IllegalArgumentException("Original and suggested medicine must differ.");
         }
 
         Medicine original = medicineRepository.findById(request.getOriginalMedicineId())
                 .orElseThrow(() -> new ResourceNotFoundException("Original medicine not found"));
         Medicine suggested = medicineRepository.findById(request.getSuggestedMedicineId())
                 .orElseThrow(() -> new ResourceNotFoundException("Suggested medicine not found"));
+
+        // Fix #4: validate original medicine belongs to this order
+        boolean originalInOrder = order.getOrderItems().stream()
+                .map(OrderItem::getMedicine)
+                .filter(Objects::nonNull)
+                .anyMatch(m -> m.getId().equals(original.getId()));
+
+        if (!originalInOrder) {
+            throw new IllegalStateException("Original medicine is not part of this order.");
+        }
 
         SubstitutionRequest sub = SubstitutionRequest.builder()
                 .order(order)
@@ -123,8 +143,9 @@ public class DispensingService {
         PharmacistProfile pharmacist = resolvePharmacist(pharmacistEmail);
         Order order = resolveAssignedOrder(orderId, pharmacist);
 
-        if (order.getStatus() != OrderStatus.IN_PROGRESS) {
-            throw new IllegalStateException("Order must be IN_PROGRESS to dispense medicine.");
+        // Fix #3: enforce stock must be confirmed before dispensing
+        if (order.getStatus() != OrderStatus.STOCK_CONFIRMED) {
+            throw new IllegalStateException("Stock must be confirmed before dispensing.");
         }
 
         boolean hasPendingSubstitution = order.getSubstitutionRequests().stream()
@@ -135,8 +156,9 @@ public class DispensingService {
 
         order.setStatus(OrderStatus.READY_FOR_PICKUP);
         orderRepository.save(order);
+
+        // Fix #5: only log MEDICINE_DISPENSED — ORDER_COMPLETED belongs to a separate completion step
         logAction(pharmacist, order, PharmacistAction.MEDICINE_DISPENSED, request.getNotes());
-        logAction(pharmacist, order, PharmacistAction.ORDER_COMPLETED, null);
         return toDispensingResponse(order);
     }
 
@@ -209,7 +231,8 @@ public class DispensingService {
                 .prescriptionUrl(order.getPrescription() != null ? order.getPrescription().getFileUrl() : null)
                 .items(items)
                 .pendingSubstitutions(subs)
-                .assignedAt(order.getUpdatedAt())
+                // Fix #6: use real assignedAt instead of updatedAt
+                .assignedAt(order.getAssignedAt())
                 .build();
     }
 

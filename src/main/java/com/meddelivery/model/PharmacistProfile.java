@@ -29,6 +29,8 @@ public class PharmacistProfile {
     private String pharmacistUniqueId;
 
     @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    @Setter(AccessLevel.NONE)
     private LocalDateTime createdAt;
 
     @OneToOne(fetch = FetchType.LAZY)
