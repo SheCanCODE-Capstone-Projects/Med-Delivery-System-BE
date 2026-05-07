@@ -1,20 +1,23 @@
 package com.meddelivery.dto.response;
 
-import com.meddelivery.model.enums.OrderStatus;
+import com.meddelivery.model.enums.PharmacistAction;
 import lombok.Builder;
 import lombok.Data;
 
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Data
 @Builder
 public class DispensingOrderResponse {
+
     private Long orderId;
-    private OrderStatus status;
     private String patientName;
-    private String prescriptionUrl;
-    private List<OrderItemResponse> items;
-    private List<SubstitutionResponse> pendingSubstitutions;
-    private LocalDateTime assignedAt;
+    private String patientEmail;
+    private String pharmacistUniqueId;
+    private String pharmacistName;
+    private String orderStatus;
+    private String prescriptionNotes;
+    private PharmacistAction lastAction;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 }

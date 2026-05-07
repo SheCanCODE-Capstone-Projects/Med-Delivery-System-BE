@@ -14,10 +14,10 @@ public interface PharmacistRepository extends JpaRepository<PharmacistProfile, L
 
     boolean existsByUserEmail(String email);
 
+    Optional<PharmacistProfile> findByUserEmail(String email);
+
     List<PharmacistProfile> findAllByPharmacyId(Long pharmacyId);
 
     Optional<PharmacistProfile> findByIdAndPharmacyId(Long id, Long pharmacyId);
-
-    long countByPharmacyId(Long pharmacyId);
 
 }

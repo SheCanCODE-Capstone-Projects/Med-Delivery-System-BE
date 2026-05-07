@@ -9,9 +9,13 @@ import java.time.LocalDateTime;
 @Data
 @Builder
 public class ActionLogResponse {
+
     private Long id;
-    private PharmacistAction action;
-    private String description;
-    private LocalDateTime timestamp;
+    private Long orderId;
     private String pharmacistUniqueId;
+    private String pharmacistName;
+    private PharmacistAction action;
+    private String notes;
+
+    private LocalDateTime performedAt;
 }
