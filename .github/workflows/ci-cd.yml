@@ -8,8 +8,8 @@ on:
 
 env:
   REGISTRY: ghcr.io
-  IMAGE_NAME: ${{ github.repository_owner }}/${{ github.event.repository.name }}
-  IMAGE_NAME_LOWER: ${{ lower(github.repository) }}
+  IMAGE_NAME: ${{ github.repository }}
+  IMAGE_NAME_LOWER: ${{ github.repository_owner.toLowerCase() }}/${{ github.event.repository.name.toLowerCase() }}
   JAVA_VERSION: "21"
 
 permissions:
