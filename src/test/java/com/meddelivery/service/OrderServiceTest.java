@@ -167,7 +167,9 @@ class OrderServiceTest {
         when(orderRepository.save(any(Order.class)))
                 .thenAnswer(inv -> {
                     Order order = inv.getArgument(0);
-                    order.setId(300L);
+                    if (order.getId() == null) {
+                        order.setId(300L);
+                    }
                     return order;
                 });
         when(orderItemRepository.saveAll(any()))
@@ -194,6 +196,7 @@ class OrderServiceTest {
         verify(pharmacyInventoryRepository).findByPharmacyIdAndMedicineId(1L, 100L);
         verify(orderRepository, times(2)).save(any(Order.class));
         verify(orderItemRepository).saveAll(any());
+        verify(paymentRepository).save(any(Payment.class));
     }
 
     @Test
@@ -227,7 +230,9 @@ class OrderServiceTest {
         when(orderRepository.save(any(Order.class)))
                 .thenAnswer(inv -> {
                     Order order = inv.getArgument(0);
-                    order.setId(301L);
+                    if (order.getId() == null) {
+                        order.setId(301L);
+                    }
                     return order;
                 });
         when(orderItemRepository.saveAll(any()))
@@ -251,6 +256,7 @@ class OrderServiceTest {
         verify(pharmacyMatchingEngine).findBestMatch(any(Order.class), any(PatientLocation.class));
         verify(pharmacyInventoryRepository).findByPharmacyIdAndMedicineId(1L, 100L);
         verify(orderRepository, times(2)).save(any(Order.class));
+        verify(paymentRepository).save(any(Payment.class));
         verifyNoInteractions(aiPrescriptionService);
     }
 
