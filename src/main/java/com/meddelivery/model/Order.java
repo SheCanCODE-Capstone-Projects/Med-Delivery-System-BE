@@ -48,7 +48,7 @@ public class Order {
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
-    @Column(updatable = false)
+    @Column
     private LocalDateTime assignedAt;
 
     @ManyToOne(fetch = FetchType.LAZY)
