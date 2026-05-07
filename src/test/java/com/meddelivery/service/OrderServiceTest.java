@@ -32,6 +32,7 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
@@ -58,6 +59,9 @@ class OrderServiceTest {
     @Mock
     private AiPrescriptionService aiPrescriptionService;
 
+    @Mock
+    private PharmacyInventoryRepository pharmacyInventoryRepository;
+
     @InjectMocks
     private OrderService orderService;
 
@@ -65,6 +69,7 @@ class OrderServiceTest {
     private User mockUser;
     private Medicine mockMedicine;
     private Prescription mockPrescription;
+    private Pharmacy mockPharmacy;
 
     @BeforeEach
     void setUp() {
@@ -93,6 +98,11 @@ class OrderServiceTest {
                 .patientProfile(mockPatient)
                 .notes("Take one tablet daily")
                 .build();
+                
+        mockPharmacy = Pharmacy.builder()
+                .id(1L)
+                .name("Test Pharmacy")
+                .build();
     }
 
     // ── Create Order Tests ──────────────────────────────
@@ -118,6 +128,18 @@ class OrderServiceTest {
                 .thenReturn(Optional.of(mockMedicine));
         when(aiPrescriptionService.validatePrescription(anyString(), any()))
                 .thenReturn(true);
+        
+        // Mock pharmacy inventory to avoid null pharmacy matching
+        PharmacyInventory mockInventory = PharmacyInventory.builder()
+                .id(1L)
+                .pharmacy(mockPharmacy)
+                .medicine(mockMedicine)
+                .price(BigDecimal.valueOf(10.0))
+                .quantity(100)
+                .build();
+        when(pharmacyInventoryRepository.findByPharmacyIdAndMedicineId(anyLong(), eq(100L)))
+                .thenReturn(Optional.of(mockInventory));
+        
         when(orderRepository.save(any(Order.class)))
                 .thenAnswer(inv -> {
                     Order order = inv.getArgument(0);
@@ -162,6 +184,18 @@ class OrderServiceTest {
                 .thenReturn(Optional.of(mockPatient));
         when(medicineRepository.findById(100L))
                 .thenReturn(Optional.of(mockMedicine));
+        
+        // Mock pharmacy inventory to avoid null pharmacy matching
+        PharmacyInventory mockInventory = PharmacyInventory.builder()
+                .id(1L)
+                .pharmacy(mockPharmacy)
+                .medicine(mockMedicine)
+                .price(BigDecimal.valueOf(10.0))
+                .quantity(100)
+                .build();
+        when(pharmacyInventoryRepository.findByPharmacyIdAndMedicineId(anyLong(), eq(100L)))
+                .thenReturn(Optional.of(mockInventory));
+        
         when(orderRepository.save(any(Order.class)))
                 .thenAnswer(inv -> {
                     Order order = inv.getArgument(0);
