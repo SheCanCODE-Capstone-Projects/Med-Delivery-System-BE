@@ -101,18 +101,20 @@ class OrderServiceTest {
                 .isVerified(true)
                 .build();
 
+        mockPatient = PatientProfile.builder()
+                .id(1L)
+                .user(mockUser)
+                .build();
+
         mockLocation = PatientLocation.builder()
                 .id(1L)
+                .patientProfile(mockPatient)
                 .isDefault(true)
                 .latitude(40.7128)
                 .longitude(-74.0060)
                 .build();
 
-        mockPatient = PatientProfile.builder()
-                .id(1L)
-                .user(mockUser)
-                .locations(List.of(mockLocation))
-                .build();
+        mockPatient.setLocations(List.of(mockLocation));
 
         mockMedicine = Medicine.builder()
                 .id(100L)
@@ -137,16 +139,6 @@ class OrderServiceTest {
                 .price(BigDecimal.valueOf(100.0))
                 .quantity(50)
                 .build();
-
-        // Add default location to patient
-        PatientLocation defaultLocation = PatientLocation.builder()
-                .id(1L)
-                .patientProfile(mockPatient)
-                .latitude(10.0)
-                .longitude(20.0)
-                .isDefault(true)
-                .build();
-        mockPatient.setLocations(List.of(defaultLocation));
     }
 
 
@@ -165,7 +157,7 @@ class OrderServiceTest {
         itemRequest.setQuantity(2);
         request.setItems(List.of(itemRequest));
 
-        // Add pharmacy mocking
+// Add pharmacy mocking
         when(pharmacyMatchingEngine.findBestMatch(any(Order.class), any(PatientLocation.class)))
                 .thenReturn(mockPharmacy);
         when(pharmacyInventoryRepository.findByPharmacyIdAndMedicineId(1L, 100L))
@@ -175,8 +167,11 @@ class OrderServiceTest {
                 .thenReturn(Optional.of(mockPatient));
         when(prescriptionRepository.findById(200L))
                 .thenReturn(Optional.of(mockPrescription));
-when(medicineRepository.findById(100L))
+        when(medicineRepository.findById(100L))
                 .thenReturn(Optional.of(mockMedicine));
+        when(aiPrescriptionService.validatePrescription(anyString(), any()))
+                .thenReturn(true);
+
         when(orderRepository.save(any(Order.class)))
                 .thenAnswer(inv -> {
                     Order order = inv.getArgument(0);
@@ -201,13 +196,13 @@ when(medicineRepository.findById(100L))
         assertEquals(OrderType.PRESCRIPTION_BASED, response.getData().getOrderType());
         assertEquals(1, response.getData().getItems().size());
         
-        verify(patientProfileRepository).findByUserId(1L);
+verify(patientProfileRepository).findByUserId(1L);
         verify(prescriptionRepository).findById(200L);
         verify(medicineRepository, times(2)).findById(100L);
         verify(aiPrescriptionService).validatePrescription(anyString(), any());
         verify(pharmacyMatchingEngine).findBestMatch(any(Order.class), any(PatientLocation.class));
         verify(pharmacyInventoryRepository).findByPharmacyIdAndMedicineId(1L, 100L);
-        verify(orderRepository, times(2)).save(any(Order.class));
+        verify(orderRepository, times(3)).save(any(Order.class));
         verify(orderItemRepository).saveAll(any());
         verify(paymentRepository).save(any(Payment.class));
     }
@@ -224,7 +219,7 @@ when(medicineRepository.findById(100L))
         itemRequest.setQuantity(3);
         request.setItems(List.of(itemRequest));
 
-        // Add pharmacy mocking
+// Add pharmacy mocking
         when(pharmacyMatchingEngine.findBestMatch(any(Order.class), any(PatientLocation.class)))
                 .thenReturn(mockPharmacy);
         when(pharmacyInventoryRepository.findByPharmacyIdAndMedicineId(1L, 100L))
@@ -233,12 +228,8 @@ when(medicineRepository.findById(100L))
         when(patientProfileRepository.findByUserId(1L))
                 .thenReturn(Optional.of(mockPatient));
         when(medicineRepository.findById(100L))
-
                 .thenReturn(Optional.of(mockMedicine));
-        when(pharmacyMatchingEngine.findBestMatch(any(Order.class), any(PatientLocation.class)))
-                .thenReturn(mockPharmacy);
-        when(pharmacyInventoryRepository.findByPharmacyIdAndMedicineId(1L, 100L))
-                .thenReturn(Optional.of(mockInventory));
+
         when(orderRepository.save(any(Order.class)))
                 .thenAnswer(inv -> {
                     Order order = inv.getArgument(0);
@@ -267,7 +258,7 @@ when(medicineRepository.findById(100L))
         verify(medicineRepository).findById(100L);
         verify(pharmacyMatchingEngine).findBestMatch(any(Order.class), any(PatientLocation.class));
         verify(pharmacyInventoryRepository).findByPharmacyIdAndMedicineId(1L, 100L);
-        verify(orderRepository, times(2)).save(any(Order.class));
+        verify(orderRepository, times(3)).save(any(Order.class));
         verify(paymentRepository).save(any(Payment.class));
         verifyNoInteractions(aiPrescriptionService);
     }
