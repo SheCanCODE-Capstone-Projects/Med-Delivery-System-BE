@@ -40,6 +40,7 @@ public class SecurityConfig {
     private String[] allowedOrigins;
 
     private static final String[] PUBLIC_URLS = {
+            "/",
             "/api/auth/**",
             "/api/pharmacies/register",
             "/swagger-ui/**",
@@ -47,7 +48,9 @@ public class SecurityConfig {
             "/api-docs/**",
             "/v3/api-docs/**",
             "/login/oauth2/**",
-            "/oauth2/**"
+            "/oauth2/**",
+            "/actuator/health",
+            "/error"
     };
 
     @Bean
