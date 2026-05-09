@@ -105,7 +105,7 @@ public class OrderService {
 
         // 3. Get Insurance Card
         InsuranceCard insuranceCard = null;
-        Double coveragePercentage = 0.0;
+        BigDecimal coveragePercentage = BigDecimal.ZERO;
         if (request.getInsuranceCardId() != null) {
             insuranceCard = insuranceCardRepository.findById(request.getInsuranceCardId())
                     .orElseThrow(() -> new ResourceNotFoundException("Insurance card with id " + request.getInsuranceCardId() + " not found"));
@@ -123,7 +123,7 @@ public class OrderService {
                 coveragePercentage = insuranceCard.getCoveragePercentage();
             } else {
                 log.warn("Insurance card {} has null coverage percentage, defaulting to 0", insuranceCard.getId());
-                coveragePercentage = 0.0;
+                coveragePercentage = BigDecimal.ZERO;
             }
         }
 
@@ -207,8 +207,8 @@ public class OrderService {
         BigDecimal insuranceAmount = BigDecimal.ZERO;
         BigDecimal patientAmount = totalAmount;
 
-        if (insuranceCard != null && coveragePercentage > 0) {
-            insuranceAmount = totalAmount.multiply(BigDecimal.valueOf(coveragePercentage / 100.0));
+        if (insuranceCard != null && coveragePercentage.compareTo(BigDecimal.ZERO) > 0) {
+            insuranceAmount = totalAmount.multiply(coveragePercentage.divide(BigDecimal.valueOf(100)));
             patientAmount = totalAmount.subtract(insuranceAmount);
         }
 
@@ -389,7 +389,7 @@ public class OrderService {
                 .orderType(order.getOrderType())
                 .fulfillmentType(order.getFulfillmentType())
                 .deliveryAddress(order.getDeliveryAddress())
-                .coveragePercentage(order.getCoveragePercentage())
+                .coveragePercentage(order.getCoveragePercentage() != null ? order.getCoveragePercentage().doubleValue() : null)
                 .createdAt(order.getCreatedAt())
                 .patientName(order.getPatientProfile().getUser().getFullName())
                 .pharmacyName(order.getAssignedPharmacy() != null ? order.getAssignedPharmacy().getName() : "Unassigned")

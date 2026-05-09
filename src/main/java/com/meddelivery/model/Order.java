@@ -46,7 +46,7 @@ public class Order {
     @Column(columnDefinition = "TEXT")
     private String deliveryAddress;
 
-    private Double coveragePercentage;
+    private BigDecimal coveragePercentage;
 
     @Column(precision = 12, scale = 2)
     private java.math.BigDecimal totalAmount;

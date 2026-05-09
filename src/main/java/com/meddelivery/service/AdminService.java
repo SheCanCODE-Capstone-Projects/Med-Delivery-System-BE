@@ -30,6 +30,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -473,7 +474,7 @@ public class AdminService {
         }
 
         card.setStatus(InsuranceStatus.VERIFIED);
-        card.setCoveragePercentage(coveragePercentage);
+        card.setCoveragePercentage(BigDecimal.valueOf(coveragePercentage));
         insuranceCardRepository.save(card);
 
         log.info("Insurance card verified: id={}, coverage={}%", cardId, coveragePercentage);
@@ -486,7 +487,7 @@ public class AdminService {
                 .frontImageUrl(card.getFrontImageUrl())
                 .backImageUrl(card.getBackImageUrl())
                 .status(card.getStatus())
-                .coveragePercentage(card.getCoveragePercentage())
+                .coveragePercentage(card.getCoveragePercentage() != null ? card.getCoveragePercentage().doubleValue() : null)
                 .createdAt(card.getCreatedAt())
                 .build();
 

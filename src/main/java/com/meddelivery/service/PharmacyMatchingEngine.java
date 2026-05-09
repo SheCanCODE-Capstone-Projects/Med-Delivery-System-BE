@@ -13,6 +13,7 @@ import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -75,7 +76,7 @@ public class PharmacyMatchingEngine {
             if (pharmacy != null) {
                 order.setAssignedPharmacy(pharmacy);
                 order.setStatus(OrderStatus.ASSIGNED);
-                order.setCoveragePercentage(bestMatch.getCoverage());
+                order.setCoveragePercentage(BigDecimal.valueOf(bestMatch.getCoverage()));
                 orderRepository.save(order);
                 log.info("Order {} auto-assigned to pharmacy {} (100% coverage)",
                         order.getId(), pharmacy.getId());

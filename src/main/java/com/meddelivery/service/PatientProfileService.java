@@ -23,7 +23,8 @@
  import org.springframework.stereotype.Service;
  import org.springframework.transaction.annotation.Transactional;
 
- import java.util.List;
+ import java.math.BigDecimal;
+import java.util.List;
  import java.util.stream.Collectors;
 
 @Slf4j
@@ -132,7 +133,7 @@ public class PatientProfileService {
                 .memberId(request.getMemberId())
                 .frontImageUrl(request.getFrontImageUrl())
                 .backImageUrl(request.getBackImageUrl())
-                .coveragePercentage(request.getCoveragePercentage())
+                .coveragePercentage(request.getCoveragePercentage() != null ? BigDecimal.valueOf(request.getCoveragePercentage()) : null)
                 .status(InsuranceStatus.PENDING_VERIFICATION) // Admin verifies insurance
                 .build();
 
@@ -188,9 +189,9 @@ public class PatientProfileService {
           if (request.getBackImageUrl() != null) {
               card.setBackImageUrl(request.getBackImageUrl());
           }
-          if (request.getCoveragePercentage() != null) {
-              card.setCoveragePercentage(request.getCoveragePercentage());
-          }
+if (request.getCoveragePercentage() != null) {
+               card.setCoveragePercentage(BigDecimal.valueOf(request.getCoveragePercentage()));
+           }
 
           InsuranceCard saved = insuranceCardRepository.save(card);
          log.info("Insurance card updated: id={}", cardId);

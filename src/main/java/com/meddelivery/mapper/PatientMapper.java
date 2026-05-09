@@ -58,7 +58,7 @@ public class PatientMapper {
                 .frontImageUrl(card.getFrontImageUrl())
                 .backImageUrl(card.getBackImageUrl())
                 .status(card.getStatus())
-                .coveragePercentage(card.getCoveragePercentage())
+                .coveragePercentage(card.getCoveragePercentage() != null ? card.getCoveragePercentage().doubleValue() : null)
                 .createdAt(card.getCreatedAt())
                 .build();
     }

@@ -431,7 +431,7 @@ verify(patientProfileRepository).findByUserId(1L);
                 .orderType(OrderType.PRIVATE_PURCHASE)
                 .status(OrderStatus.UPLOADED)
                 .createdAt(LocalDateTime.now())
-                .coveragePercentage(50.0)
+                .coveragePercentage(BigDecimal.valueOf(50.0))
                 .orderItems(new ArrayList<>())
                 .build();
 

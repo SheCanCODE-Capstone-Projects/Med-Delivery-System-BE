@@ -5,6 +5,7 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -41,7 +42,7 @@ public class InsuranceCard {
     private InsuranceStatus status;
 
     @Column(nullable = false, precision = 5, scale = 2)
-    private Double coveragePercentage;
+    private BigDecimal coveragePercentage;
 
     @CreationTimestamp
     private LocalDateTime createdAt;
