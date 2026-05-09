@@ -10,12 +10,8 @@ import java.util.Optional;
 
 @Repository
 public interface PrescriptionRepository extends JpaRepository<Prescription, Long> {
-
     List<Prescription> findAllByPatientProfileIdOrderByUploadedAtDesc(Long patientProfileId);
-
     Optional<Prescription> findByIdAndPatientProfileId(Long id, Long patientProfileId);
-
     boolean existsByIdAndPatientProfileId(Long id, Long patientProfileId);
-    
     List<Prescription> findByIdAndPatientProfileIdAndStatus(Long id, Long patientProfileId, PrescriptionStatus status);
 }
