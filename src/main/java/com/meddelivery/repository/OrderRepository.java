@@ -16,9 +16,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     Page<Order> findByPatientProfileUserId(Long userId, Pageable pageable);
     List<Order> findByAssignedPharmacyId(Long pharmacyId);
     List<Order> findAllByAssignedPharmacyId(Long pharmacyId);
-    List<Order> findByAssignedPharmacistId(Long pharmacistId);
     Page<Order> findByStatus(OrderStatus status, Pageable pageable);
     Page<Order> findByPatientProfile(PatientProfile patientProfile, Pageable pageable);
     Optional<Order> findByIdAndPatientProfile(Long id, PatientProfile patientProfile);
-    Optional<Order> findByIdAndPatientProfile(long id, PatientProfile patientProfile);
 }

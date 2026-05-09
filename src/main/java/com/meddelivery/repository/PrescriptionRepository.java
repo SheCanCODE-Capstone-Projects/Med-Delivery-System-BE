@@ -16,6 +16,6 @@ public interface PrescriptionRepository extends JpaRepository<Prescription, Long
     Optional<Prescription> findByIdAndPatientProfileId(Long id, Long patientProfileId);
 
     boolean existsByIdAndPatientProfileId(Long id, Long patientProfileId);
-
+    
     List<Prescription> findByIdAndPatientProfileIdAndStatus(Long id, Long patientProfileId, PrescriptionStatus status);
 }
