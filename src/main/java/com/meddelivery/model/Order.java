@@ -71,6 +71,9 @@ public class Order {
     @UpdateTimestamp
     private LocalDateTime updatedAt;
 
+    @Column
+    private LocalDateTime assignedAt;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "patient_profile_id", nullable = false)
     private PatientProfile patientProfile;

@@ -5,6 +5,7 @@ public enum OrderStatus {
     MATCHING,
     ASSIGNED,
     IN_PROGRESS,
+    STOCK_CONFIRMED,
     READY_FOR_PICKUP,
     OUT_FOR_DELIVERY,
     COMPLETED,

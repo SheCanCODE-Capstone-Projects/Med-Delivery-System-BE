@@ -2,6 +2,7 @@ package com.meddelivery.model;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -27,6 +28,11 @@ public class PharmacistProfile {
     @Column(unique = true, nullable = false)
     private String pharmacistUniqueId;
 
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    @Setter(AccessLevel.NONE)
+    private LocalDateTime createdAt;
+
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id", unique = true, nullable = false)
     private User user;
@@ -46,8 +52,4 @@ public class PharmacistProfile {
     @OneToMany(mappedBy = "pharmacistProfile")
     @Builder.Default
     private List<SubstitutionRequest> substitutionRequests = new ArrayList<>();
-
-    public LocalDateTime getCreatedAt() {
-        return null;
-    }
 }
