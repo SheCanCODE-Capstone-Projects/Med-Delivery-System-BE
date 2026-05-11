@@ -266,11 +266,11 @@ class AuthServiceTest {
         request.setOtp("000000");
 
         when(otpService.validateOtp("test@gmail.com", "000000"))
-                .thenReturn(false);
+                .thenThrow(new com.meddelivery.exception.OtpException("Invalid or expired OTP"));
 
         // Act & Assert
-        RuntimeException ex = assertThrows(
-                RuntimeException.class,
+        com.meddelivery.exception.OtpException ex = assertThrows(
+                com.meddelivery.exception.OtpException.class,
                 () -> authService.verifyOtp(request));
 
         assertEquals("Invalid or expired OTP", ex.getMessage());

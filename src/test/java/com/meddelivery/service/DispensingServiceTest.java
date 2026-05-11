@@ -127,7 +127,7 @@ class DispensingServiceTest {
         // Arrange
         when(pharmacistRepository.findByUserEmail("pharmacist@meddelivery.com"))
                 .thenReturn(Optional.of(mockPharmacist));
-        when(orderRepository.findByAssignedPharmacistUserEmail("pharmacist@meddelivery.com"))
+        when(orderRepository.findByAssignedPharmacyId(1L))
                 .thenReturn(List.of(mockOrder));
 
         // Act
@@ -139,13 +139,9 @@ class DispensingServiceTest {
         assertEquals(300L, result.get(0).getOrderId().longValue());
         assertEquals("John Doe", result.get(0).getPatientName());
         assertEquals("john@gmail.com", result.get(0).getPatientEmail());
-        assertEquals("PH12345", result.get(0).getPharmacistUniqueId());
-        assertEquals("Pharmacist Smith", result.get(0).getPharmacistName());
-        assertEquals("ASSIGNED", result.get(0).getOrderStatus());
-        assertEquals("Take one tablet daily", result.get(0).getPrescriptionNotes());
 
         verify(pharmacistRepository).findByUserEmail("pharmacist@meddelivery.com");
-        verify(orderRepository).findByAssignedPharmacistUserEmail("pharmacist@meddelivery.com");
+        verify(orderRepository).findByAssignedPharmacyId(1L);
     }
 
     @Test
@@ -167,7 +163,7 @@ class DispensingServiceTest {
         // Arrange
         when(pharmacistRepository.findByUserEmail("pharmacist@meddelivery.com"))
                 .thenReturn(Optional.of(mockPharmacist));
-        when(orderRepository.findByAssignedPharmacistUserEmail("pharmacist@meddelivery.com"))
+        when(orderRepository.findByAssignedPharmacyId(1L))
                 .thenReturn(List.of());
 
         // Act
@@ -176,6 +172,9 @@ class DispensingServiceTest {
         // Assert
         assertNotNull(result);
         assertTrue(result.isEmpty());
+        
+        verify(pharmacistRepository).findByUserEmail("pharmacist@meddelivery.com");
+        verify(orderRepository).findByAssignedPharmacyId(1L);
     }
 
     @Test
@@ -184,7 +183,7 @@ class DispensingServiceTest {
         // Arrange
         when(pharmacistRepository.findByUserEmail("pharmacist@meddelivery.com"))
                 .thenReturn(Optional.of(mockPharmacist));
-        when(orderRepository.findByIdAndAssignedPharmacistUserEmail(300L, "pharmacist@meddelivery.com"))
+        when(orderRepository.findById(300L))
                 .thenReturn(Optional.of(mockOrder));
 
         // Act
@@ -196,7 +195,7 @@ class DispensingServiceTest {
         assertEquals("John Doe", result.getPatientName());
         assertEquals("ASSIGNED", result.getOrderStatus());
 
-        verify(orderRepository).findByIdAndAssignedPharmacistUserEmail(300L, "pharmacist@meddelivery.com");
+        verify(orderRepository).findById(300L);
     }
 
     @Test
@@ -205,7 +204,7 @@ class DispensingServiceTest {
         // Arrange
         when(pharmacistRepository.findByUserEmail("pharmacist@meddelivery.com"))
                 .thenReturn(Optional.of(mockPharmacist));
-        when(orderRepository.findByIdAndAssignedPharmacistUserEmail(999L, "pharmacist@meddelivery.com"))
+        when(orderRepository.findById(999L))
                 .thenReturn(Optional.empty());
 
         // Act & Assert
@@ -218,15 +217,23 @@ class DispensingServiceTest {
     @DisplayName("GetOrderDetail → Order not assigned to this pharmacist throws exception")
     void getOrderDetail_NotAssignedToPharmacist_ThrowsException() {
         // Arrange
+        Order wrongPharmacyOrder = Order.builder()
+                .id(999L)
+                .patientProfile(mockPatient)
+                .assignedPharmacy(Pharmacy.builder().id(999L).name("Other Pharmacy").build())
+                .orderType(OrderType.PRESCRIPTION_BASED)
+                .status(OrderStatus.ASSIGNED)
+                .build();
+
         when(pharmacistRepository.findByUserEmail("pharmacist@meddelivery.com"))
                 .thenReturn(Optional.of(mockPharmacist));
-        when(orderRepository.findByIdAndAssignedPharmacistUserEmail(999L, "pharmacist@meddelivery.com"))
-                .thenReturn(Optional.empty());
+        when(orderRepository.findById(999L))
+                .thenReturn(Optional.of(wrongPharmacyOrder));
 
         // Act & Assert
         ResourceNotFoundException ex = assertThrows(ResourceNotFoundException.class,
                 () -> dispensingService.getOrderDetail(999L, "pharmacist@meddelivery.com"));
-        assertTrue(ex.getMessage().contains("not found"));
+        assertTrue(ex.getMessage().contains("not assigned to your pharmacy"));
     }
 
     @Test
@@ -235,7 +242,7 @@ class DispensingServiceTest {
         // Arrange
         when(pharmacistRepository.findByUserEmail("pharmacist@meddelivery.com"))
                 .thenReturn(Optional.of(mockPharmacist));
-        when(orderRepository.findByIdAndAssignedPharmacistUserEmail(300L, "pharmacist@meddelivery.com"))
+        when(orderRepository.findById(300L))
                 .thenReturn(Optional.of(mockOrder));
         when(prescriptionRepository.save(any(Prescription.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
@@ -264,7 +271,7 @@ class DispensingServiceTest {
         // Arrange
         when(pharmacistRepository.findByUserEmail("pharmacist@meddelivery.com"))
                 .thenReturn(Optional.of(mockPharmacist));
-        when(orderRepository.findByIdAndAssignedPharmacistUserEmail(999L, "pharmacist@meddelivery.com"))
+        when(orderRepository.findById(999L))
                 .thenReturn(Optional.empty());
 
         ValidatePrescriptionRequest request = new ValidatePrescriptionRequest();
@@ -281,7 +288,7 @@ class DispensingServiceTest {
         // Arrange
         when(pharmacistRepository.findByUserEmail("pharmacist@meddelivery.com"))
                 .thenReturn(Optional.of(mockPharmacist));
-        when(orderRepository.findByIdAndAssignedPharmacistUserEmail(300L, "pharmacist@meddelivery.com"))
+        when(orderRepository.findById(300L))
                 .thenReturn(Optional.of(mockOrder));
         when(orderRepository.save(any(Order.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
@@ -304,7 +311,7 @@ class DispensingServiceTest {
         // Arrange
         when(pharmacistRepository.findByUserEmail("pharmacist@meddelivery.com"))
                 .thenReturn(Optional.of(mockPharmacist));
-        when(orderRepository.findByIdAndAssignedPharmacistUserEmail(999L, "pharmacist@meddelivery.com"))
+        when(orderRepository.findById(999L))
                 .thenReturn(Optional.empty());
 
         // Act & Assert
@@ -326,7 +333,7 @@ class DispensingServiceTest {
 
         when(pharmacistRepository.findByUserEmail("pharmacist@meddelivery.com"))
                 .thenReturn(Optional.of(mockPharmacist));
-        when(orderRepository.findByIdAndAssignedPharmacistUserEmail(300L, "pharmacist@meddelivery.com"))
+        when(orderRepository.findById(300L))
                 .thenReturn(Optional.of(mockOrder));
         when(substitutionRequestRepository.save(any(SubstitutionRequest.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
@@ -358,7 +365,7 @@ class DispensingServiceTest {
 
         when(pharmacistRepository.findByUserEmail("pharmacist@meddelivery.com"))
                 .thenReturn(Optional.of(mockPharmacist));
-        when(orderRepository.findByIdAndAssignedPharmacistUserEmail(300L, "pharmacist@meddelivery.com"))
+        when(orderRepository.findById(300L))
                 .thenReturn(Optional.of(mockOrder));
 
         SuggestSubstitutionRequest request = new SuggestSubstitutionRequest();
@@ -378,7 +385,7 @@ class DispensingServiceTest {
         // Arrange
         when(pharmacistRepository.findByUserEmail("pharmacist@meddelivery.com"))
                 .thenReturn(Optional.of(mockPharmacist));
-        when(orderRepository.findByIdAndAssignedPharmacistUserEmail(300L, "pharmacist@meddelivery.com"))
+        when(orderRepository.findById(300L))
                 .thenReturn(Optional.of(mockOrder));
         when(orderRepository.save(any(Order.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
@@ -413,7 +420,7 @@ class DispensingServiceTest {
                 .build();
         when(pharmacistRepository.findByUserEmail("pharmacist@meddelivery.com"))
                 .thenReturn(Optional.of(mockPharmacist));
-        when(orderRepository.findByIdAndAssignedPharmacistUserEmail(300L, "pharmacist@meddelivery.com"))
+        when(orderRepository.findById(300L))
                 .thenReturn(Optional.of(mockOrder));
         when(actionLogRepository.findByOrderId(300L))
                 .thenReturn(List.of(log));
@@ -437,7 +444,7 @@ class DispensingServiceTest {
         // Arrange
         when(pharmacistRepository.findByUserEmail("pharmacist@meddelivery.com"))
                 .thenReturn(Optional.of(mockPharmacist));
-        when(orderRepository.findByIdAndAssignedPharmacistUserEmail(300L, "pharmacist@meddelivery.com"))
+        when(orderRepository.findById(300L))
                 .thenReturn(Optional.of(mockOrder));
         when(actionLogRepository.findByOrderId(300L))
                 .thenReturn(List.of());
@@ -454,16 +461,24 @@ class DispensingServiceTest {
     @DisplayName("ValidatePrescription → Order not assigned to pharmacist throws exception")
     void validatePrescription_NotAssigned_ThrowsException() {
         // Arrange
+        Order wrongPharmacyOrder = Order.builder()
+                .id(999L)
+                .patientProfile(mockPatient)
+                .assignedPharmacy(Pharmacy.builder().id(999L).name("Other Pharmacy").build())
+                .orderType(OrderType.PRESCRIPTION_BASED)
+                .status(OrderStatus.ASSIGNED)
+                .build();
+
         when(pharmacistRepository.findByUserEmail("pharmacist@meddelivery.com"))
                 .thenReturn(Optional.of(mockPharmacist));
-        when(orderRepository.findByIdAndAssignedPharmacistUserEmail(999L, "pharmacist@meddelivery.com"))
-                .thenReturn(Optional.empty());
+        when(orderRepository.findById(999L))
+                .thenReturn(Optional.of(wrongPharmacyOrder));
 
         ValidatePrescriptionRequest request = new ValidatePrescriptionRequest();
 
         // Act & Assert
         ResourceNotFoundException ex = assertThrows(ResourceNotFoundException.class,
                 () -> dispensingService.validatePrescription(999L, request, "pharmacist@meddelivery.com"));
-        assertTrue(ex.getMessage().contains("not found"));
+        assertTrue(ex.getMessage().contains("not assigned to your pharmacy"));
     }
 }

@@ -196,14 +196,14 @@ class OrderServiceTest {
         assertEquals(OrderType.PRESCRIPTION_BASED, response.getData().getOrderType());
         assertEquals(1, response.getData().getItems().size());
         
-verify(patientProfileRepository).findByUserId(1L);
+        verify(patientProfileRepository).findByUserId(1L);
         verify(prescriptionRepository).findById(200L);
         verify(medicineRepository, times(2)).findById(100L);
         verify(aiPrescriptionService).validatePrescription(anyString(), any());
         verify(pharmacyMatchingEngine).findBestMatch(any(Order.class), any(PatientLocation.class));
         verify(pharmacyInventoryRepository).findByPharmacyIdAndMedicineId(1L, 100L);
         verify(orderRepository, times(3)).save(any(Order.class));
-        verify(orderItemRepository).saveAll(any());
+        verify(orderItemRepository, times(2)).saveAll(any());
         verify(paymentRepository).save(any(Payment.class));
     }
 

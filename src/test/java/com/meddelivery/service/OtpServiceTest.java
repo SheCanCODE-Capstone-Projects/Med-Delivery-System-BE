@@ -103,7 +103,7 @@ class OtpServiceTest {
     }
 
     @Test
-    @DisplayName("ValidateOtp → Returns false for wrong OTP")
+    @DisplayName("ValidateOtp → Throws exception for wrong OTP")
     void validateOtp_WithWrongOtp_ReturnsFalse() {
 
         when(rateLimitService.isOtpVerifyAllowed(anyString()))
@@ -113,16 +113,15 @@ class OtpServiceTest {
         when(valueOperations.get("OTP:test@gmail.com"))
                 .thenReturn("123456");
 
-        boolean result = otpService.validateOtp(
-                "test@gmail.com", "000000");
+        assertThrows(com.meddelivery.exception.OtpException.class, () ->
+                otpService.validateOtp("test@gmail.com", "000000"));
 
-        assertFalse(result);
         verify(redisTemplate, never()).delete(anyString());
         verify(rateLimitService, never()).clearOtpVerifyAttempts(anyString());
     }
 
     @Test
-    @DisplayName("ValidateOtp → Returns false when OTP expired")
+    @DisplayName("ValidateOtp → Throws exception when OTP expired")
     void validateOtp_WithExpiredOtp_ReturnsFalse() {
 
         when(rateLimitService.isOtpVerifyAllowed(anyString()))
@@ -132,10 +131,9 @@ class OtpServiceTest {
         when(valueOperations.get("OTP:test@gmail.com"))
                 .thenReturn(null);
 
-        boolean result = otpService.validateOtp(
-                "test@gmail.com", "123456");
+        assertThrows(com.meddelivery.exception.OtpException.class, () ->
+                otpService.validateOtp("test@gmail.com", "123456"));
 
-        assertFalse(result);
         verify(rateLimitService, never()).clearOtpVerifyAttempts(anyString());
     }
 
