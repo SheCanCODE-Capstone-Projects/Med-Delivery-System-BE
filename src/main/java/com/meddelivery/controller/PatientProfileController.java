@@ -28,31 +28,32 @@ import org.springframework.web.multipart.MultipartFile;
  * All endpoints require ROLE_PATIENT unless noted.
  * Matches SecurityConfig: .requestMatchers("/api/patient/**").hasRole("PATIENT")
  */
- @RestController
- @RequestMapping("/api/patient")
- @RequiredArgsConstructor
- @PreAuthorize("hasRole('PATIENT')")
- public class PatientProfileController {
+@RestController
+@RequestMapping("/api/patient")
+@RequiredArgsConstructor
+@PreAuthorize("hasRole('PATIENT')")
+@Tag(name = "Patient Profile", description = "Endpoints for patient profile management, insurance cards, and location management")
+public class PatientProfileController {
 
      private final PatientProfileService profileService;
      private final FileStorageService fileStorageService;
 
 
-    @PostMapping("/profile")
-    public ResponseEntity<ApiResponse<PatientProfileResponse>> createProfile(
-            @Valid @RequestBody PatientProfileRequest request) {
-
-        PatientProfileResponse response = profileService.createProfile(request);
-        return ResponseEntity
-                .status(HttpStatus.CREATED)
-                .body(ApiResponse.success("Profile created successfully", response));
-    }
-
-
-    @GetMapping("/profile")
-    public ResponseEntity<ApiResponse<PatientProfileResponse>> getMyProfile() {
+     @Operation(summary = "Get my patient profile")
+     @GetMapping("/profile")
+     public ResponseEntity<ApiResponse<PatientProfileResponse>> getMyProfile() {
         return ResponseEntity.ok(
                 ApiResponse.success("Profile retrieved successfully", profileService.getMyProfile()));
+    }
+
+     @Operation(summary = "Update patient profile", description = "Partial update of patient profile fields. Only non-null fields will be updated.")
+     @PatchMapping("/profile")
+     public ResponseEntity<ApiResponse<PatientProfileResponse>> updateProfile(
+             @Valid @RequestBody PatientProfileRequest request) {
+
+        PatientProfileResponse response = profileService.updateProfile(request);
+        return ResponseEntity.ok(
+                ApiResponse.success("Profile updated successfully", response));
     }
 
      @GetMapping("/profile/{id}")
@@ -66,6 +67,7 @@ import org.springframework.web.multipart.MultipartFile;
 
      // ==================== INSURANCE CARD MANAGEMENT ====================
 
+     @Operation(summary = "Add insurance card")
      @PostMapping("/profile/insurance")
      public ResponseEntity<ApiResponse<InsuranceCardResponse>> addInsuranceCard(
              @Valid @RequestBody InsuranceCardRequest request) {
@@ -76,12 +78,14 @@ import org.springframework.web.multipart.MultipartFile;
                  .body(ApiResponse.success("Insurance card added. Pending verification.", response));
      }
 
+     @Operation(summary = "Get all my insurance cards")
      @GetMapping("/profile/insurance")
      public ResponseEntity<ApiResponse<List<InsuranceCardResponse>>> getMyInsuranceCards() {
          return ResponseEntity.ok(
                  ApiResponse.success("Insurance cards retrieved successfully", profileService.getMyInsuranceCards()));
      }
 
+     @Operation(summary = "Get insurance card by ID")
      @GetMapping("/profile/insurance/{id}")
      public ResponseEntity<ApiResponse<InsuranceCardResponse>> getInsuranceCardById(
              @PathVariable Long id) {
@@ -90,6 +94,7 @@ import org.springframework.web.multipart.MultipartFile;
                  ApiResponse.success("Insurance card retrieved successfully", profileService.getInsuranceCardById(id)));
      }
 
+     @Operation(summary = "Delete insurance card")
      @DeleteMapping("/profile/insurance/{id}")
      public ResponseEntity<ApiResponse<String>> deleteInsuranceCard(
              @PathVariable Long id) {
@@ -99,7 +104,7 @@ import org.springframework.web.multipart.MultipartFile;
                  ApiResponse.success(null, "Insurance card removed"));
      }
 
-     // JSON update for insurance card (provider, memberId, image URLs)
+     @Operation(summary = "Update insurance card")
      @PutMapping("/profile/insurance/{id}")
      public ResponseEntity<ApiResponse<InsuranceCardResponse>> updateInsuranceCard(
              @PathVariable Long id,
@@ -110,8 +115,8 @@ import org.springframework.web.multipart.MultipartFile;
                  ApiResponse.success("Insurance card updated successfully", response));
      }
 
-     // Multipart upload for insurance card images (create only)
-     @PostMapping(value = "/insurance/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+     @Operation(summary = "Upload insurance card images", description = "Multipart upload of front and back insurance card images. Provider name and member ID are required as form fields.")
+     @PostMapping(value = "/profile/insurance/upload", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
      public ResponseEntity<ApiResponse<InsuranceCardResponse>> uploadInsuranceCard(
              @RequestPart("frontImage") MultipartFile frontImage,
              @RequestPart("backImage") MultipartFile backImage,
@@ -126,7 +131,7 @@ import org.springframework.web.multipart.MultipartFile;
          String frontPath = fileStorageService.storeFile(frontImage, "insurance/front");
          String backPath = fileStorageService.storeFile(backImage, "insurance/back");
 
-         // Build request
+         // Build request (coveragePercentage omitted – set by admin during verification)
          InsuranceCardRequest request = new InsuranceCardRequest();
          request.setProviderName(providerName);
          request.setMemberId(memberId);
@@ -137,11 +142,11 @@ import org.springframework.web.multipart.MultipartFile;
          return ResponseEntity
                   .status(HttpStatus.CREATED)
                   .body(ApiResponse.success("Insurance card uploaded. Pending verification.", response));
-      }
+     }
 
-      @PostMapping(value = "/profile/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-      @Operation(summary = "Upload Profile Image")
-      public ResponseEntity<ApiResponse<PatientProfileResponse>> uploadProfileImage(
+     @Operation(summary = "Upload profile image")
+     @PostMapping(value = "/profile/image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+     public ResponseEntity<ApiResponse<PatientProfileResponse>> uploadProfileImage(
               @RequestPart("file") MultipartFile file) {
 
           if (file == null || file.isEmpty()) {

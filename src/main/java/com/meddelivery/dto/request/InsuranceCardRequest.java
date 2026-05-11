@@ -1,7 +1,5 @@
 package com.meddelivery.dto.request;
 
-import jakarta.validation.constraints.DecimalMax;
-import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.NotBlank;
 import lombok.Data;
 
@@ -19,8 +17,4 @@ public class InsuranceCardRequest {
 
     @NotBlank(message = "Back image URL is required")
     private String backImageUrl;
-
-    @DecimalMin(value = "0.0", message = "Coverage must be at least 0%")
-    @DecimalMax(value = "100.0", message = "Coverage cannot exceed 100%")
-    private Double coveragePercentage;
 }

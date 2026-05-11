@@ -1,0 +1,2 @@
+-- Placeholder migration for V9
+-- This migration was removed but needed for version continuity

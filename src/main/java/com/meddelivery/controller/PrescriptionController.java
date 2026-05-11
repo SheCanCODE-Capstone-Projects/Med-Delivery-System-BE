@@ -16,6 +16,7 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/patient/prescriptions")
@@ -26,30 +27,25 @@ public class PrescriptionController {
     private final PrescriptionService prescriptionService;
     private final FileStorageService fileStorageService;
 
-    // Multipart file upload endpoint (replaces JSON-only)
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<PrescriptionResponse>> upload(
             @RequestPart("file") MultipartFile file,
-            @RequestPart(value = "fileType", required = false) String fileTypeStr,
-            @RequestPart(value = "notes", required = false) String notes,
-            @RequestPart(value = "prescriptionDate", required = false) String prescriptionDateStr,
-            @RequestPart(value = "hasStamp", required = false) Boolean hasStamp,
-            @RequestPart(value = "hasSignature", required = false) Boolean hasSignature) {
+            @RequestParam(value = "fileType", required = false) String fileTypeStr,
+            @RequestParam(value = "notes", required = false) String notes,
+            @RequestParam(value = "prescriptionDate", required = false) String prescriptionDateStr,
+            @RequestParam(value = "hasStamp", required = false) Boolean hasStamp,
+            @RequestParam(value = "hasSignature", required = false) Boolean hasSignature) {
 
-        // Validate file
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("Prescription file is required");
         }
 
-        // Determine file type from original filename if not provided
-        String fileType = fileTypeStr != null ? fileTypeStr.toUpperCase() : extractFileType(file.getOriginalFilename());
-
-        // Store file in prescriptions subdirectory
+        String fileType = (fileTypeStr != null && !fileTypeStr.isBlank()) 
+            ? fileTypeStr.toUpperCase() 
+            : extractFileType(file.getOriginalFilename());
         String storedPath = fileStorageService.storeFile(file, "prescriptions");
-        // Build URL (resource handler serves /api/files/** from uploads)
         String fileUrl = "/api/files/" + storedPath;
 
-        // Build request for service
         PrescriptionRequest request = new PrescriptionRequest();
         request.setFileUrl(fileUrl);
         request.setFileType(com.meddelivery.model.enums.FileType.valueOf(fileType));
@@ -67,10 +63,12 @@ public class PrescriptionController {
     }
 
     private String extractFileType(String filename) {
-        if (filename == null) return "IMAGE";
+        if (filename == null) return "JPG";
         String lower = filename.toLowerCase();
         if (lower.endsWith(".pdf")) return "PDF";
-        return "IMAGE";
+        if (lower.endsWith(".png")) return "JPG";
+        if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) return "JPG";
+        return "JPG";
     }
 
     @GetMapping

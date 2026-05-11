@@ -102,23 +102,16 @@ public class PharmacistService {
     }
 
     @Transactional
-    public PharmacistResponse validatePrescription(Long prescriptionId, boolean isValid, Long pharmacistId) {
-        PharmacistProfile pharmacist = pharmacistRepository.findByUserId(pharmacistId)
-                .orElseThrow(() -> new IllegalArgumentException("Pharmacist not found"));
-        
-        Prescription prescription = prescriptionRepository.findById(prescriptionId)
-                .orElseThrow(() -> new IllegalArgumentException("Prescription not found"));
-        
-        // Verify pharmacist belongs to pharmacy that can access this prescription
-        // (This could be enhanced based on business rules)
-        prescription.setValidatedByPharmacist(isValid);
-        prescription.setValidationStatus(isValid ? "VALIDATED" : "REJECTED");
-        prescription.setValidatorPharmacist(pharmacist);
-        prescriptionRepository.save(prescription);
-        
-        System.out.println("Pharmacist " + pharmacistId + " validated prescription " + prescriptionId + " as " + (isValid ? "VALID" : "INVALID"));
-        
-        return mapToResponse(pharmacist);
+    public void removePharmacist(Long pharmacyId, Long pharmacistId) {
+        PharmacistProfile pharmacist = pharmacistRepository
+                .findByIdAndPharmacyId(pharmacistId, pharmacyId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Pharmacist with ID " + pharmacistId +
+                                " not found in pharmacy " + pharmacyId + "."
+                ));
+
+        // Remove the pharmacist from the pharmacy
+        pharmacistRepository.delete(pharmacist);
     }
 
     private String generatePharmacistUniqueId(Pharmacy pharmacy) {

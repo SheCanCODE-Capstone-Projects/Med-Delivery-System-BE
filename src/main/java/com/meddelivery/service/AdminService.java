@@ -35,7 +35,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
-import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -62,19 +61,21 @@ public class AdminService {
         long pendingApprovals = pharmacyRepository.findAllByStatus(PharmacyStatus.PENDING_APPROVAL).size();
         long totalPharmacies = pharmacyRepository.count();
 
-        // Note: In production, use specific COUNT queries for performance instead of fetching all
-        List<Order> todayOrders = orderRepository.findAll().stream()
-                .filter(o -> o.getCreatedAt() != null && o.getCreatedAt().isAfter(startOfDay))
-                .collect(Collectors.toList());
-
-        long pending = todayOrders.stream().filter(o -> 
-            o.getStatus() == OrderStatus.UPLOADED || o.getStatus() == OrderStatus.MATCHING).count();
+        // Use efficient count queries instead of fetching all orders
+        long pending = orderRepository.countByCreatedAtAfterAndStatusIn(
+                startOfDay, 
+                List.of(OrderStatus.UPLOADED, OrderStatus.MATCHING)
+        );
         
-        long inProgress = todayOrders.stream().filter(o -> 
-            o.getStatus() == OrderStatus.ASSIGNED || o.getStatus() == OrderStatus.IN_PROGRESS).count();
+        long inProgress = orderRepository.countByCreatedAtAfterAndStatusIn(
+                startOfDay, 
+                List.of(OrderStatus.ASSIGNED, OrderStatus.IN_PROGRESS)
+        );
         
-        long completed = todayOrders.stream().filter(o -> 
-            o.getStatus() == OrderStatus.COMPLETED).count();
+        long completed = orderRepository.countByCreatedAtAfterAndStatus(
+                startOfDay, 
+                OrderStatus.COMPLETED
+        );
         
         double revenue = completed * 50.0; // Mock calculation
 
@@ -192,7 +193,7 @@ public class AdminService {
 
         pharmacyRepository.save(pharmacy);
         logAudit("PHARMACY_APPROVAL", "Pharmacy ID: " + pharmacyId, request.getAction() + " - Reason: " + request.getReason());
-        return ApiResponse.success("Pharmacy " + request.getAction().toLowerCase() + "d");
+        return ApiResponse.success("Pharmacy " + request.getAction().toLowerCase() + "d", (Void) null);
     }
 
     @Transactional
@@ -243,7 +244,7 @@ public class AdminService {
 
         logAudit("REPLACE_PHARMACY_MANAGER", "Pharmacy ID: " + pharmacyId,
                 "New manager: " + request.getManagerEmail());
-        return ApiResponse.success("Pharmacy manager replaced successfully");
+        return ApiResponse.success("Pharmacy manager replaced successfully", (Void) null);
     }
 
     @Transactional
@@ -253,9 +254,9 @@ public class AdminService {
         
         pharmacy.setStatus(PharmacyStatus.SUSPENDED);
         pharmacyRepository.save(pharmacy);
-        
+         
         logAudit("SUSPEND_PHARMACY", "Pharmacy ID: " + pharmacyId, "Reason: " + reason);
-        return ApiResponse.success("Pharmacy suspended");
+        return ApiResponse.success("Pharmacy suspended", (Void) null);
     }
 
     public ApiResponse<List<InsuranceProvider>> getAllInsuranceProviders() {
@@ -323,7 +324,7 @@ public class AdminService {
         userRepository.save(user);
 
         logAudit("UPDATE_USER_STATUS", "User ID: " + userId, "Set active: " + isActive);
-        return ApiResponse.success("User status updated");
+        return ApiResponse.success("User status updated", (Void) null);
     }
 
     @Transactional
@@ -333,9 +334,9 @@ public class AdminService {
         
         order.setStatus(OrderStatus.CANCELLED);
         orderRepository.save(order);
-        
+         
         logAudit("FORCE_CANCEL_ORDER", "Order ID: " + orderId, "Reason: " + request.getReason());
-        return ApiResponse.success("Order cancelled");
+        return ApiResponse.success("Order cancelled", (Void) null);
     }
 
     @Transactional
@@ -353,9 +354,9 @@ public class AdminService {
         order.setAssignedPharmacy(newPharmacy);
         order.setStatus(OrderStatus.ASSIGNED);
         orderRepository.save(order);
-        
+         
         logAudit("REASSIGN_ORDER", "Order ID: " + orderId, "To Pharmacy ID: " + request.getNewPharmacyId());
-        return ApiResponse.success("Order reassigned");
+        return ApiResponse.success("Order reassigned", (Void) null);
     }
 
     @Transactional
@@ -373,9 +374,9 @@ public class AdminService {
 
         subReq.setStatus(newStatus);
         substitutionRepo.save(subReq);
-        
+         
         logAudit("OVERRIDE_SUBSTITUTION", "Sub ID: " + substitutionId, request.getSubstitutionAction());
-        return ApiResponse.success("Substitution " + request.getSubstitutionAction().toLowerCase() + "d");
+        return ApiResponse.success("Substitution " + request.getSubstitutionAction().toLowerCase() + "d", (Void) null);
     }
 
     // --- E. Medicine & Inventory Catalog ---

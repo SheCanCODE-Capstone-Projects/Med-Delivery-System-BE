@@ -127,7 +127,7 @@ public class OrderService {
             }
         }
 
-        // 4. Pharmacy matching
+        // 4. Get patient location
         PatientLocation patientLocation = null;
         if (patient.getLocations() != null) {
             patientLocation = patient.getLocations().stream()
@@ -136,15 +136,8 @@ public class OrderService {
                 .orElse(null);
         }
 
-        Pharmacy matchedPharmacy = null;
-        if (patientLocation != null) {
-            Order tempOrder = Order.builder()
-                    .patientProfile(patient)
-                    .orderType(request.getOrderType())
-                    .fulfillmentType(request.getFulfillmentType())
-                    .status(OrderStatus.UPLOADED)
-                    .build();
-            matchedPharmacy = pharmacyMatchingEngine.findBestMatch(tempOrder, patientLocation);
+        if (patientLocation == null) {
+            throw new BusinessException("Please set a default location before placing an order");
         }
 
         // 5. Create Order
@@ -166,44 +159,44 @@ public class OrderService {
         if (prescription != null) {
             order.setPrescription(prescription);
         }
-        if (matchedPharmacy != null) {
-            order.setAssignedPharmacy(matchedPharmacy);
-        }
 
-        // 6. Create Order Items with pricing
+        // 6. Create Order Items first
         List<OrderItem> items = new ArrayList<>();
-        BigDecimal totalAmount = BigDecimal.ZERO;
-
         for (CreateOrderRequest.OrderItemRequest itemReq : request.getItems()) {
             Medicine medicine = medicineRepository.findById(itemReq.getMedicineId())
                     .orElseThrow(() -> new ResourceNotFoundException("Medicine not found"));
-
-            BigDecimal unitPrice;
-            if (matchedPharmacy != null) {
-                PharmacyInventory inventory = pharmacyInventoryRepository
-                    .findByPharmacyIdAndMedicineId(matchedPharmacy.getId(), itemReq.getMedicineId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Medicine " + medicine.getName() + " is not available at matched pharmacy"));
-                unitPrice = inventory.getPrice();
-            } else {
-                throw new BusinessException("No pharmacy matched for this order. Cannot determine pricing.");
-            }
 
             OrderItem item = OrderItem.builder()
                     .order(order)
                     .medicine(medicine)
                     .quantity(itemReq.getQuantity())
-                    .unitPrice(unitPrice)
                     .status(com.meddelivery.model.enums.OrderItemStatus.AVAILABLE)
                     .build();
             items.add(item);
-
-            totalAmount = totalAmount.add(unitPrice.multiply(BigDecimal.valueOf(itemReq.getQuantity())));
         }
-
         orderItemRepository.saveAll(items);
         order.setOrderItems(items);
 
-        // 7. Calculate payment amounts
+        // 7. Now match pharmacy with items
+        Pharmacy matchedPharmacy = pharmacyMatchingEngine.findBestMatch(order, patientLocation);
+        if (matchedPharmacy == null) {
+            throw new BusinessException("No pharmacy available to fulfill this order. Please try again later or contact support.");
+        }
+        order.setAssignedPharmacy(matchedPharmacy);
+
+        // 8. Calculate pricing based on matched pharmacy
+        BigDecimal totalAmount = BigDecimal.ZERO;
+        for (OrderItem item : items) {
+            PharmacyInventory inventory = pharmacyInventoryRepository
+                .findByPharmacyIdAndMedicineId(matchedPharmacy.getId(), item.getMedicine().getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Medicine " + item.getMedicine().getName() + " is not available at matched pharmacy"));
+            
+            item.setUnitPrice(inventory.getPrice());
+            totalAmount = totalAmount.add(inventory.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
+        }
+        orderItemRepository.saveAll(items);
+
+        // 9. Calculate payment amounts
         BigDecimal insuranceAmount = BigDecimal.ZERO;
         BigDecimal patientAmount = totalAmount;
 
@@ -216,7 +209,7 @@ public class OrderService {
         order.setInsurancePayableAmount(insuranceAmount);
         order.setPatientPayableAmount(patientAmount);
 
-        // 8. Create Payment record
+        // 10. Create Payment record
         Payment payment = Payment.builder()
                 .order(order)
                 .totalAmount(totalAmount)
@@ -234,7 +227,7 @@ public class OrderService {
         log.info("Order created with payment: Total={}, Insurance={}, Patient={} for User: {}",
                 totalAmount, insuranceAmount, patientAmount, userId);
 
-        // 9. Notify
+        // 11. Notify
         if (matchedPharmacy != null) {
             order.setStatus(OrderStatus.MATCHING);
             order = orderRepository.save(order);

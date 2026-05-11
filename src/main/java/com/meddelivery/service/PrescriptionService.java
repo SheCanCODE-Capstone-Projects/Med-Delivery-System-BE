@@ -25,6 +25,7 @@ public class PrescriptionService {
     private final PrescriptionRepository prescriptionRepository;
     private final PatientProfileService profileService;
     private final PatientMapper mapper;
+    private final FileStorageService fileStorageService;
 
 
     @Transactional
@@ -80,14 +81,23 @@ public class PrescriptionService {
                     "Cannot delete a prescription that has already been sent to a pharmacy.");
         }
 
+        // Delete the physical file from storage before deleting the database record
+        if (prescription.getFileUrl() != null) {
+            String filePath = prescription.getFileUrl().replaceFirst("/api/files/", "");
+            fileStorageService.deleteFile(filePath);
+        }
+
         prescriptionRepository.delete(prescription);
         log.info("Prescription {} deleted by patientProfileId={}", prescriptionId, profile.getId());
     }
 
 
     public Prescription validateAndGetPrescription(Long prescriptionId, Long patientProfileId) {
-        return (Prescription) prescriptionRepository
+        List<Prescription> results = prescriptionRepository
                 .findByIdAndPatientProfileIdAndStatus(prescriptionId, patientProfileId,PrescriptionStatus.VALIDATED);
-
+        if (results == null || results.isEmpty()) {
+            return null;
+        }
+        return results.get(0);
     }
 }

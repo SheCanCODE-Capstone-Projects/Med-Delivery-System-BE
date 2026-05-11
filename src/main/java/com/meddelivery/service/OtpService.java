@@ -59,13 +59,13 @@ public class OtpService {
         String storedOtp = redisTemplate.opsForValue().get(key);
 
         if (storedOtp == null) {
-            log.error("OTP expired or not found for: {}", username);
-            return false;
+            log.error("OTP expired or not found for username: {}", username);
+            throw new OtpException("OTP has expired or was not found. Please request a new OTP.");
         }
 
         if (!storedOtp.equals(otp)) {
-            log.error("Invalid OTP for: {}", username);
-            return false;
+            log.error("Invalid OTP for username: {}. Expected: {}, Got: {}", username, storedOtp, otp);
+            throw new OtpException("Invalid OTP code. Please check the code sent to your email and try again.");
         }
 
         // Delete OTP after successful validation

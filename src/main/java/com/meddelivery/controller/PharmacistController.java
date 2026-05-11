@@ -72,14 +72,12 @@ public class PharmacistController {
         return ResponseEntity.ok(updated);
     }
 
-    @PutMapping("/prescriptions/{prescriptionId}/validate")
-    @PreAuthorize("hasRole('PHARMACIST')")
-    public ResponseEntity<PharmacistResponse> validatePrescription(
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('MANAGER')")
+    public ResponseEntity<Void> removePharmacist(
             @PathVariable Long pharmacyId,
-            @PathVariable Long prescriptionId,
-            @RequestParam boolean isValid,
-            @AuthenticationPrincipal User user) {
-        PharmacistResponse response = pharmacistService.validatePrescription(prescriptionId, isValid, user.getId());
-        return ResponseEntity.ok(response);
+            @PathVariable Long id) {
+        pharmacistService.removePharmacist(pharmacyId, id);
+        return ResponseEntity.noContent().build();
     }
 }

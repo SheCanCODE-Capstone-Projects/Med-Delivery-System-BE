@@ -82,30 +82,27 @@ public class AuthService {
                     "Email or phone number is required");
         }
 
-        boolean exists = false;
-
+        // Check if user already exists
+        User existingUser = null;
         if (request.getEmail() != null) {
-            exists = userRepository
-                    .findByEmail(request.getEmail())
-                    .isPresent();
+            existingUser = userRepository.findByEmail(request.getEmail()).orElse(null);
+        }
+        if (existingUser == null && request.getPhoneNumber() != null) {
+            existingUser = userRepository.findByPhoneNumber(request.getPhoneNumber()).orElse(null);
         }
 
-        if (!exists && request.getPhoneNumber() != null) {
-            exists = userRepository
-                    .findByPhoneNumber(request.getPhoneNumber())
-                    .isPresent();
-        }
-
-        if (exists) {
-            String username = request.getEmail() != null
-                    ? request.getEmail()
-                    : request.getPhoneNumber();
+        // If user exists, just send OTP
+        if (existingUser != null) {
+            String username = existingUser.getEmail() != null
+                    ? existingUser.getEmail()
+                    : existingUser.getPhoneNumber();
             otpService.sendOtp(username);
+            log.info("Existing user, OTP resent to: {}", username);
             return "OTP sent to your " +
-                    (request.getEmail() != null
-                            ? "email" : "phone");
+                    (existingUser.getEmail() != null ? "email" : "phone");
         }
 
+        // Create new user with registration data
         User user = User.builder()
                 .fullName(request.getFullName())
                 .email(request.getEmail())
@@ -113,39 +110,41 @@ public class AuthService {
                 .role(UserRole.PATIENT)
                 .isActive(false)
                 .isVerified(false)
+                .emailNotifications(true)  // Default to true
+                .smsNotifications(true)    // Default to true
                 .build();
 
+        // Create patient profile with registration data
         PatientProfile profile = PatientProfile.builder()
                 .user(user)
                 .build();
 
         user.setPatientProfile(profile);
-        userRepository.save(user);
+        
+        // Save user to database BEFORE sending OTP
+        User savedUser = userRepository.save(user);
+        log.info("New patient registered with ID: {} ({})", savedUser.getId(), savedUser.getFullName());
 
+        // Now send OTP
         String username = request.getEmail() != null
                 ? request.getEmail()
                 : request.getPhoneNumber();
         otpService.sendOtp(username);
 
-        log.info("Patient registered: {}", username);
+        log.info("Patient registered and OTP sent to: {}", username);
 
-        return "OTP sent to your " +
-                (request.getEmail() != null
-                        ? "email" : "phone");
+        return "Registration successful. OTP sent to your " +
+                (request.getEmail() != null ? "email" : "phone");
     }
 
     // ── FLOW 3: Verify OTP ───────────────────────
     @Transactional
     public AuthResponse verifyOtp(OtpVerifyRequest request) {
 
-        boolean valid = otpService.validateOtp(
+        otpService.validateOtp(
                 request.getUsername(),
                 request.getOtp()
         );
-
-        if (!valid) {
-            throw new OtpException("Invalid or expired OTP");
-        }
 
         User user = userRepository
                 .findByEmail(request.getUsername())
@@ -195,14 +194,10 @@ public class AuthService {
     public AuthResponse setPassword(
             SetPasswordRequest request) {
 
-        boolean valid = otpService.validateOtp(
+        otpService.validateOtp(
                 request.getUsername(),
                 request.getOtp()
         );
-
-        if (!valid) {
-            throw new OtpException("Invalid or expired OTP");
-        }
 
         User user = userRepository
                 .findByEmail(request.getUsername())
@@ -264,10 +259,7 @@ public class AuthService {
             throw new AuthException("User has no email for OTP verification");
         }
 
-        boolean valid = otpService.validateOtp(emailForOtp, otp);
-        if (!valid) {
-            throw new OtpException("Invalid or expired OTP");
-        }
+        otpService.validateOtp(emailForOtp, otp);
 
         user.setPassword(passwordEncoder.encode(newPassword));
         userRepository.save(user);

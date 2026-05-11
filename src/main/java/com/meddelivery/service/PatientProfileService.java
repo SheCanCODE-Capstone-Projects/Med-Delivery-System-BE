@@ -46,29 +46,32 @@ public class PatientProfileService {
          User user = userRepository.findById(currentUser.getId())
                  .orElseThrow(() -> new ResourceNotFoundException("User", currentUser.getId()));
 
-          // Update user fields if provided
-          if (request.getFullName() != null) {
-              user.setFullName(request.getFullName());
-          }
-          if (request.getPhoneNumber() != null) {
-              user.setPhoneNumber(request.getPhoneNumber());
-          }
-          if (request.getProfileImageUrl() != null) {
-              user.setProfileImageUrl(request.getProfileImageUrl());
-          }
-          if (request.getEmailNotifications() != null) {
-              user.setEmailNotifications(request.getEmailNotifications());
-          }
-          if (request.getSmsNotifications() != null) {
-              user.setSmsNotifications(request.getSmsNotifications());
-          }
-          userRepository.save(user); // persist user changes
-
          // Find or create patient profile
          PatientProfile profile = profileRepository.findByUserId(currentUser.getId())
-                 .orElseGet(() -> PatientProfile.builder().user(user).build());
+                 .orElseGet(() -> {
+                     PatientProfile newProfile = PatientProfile.builder().user(user).build();
+                     return profileRepository.save(newProfile);
+                 });
 
-         // Update profile fields
+         // Update user fields ONLY if provided (non-null and non-blank)
+         if (request.getFullName() != null && !request.getFullName().isBlank()) {
+             user.setFullName(request.getFullName());
+         }
+         if (request.getPhoneNumber() != null && !request.getPhoneNumber().isBlank()) {
+             user.setPhoneNumber(request.getPhoneNumber());
+         }
+         if (request.getProfileImageUrl() != null) {
+             user.setProfileImageUrl(request.getProfileImageUrl());
+         }
+         if (request.getEmailNotifications() != null) {
+             user.setEmailNotifications(request.getEmailNotifications());
+         }
+         if (request.getSmsNotifications() != null) {
+             user.setSmsNotifications(request.getSmsNotifications());
+         }
+         userRepository.save(user);
+
+         // Update profile fields ONLY if provided
          if (request.getDateOfBirth() != null) {
              profile.setDateOfBirth(request.getDateOfBirth());
          }
@@ -83,10 +86,66 @@ public class PatientProfileService {
          }
 
          PatientProfile saved = profileRepository.save(profile);
-         log.info("Patient profile {} for userId={}",
-                 saved.getId() != null && !saved.getId().equals(profile.getId()) ? "updated" : "created",
-                 currentUser.getId());
+         log.info("Patient profile updated for userId={}", currentUser.getId());
          return mapper.toProfileResponse(saved);
+     }
+
+     @Transactional
+     public PatientProfileResponse updateProfile(PatientProfileRequest request) {
+         User currentUser = contextService.getCurrentUser();
+         
+         // Fetch fresh user and profile from database
+         User user = userRepository.findById(currentUser.getId())
+                 .orElseThrow(() -> new ResourceNotFoundException("User", currentUser.getId()));
+
+         PatientProfile profile = profileRepository.findByUserId(currentUser.getId())
+                 .orElseGet(() -> {
+                     PatientProfile newProfile = PatientProfile.builder().user(user).build();
+                     return profileRepository.save(newProfile);
+                 });
+
+         // Update user fields ONLY if provided (non-null and non-blank)
+         if (request.getFullName() != null && !request.getFullName().isBlank()) {
+             user.setFullName(request.getFullName());
+         }
+         if (request.getPhoneNumber() != null && !request.getPhoneNumber().isBlank()) {
+             user.setPhoneNumber(request.getPhoneNumber());
+         }
+         if (request.getProfileImageUrl() != null) {
+             user.setProfileImageUrl(request.getProfileImageUrl());
+         }
+         if (request.getEmailNotifications() != null) {
+             user.setEmailNotifications(request.getEmailNotifications());
+         }
+         if (request.getSmsNotifications() != null) {
+             user.setSmsNotifications(request.getSmsNotifications());
+         }
+         User savedUser = userRepository.save(user);
+
+         // Update profile fields ONLY if provided
+         if (request.getDateOfBirth() != null) {
+             profile.setDateOfBirth(request.getDateOfBirth());
+         }
+         if (request.getGender() != null) {
+             profile.setGender(request.getGender());
+         }
+         if (request.getAllergies() != null) {
+             profile.setAllergies(request.getAllergies());
+         }
+         if (request.getMedicalNotes() != null) {
+             profile.setMedicalNotes(request.getMedicalNotes());
+         }
+
+         PatientProfile savedProfile = profileRepository.save(profile);
+         
+         // Refresh to get latest data
+         profileRepository.flush();
+         userRepository.flush();
+         
+         log.info("Patient profile updated for userId={}, fullName={}", 
+                 currentUser.getId(), savedUser.getFullName());
+         
+         return mapper.toProfileResponse(savedProfile);
      }
 
 
@@ -123,24 +182,24 @@ public class PatientProfileService {
 
 
     // INSURANCE CARDS
-    @Transactional
-    public InsuranceCardResponse addInsuranceCard(InsuranceCardRequest request) {
-        PatientProfile profile = resolveCurrentProfile();
+     @Transactional
+     public InsuranceCardResponse addInsuranceCard(InsuranceCardRequest request) {
+         PatientProfile profile = resolveCurrentProfile();
 
-        InsuranceCard card = InsuranceCard.builder()
-                .patientProfile(profile)
-                .providerName(request.getProviderName())
-                .memberId(request.getMemberId())
-                .frontImageUrl(request.getFrontImageUrl())
-                .backImageUrl(request.getBackImageUrl())
-                .coveragePercentage(request.getCoveragePercentage() != null ? BigDecimal.valueOf(request.getCoveragePercentage()) : null)
-                .status(InsuranceStatus.PENDING_VERIFICATION) // Admin verifies insurance
-                .build();
+         InsuranceCard card = InsuranceCard.builder()
+                 .patientProfile(profile)
+                 .providerName(request.getProviderName())
+                 .memberId(request.getMemberId())
+                 .frontImageUrl(request.getFrontImageUrl())
+                 .backImageUrl(request.getBackImageUrl())
+                 // coveragePercentage is set by admin during verification
+                 .status(InsuranceStatus.PENDING_VERIFICATION) // Admin verifies insurance
+                 .build();
 
-        InsuranceCard saved = insuranceCardRepository.save(card);
-        log.info("Insurance card added for patientProfileId={}", profile.getId());
-        return mapper.toInsuranceResponse(saved);
-    }
+         InsuranceCard saved = insuranceCardRepository.save(card);
+         log.info("Insurance card added for patientProfileId={}", profile.getId());
+         return mapper.toInsuranceResponse(saved);
+     }
 
     @Transactional(readOnly = true)
     public List<InsuranceCardResponse> getMyInsuranceCards() {
@@ -183,19 +242,17 @@ public class PatientProfileService {
          if (request.getMemberId() != null) {
              card.setMemberId(request.getMemberId());
          }
-         if (request.getFrontImageUrl() != null) {
-             card.setFrontImageUrl(request.getFrontImageUrl());
-         }
+          if (request.getFrontImageUrl() != null) {
+              card.setFrontImageUrl(request.getFrontImageUrl());
+          }
           if (request.getBackImageUrl() != null) {
               card.setBackImageUrl(request.getBackImageUrl());
           }
-if (request.getCoveragePercentage() != null) {
-               card.setCoveragePercentage(BigDecimal.valueOf(request.getCoveragePercentage()));
-           }
 
+          // Note: coveragePercentage can only be set by admin via verification endpoint
           InsuranceCard saved = insuranceCardRepository.save(card);
-         log.info("Insurance card updated: id={}", cardId);
-         return mapper.toInsuranceResponse(saved);
+          log.info("Insurance card updated: id={}", cardId);
+          return mapper.toInsuranceResponse(saved);
      }
 
      // ==================== LOCATION MANAGEMENT (Multiple) ====================

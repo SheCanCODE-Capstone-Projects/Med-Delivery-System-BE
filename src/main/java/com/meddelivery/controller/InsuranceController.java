@@ -23,7 +23,7 @@ public class InsuranceController {
             @RequestParam boolean approved,
             @RequestParam(required = false) String notes) {
         insuranceService.verifyInsurance(insuranceCardId, pharmacyId, approved, notes);
-        return ResponseEntity.ok(ApiResponse.success("Insurance verification updated"));
+        return ResponseEntity.ok(ApiResponse.success("Insurance verification updated", (Void) null));
     }
 
     @GetMapping("/{insuranceCardId}")
@@ -39,6 +39,6 @@ public class InsuranceController {
     public ResponseEntity<ApiResponse<Void>> markAsPending(
             @PathVariable Long insuranceCardId) {
         insuranceService.markAsPendingVerification(insuranceCardId);
-        return ResponseEntity.ok(ApiResponse.success("Insurance marked as pending verification"));
+        return ResponseEntity.ok(ApiResponse.success("Insurance marked as pending verification", (Void) null));
     }
 }
