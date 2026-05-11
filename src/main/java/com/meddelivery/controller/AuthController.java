@@ -40,7 +40,9 @@ public class AuthController {
     public ResponseEntity<ApiResponse<String>> register(
             @Valid @RequestBody RegisterRequest request) {
 
+        log.info("Registration request received for: {}", request.getEmail() != null ? request.getEmail() : request.getPhoneNumber());
         String message = authService.registerPatient(request);
+        log.info("Registration successful: {}", message);
         return ResponseEntity.ok(
                 ApiResponse.success(message));
     }
