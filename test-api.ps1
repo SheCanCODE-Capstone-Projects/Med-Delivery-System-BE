@@ -5,7 +5,7 @@ Write-Host ""
 # Test 1: Health Check
 Write-Host "1. Testing Health Check..." -ForegroundColor Yellow
 try {
-    $response = Invoke-WebRequest -Uri "http://med-delivery-system-be-production.up.railway.app/health" -Method GET -UseBasicParsing
+    $response = Invoke-WebRequest -Uri "https://med-delivery-system-be-production.up.railway.app/health" -Method GET -UseBasicParsing
     Write-Host "Status Code: $($response.StatusCode)" -ForegroundColor Green
     Write-Host "Response: $($response.Content)" -ForegroundColor Cyan
 } catch {
@@ -24,9 +24,14 @@ $body = @{
 Write-Host "Request Body: $body" -ForegroundColor Gray
 
 try {
-    $response = Invoke-WebRequest -Uri "http://med-delivery-system-be-production.up.railway.app/api/auth/register" `
+    $headers = @{
+        "Content-Type" = "application/json"
+        "Accept" = "application/json"
+    }
+    
+    $response = Invoke-WebRequest -Uri "https://med-delivery-system-be-production.up.railway.app/api/auth/register" `
         -Method POST `
-        -ContentType "application/json" `
+        -Headers $headers `
         -Body $body `
         -UseBasicParsing
     Write-Host "Status Code: $($response.StatusCode)" -ForegroundColor Green
