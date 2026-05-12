@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
 import java.util.Arrays;
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -18,7 +19,7 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 public class OtpService {
 
-    private final RedisTemplate<String, String> redisTemplate;
+    private final Optional<RedisTemplate<String, String>> redisTemplate;
     private final JavaMailSender mailSender;
     private final RateLimitService rateLimitService;
     private final Environment env;
@@ -40,18 +41,22 @@ public class OtpService {
     // ── Save OTP to Redis ────────────────────────
     public void saveOtp(String username, String otp) {
         String key = OTP_PREFIX + username;
-        try {
-            redisTemplate.opsForValue().set(
-                    key,
-                    otp,
-                    OTP_EXPIRY_MINUTES,
-                    TimeUnit.MINUTES
-            );
-            log.info("OTP saved to Redis for username: {}", username);
-        } catch (Exception e) {
-            log.warn("Redis unavailable, using in-memory cache for OTP: {}", username);
-            otpCache.put(key, otp);
+        if (redisTemplate.isPresent()) {
+            try {
+                redisTemplate.get().opsForValue().set(
+                        key,
+                        otp,
+                        OTP_EXPIRY_MINUTES,
+                        TimeUnit.MINUTES
+                );
+                log.info("OTP saved to Redis for username: {}", username);
+                return;
+            } catch (Exception e) {
+                log.warn("Redis error, falling back to in-memory cache: {}", e.getMessage());
+            }
         }
+        log.warn("Redis unavailable, using in-memory cache for OTP: {}", username);
+        otpCache.put(key, otp);
     }
 
     // ── Validate OTP ─────────────────────────────
@@ -66,10 +71,15 @@ public class OtpService {
         String key = OTP_PREFIX + username;
         String storedOtp = null;
         
-        try {
-            storedOtp = redisTemplate.opsForValue().get(key);
-        } catch (Exception e) {
-            log.warn("Redis unavailable, checking in-memory cache");
+        if (redisTemplate.isPresent()) {
+            try {
+                storedOtp = redisTemplate.get().opsForValue().get(key);
+            } catch (Exception e) {
+                log.warn("Redis error, checking in-memory cache: {}", e.getMessage());
+            }
+        }
+        
+        if (storedOtp == null) {
             storedOtp = otpCache.get(key);
         }
 
@@ -84,11 +94,15 @@ public class OtpService {
         }
 
         // Delete OTP after successful validation
-        try {
-            redisTemplate.delete(key);
-        } catch (Exception e) {
-            otpCache.remove(key);
+        if (redisTemplate.isPresent()) {
+            try {
+                redisTemplate.get().delete(key);
+            } catch (Exception e) {
+                log.warn("Redis error during delete: {}", e.getMessage());
+            }
         }
+        otpCache.remove(key);
+        
         // Clear verification attempts on success
         rateLimitService.clearOtpVerifyAttempts(username);
         log.info("OTP validated successfully for: {}", username);

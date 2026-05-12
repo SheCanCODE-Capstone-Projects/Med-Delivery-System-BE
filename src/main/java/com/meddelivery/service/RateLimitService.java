@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 @Slf4j
@@ -12,26 +13,29 @@ import java.util.concurrent.TimeUnit;
 @RequiredArgsConstructor
 public class RateLimitService {
 
-    private final RedisTemplate<String, String> redisTemplate;
+    private final Optional<RedisTemplate<String, String>> redisTemplate;
 
     private static final String RATE_LIMIT_PREFIX = "RATE_LIMIT:";
     private static final String OTP_ATTEMPT_PREFIX = "OTP_ATTEMPT:";
     
-    // Rate limits
     private static final int MAX_OTP_REQUESTS = 3;
     private static final long OTP_REQUEST_WINDOW_MINUTES = 15;
     
     private static final int MAX_OTP_VERIFY_ATTEMPTS = 5;
     private static final long OTP_VERIFY_WINDOW_MINUTES = 15;
 
-    // ── Check OTP Send Rate Limit ────────────────
     public boolean isOtpSendAllowed(String username) {
+        if (redisTemplate.isEmpty()) {
+            log.warn("Redis unavailable for rate limiting, allowing request");
+            return true;
+        }
+        
         try {
             String key = RATE_LIMIT_PREFIX + "SEND:" + username;
-            String count = redisTemplate.opsForValue().get(key);
+            String count = redisTemplate.get().opsForValue().get(key);
             
             if (count == null) {
-                redisTemplate.opsForValue().set(key, "1", 
+                redisTemplate.get().opsForValue().set(key, "1", 
                         OTP_REQUEST_WINDOW_MINUTES, TimeUnit.MINUTES);
                 return true;
             }
@@ -42,22 +46,26 @@ public class RateLimitService {
                 return false;
             }
             
-            redisTemplate.opsForValue().increment(key);
+            redisTemplate.get().opsForValue().increment(key);
             return true;
         } catch (Exception e) {
-            log.warn("Redis unavailable for rate limiting, allowing request");
-            return true; // Allow if Redis is down
+            log.warn("Redis error for rate limiting, allowing request: {}", e.getMessage());
+            return true;
         }
     }
 
-    // ── Check OTP Verify Rate Limit ──────────────
     public boolean isOtpVerifyAllowed(String username) {
+        if (redisTemplate.isEmpty()) {
+            log.warn("Redis unavailable for rate limiting, allowing request");
+            return true;
+        }
+        
         try {
             String key = OTP_ATTEMPT_PREFIX + username;
-            String count = redisTemplate.opsForValue().get(key);
+            String count = redisTemplate.get().opsForValue().get(key);
             
             if (count == null) {
-                redisTemplate.opsForValue().set(key, "1", 
+                redisTemplate.get().opsForValue().set(key, "1", 
                         OTP_VERIFY_WINDOW_MINUTES, TimeUnit.MINUTES);
                 return true;
             }
@@ -68,29 +76,35 @@ public class RateLimitService {
                 return false;
             }
             
-            redisTemplate.opsForValue().increment(key);
+            redisTemplate.get().opsForValue().increment(key);
             return true;
         } catch (Exception e) {
-            log.warn("Redis unavailable for rate limiting, allowing request");
-            return true; // Allow if Redis is down
+            log.warn("Redis error for rate limiting, allowing request: {}", e.getMessage());
+            return true;
         }
     }
 
-    // ── Clear OTP Verify Attempts ────────────────
     public void clearOtpVerifyAttempts(String username) {
+        if (redisTemplate.isEmpty()) {
+            return;
+        }
+        
         try {
             String key = OTP_ATTEMPT_PREFIX + username;
-            redisTemplate.delete(key);
+            redisTemplate.get().delete(key);
         } catch (Exception e) {
-            log.warn("Redis unavailable, cannot clear attempts");
+            log.warn("Redis error, cannot clear attempts: {}", e.getMessage());
         }
     }
 
-    // ── Get Remaining OTP Send Attempts ──────────
     public int getRemainingOtpSendAttempts(String username) {
+        if (redisTemplate.isEmpty()) {
+            return MAX_OTP_REQUESTS;
+        }
+        
         try {
             String key = RATE_LIMIT_PREFIX + "SEND:" + username;
-            String count = redisTemplate.opsForValue().get(key);
+            String count = redisTemplate.get().opsForValue().get(key);
             
             if (count == null) {
                 return MAX_OTP_REQUESTS;
@@ -103,11 +117,14 @@ public class RateLimitService {
         }
     }
 
-    // ── Get Remaining OTP Verify Attempts ────────
     public int getRemainingOtpVerifyAttempts(String username) {
+        if (redisTemplate.isEmpty()) {
+            return MAX_OTP_VERIFY_ATTEMPTS;
+        }
+        
         try {
             String key = OTP_ATTEMPT_PREFIX + username;
-            String count = redisTemplate.opsForValue().get(key);
+            String count = redisTemplate.get().opsForValue().get(key);
             
             if (count == null) {
                 return MAX_OTP_VERIFY_ATTEMPTS;
