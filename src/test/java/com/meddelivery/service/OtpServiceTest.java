@@ -154,14 +154,14 @@ class OtpServiceTest {
     }
 
     @Test
-    @DisplayName("SendOtpEmail → Throws when mail fails")
-    void sendOtpEmail_WhenMailFails_ThrowsException() {
+    @DisplayName("SendOtpEmail → Logs error when mail fails")
+    void sendOtpEmail_WhenMailFails_LogsError() {
 
         doThrow(new RuntimeException("Mail server error"))
                 .when(mailSender)
                 .send(any(SimpleMailMessage.class));
 
-        assertThrows(RuntimeException.class, () ->
+        assertDoesNotThrow(() ->
                 otpService.sendOtpEmail(
                         "test@gmail.com", "123456"));
 

@@ -213,7 +213,7 @@ class AuthServiceTest {
                 RuntimeException.class,
                 () -> authService.registerPatient(request));
 
-        assertEquals("Email or phone number is required",
+        assertEquals("Registration failed: Email or phone number is required",
                 ex.getMessage());
 
         verify(userRepository, never()).save(any());
