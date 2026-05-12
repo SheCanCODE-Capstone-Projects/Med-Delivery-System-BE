@@ -1,6 +1,8 @@
 package com.meddelivery.config;
 
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.data.redis.connection.RedisConnectionFactory;
@@ -14,7 +16,9 @@ import io.lettuce.core.SocketOptions;
 
 import java.time.Duration;
 
+@Slf4j
 @Configuration
+@ConditionalOnProperty(name = "spring.data.redis.host")
 public class RedisConfig {
 
     @Value("${spring.data.redis.host}")
@@ -25,6 +29,8 @@ public class RedisConfig {
 
     @Bean
     public LettuceConnectionFactory redisConnectionFactory() {
+        log.info("Configuring Redis connection to {}:{}", redisHost, redisPort);
+        
         // Redis standalone configuration
         RedisStandaloneConfiguration redisConfig = 
                 new RedisStandaloneConfiguration(redisHost, redisPort);
@@ -67,6 +73,7 @@ public class RedisConfig {
                 new StringRedisSerializer());
 
         template.afterPropertiesSet();
+        log.info("Redis template configured successfully");
         return template;
     }
 }

@@ -106,6 +106,14 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error("You do not have permission to access this resource"));
     }
 
+    @ExceptionHandler(org.springframework.web.HttpRequestMethodNotSupportedException.class)
+    public ResponseEntity<ApiResponse<Void>>
+    handleMethodNotSupported(org.springframework.web.HttpRequestMethodNotSupportedException ex) {
+        log.warn("Method Not Supported: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
+                .body(ApiResponse.error("HTTP method not supported: " + ex.getMethod()));
+    }
+
     // ── Generic Errors ───────────────────────────
 
     @ExceptionHandler(Exception.class)

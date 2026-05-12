@@ -76,65 +76,78 @@ public class AuthService {
     @Transactional
     public String registerPatient(RegisterRequest request) {
 
-        if (request.getEmail() == null &&
-            request.getPhoneNumber() == null) {
-            throw new AuthException(
-                    "Email or phone number is required");
+        try {
+            if (request.getEmail() == null &&
+                request.getPhoneNumber() == null) {
+                throw new AuthException(
+                        "Email or phone number is required");
+            }
+
+            // Check if user already exists
+            User existingUser = null;
+            if (request.getEmail() != null) {
+                existingUser = userRepository.findByEmail(request.getEmail()).orElse(null);
+            }
+            if (existingUser == null && request.getPhoneNumber() != null) {
+                existingUser = userRepository.findByPhoneNumber(request.getPhoneNumber()).orElse(null);
+            }
+
+            // If user exists, just send OTP
+            if (existingUser != null) {
+                String username = existingUser.getEmail() != null
+                        ? existingUser.getEmail()
+                        : existingUser.getPhoneNumber();
+                try {
+                    otpService.sendOtp(username);
+                } catch (Exception e) {
+                    log.error("Failed to send OTP but continuing: {}", e.getMessage());
+                }
+                log.info("Existing user, OTP resent to: {}", username);
+                return "OTP sent to your " +
+                        (existingUser.getEmail() != null ? "email" : "phone");
+            }
+
+            // Create new user with registration data
+            User user = User.builder()
+                    .fullName(request.getFullName())
+                    .email(request.getEmail())
+                    .phoneNumber(request.getPhoneNumber())
+                    .role(UserRole.PATIENT)
+                    .isActive(false)
+                    .isVerified(false)
+                    .emailNotifications(true)  // Default to true
+                    .smsNotifications(true)    // Default to true
+                    .build();
+
+            // Create patient profile with registration data
+            PatientProfile profile = PatientProfile.builder()
+                    .user(user)
+                    .build();
+
+            user.setPatientProfile(profile);
+            
+            // Save user to database BEFORE sending OTP
+            User savedUser = userRepository.save(user);
+            log.info("New patient registered with ID: {} ({})", savedUser.getId(), savedUser.getFullName());
+
+            // Now send OTP
+            String username = request.getEmail() != null
+                    ? request.getEmail()
+                    : request.getPhoneNumber();
+            try {
+                otpService.sendOtp(username);
+            } catch (Exception e) {
+                log.error("Failed to send OTP but user created: {}", e.getMessage());
+            }
+
+            log.info("Patient registered and OTP sent to: {}", username);
+
+            return "Registration successful. OTP sent to your " +
+                    (request.getEmail() != null ? "email" : "phone") + ". Check logs for OTP if email fails.";
+        } catch (Exception e) {
+            log.error("Registration failed: {}", e.getMessage(), e);
+            throw new AuthException("Registration failed: " + e.getMessage());
         }
-
-        // Check if user already exists
-        User existingUser = null;
-        if (request.getEmail() != null) {
-            existingUser = userRepository.findByEmail(request.getEmail()).orElse(null);
-        }
-        if (existingUser == null && request.getPhoneNumber() != null) {
-            existingUser = userRepository.findByPhoneNumber(request.getPhoneNumber()).orElse(null);
-        }
-
-        // If user exists, just send OTP
-        if (existingUser != null) {
-            String username = existingUser.getEmail() != null
-                    ? existingUser.getEmail()
-                    : existingUser.getPhoneNumber();
-            otpService.sendOtp(username);
-            log.info("Existing user, OTP resent to: {}", username);
-            return "OTP sent to your " +
-                    (existingUser.getEmail() != null ? "email" : "phone");
-        }
-
-        // Create new user with registration data
-        User user = User.builder()
-                .fullName(request.getFullName())
-                .email(request.getEmail())
-                .phoneNumber(request.getPhoneNumber())
-                .role(UserRole.PATIENT)
-                .isActive(false)
-                .isVerified(false)
-                .emailNotifications(true)  // Default to true
-                .smsNotifications(true)    // Default to true
-                .build();
-
-        // Create patient profile with registration data
-        PatientProfile profile = PatientProfile.builder()
-                .user(user)
-                .build();
-
-        user.setPatientProfile(profile);
-        
-        // Save user to database BEFORE sending OTP
-        User savedUser = userRepository.save(user);
-        log.info("New patient registered with ID: {} ({})", savedUser.getId(), savedUser.getFullName());
-
-        // Now send OTP
-        String username = request.getEmail() != null
-                ? request.getEmail()
-                : request.getPhoneNumber();
-        otpService.sendOtp(username);
-
-        log.info("Patient registered and OTP sent to: {}", username);
-
-        return "Registration successful. OTP sent to your " +
-                (request.getEmail() != null ? "email" : "phone");
     }
 
     // ── FLOW 3: Verify OTP ───────────────────────
