@@ -17,6 +17,7 @@ import java.util.stream.Collectors;
 @RequestMapping("/api/medicines")
 @RequiredArgsConstructor
 @Tag(name = "Medicine Management")
+@CrossOrigin(origins = "*", allowedHeaders = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.OPTIONS})
 public class MedicineController {
 
     private final MedicineRepository medicineRepository;

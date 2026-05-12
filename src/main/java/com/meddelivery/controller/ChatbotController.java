@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/api/chatbot")
 @RequiredArgsConstructor
 @Tag(name = "AI Chatbot")
+@CrossOrigin(origins = "*", allowedHeaders = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.OPTIONS})
 public class ChatbotController {
 
     private final AIChatbotService chatbotService;

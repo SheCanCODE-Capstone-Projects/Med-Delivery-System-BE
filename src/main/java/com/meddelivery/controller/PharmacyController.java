@@ -18,6 +18,7 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/pharmacies")
 @RequiredArgsConstructor
+@CrossOrigin(origins = "*", allowedHeaders = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.OPTIONS, RequestMethod.PATCH})
 public class PharmacyController {
 
     private final PharmacyService pharmacyService;

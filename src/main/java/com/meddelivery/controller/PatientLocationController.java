@@ -17,6 +17,7 @@ import java.util.List;
 @RequestMapping("/api/patient/locations")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('PATIENT')")
+@CrossOrigin(origins = "*", allowedHeaders = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.OPTIONS})
 public class PatientLocationController {
 
     private final PatientProfileService profileService;

@@ -42,6 +42,7 @@ public class SecurityConfig {
     private static final String[] PUBLIC_URLS = {
             "/",
             "/api/auth/**",
+            "/api/health",
             "/api/pharmacies/register",
             "/swagger-ui/**",
             "/swagger-ui.html",
@@ -50,6 +51,7 @@ public class SecurityConfig {
             "/login/oauth2/**",
             "/oauth2/**",
             "/actuator/health",
+            "/health",
             "/error"
     };
 
@@ -103,34 +105,16 @@ public class SecurityConfig {
     // ── CORS Configuration ───────────────────────
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
-        CorsConfiguration configuration =
-                new CorsConfiguration();
-
-        // Check if wildcard is requested
-        if (allowedOrigins.length == 1 && "*".equals(allowedOrigins[0])) {
-            configuration.setAllowedOriginPatterns(List.of("*"));
-            configuration.setAllowCredentials(false);
-        } else {
-            configuration.setAllowedOrigins(Arrays.asList(allowedOrigins));
-            configuration.setAllowCredentials(true);
-        }
-
-        configuration.setAllowedMethods(Arrays.asList(
-                "GET", "POST", "PUT",
-                "PATCH", "DELETE", "OPTIONS"
-        ));
-
+        CorsConfiguration configuration = new CorsConfiguration();
+        
+        configuration.setAllowedOriginPatterns(List.of("*"));
+        configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
-
-        configuration.setExposedHeaders(Arrays.asList(
-                "Authorization",
-                "Content-Type"
-        ));
-
+        configuration.setExposedHeaders(List.of("Authorization", "Content-Type"));
+        configuration.setAllowCredentials(false);
         configuration.setMaxAge(3600L);
 
-        UrlBasedCorsConfigurationSource source =
-                new UrlBasedCorsConfigurationSource();
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
         source.registerCorsConfiguration("/**", configuration);
         return source;
     }

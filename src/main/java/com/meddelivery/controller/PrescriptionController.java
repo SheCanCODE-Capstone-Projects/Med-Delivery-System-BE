@@ -22,6 +22,7 @@ import java.util.UUID;
 @RequestMapping("/api/patient/prescriptions")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('PATIENT')")
+@CrossOrigin(origins = "*", allowedHeaders = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.OPTIONS})
 public class PrescriptionController {
 
     private final PrescriptionService prescriptionService;
