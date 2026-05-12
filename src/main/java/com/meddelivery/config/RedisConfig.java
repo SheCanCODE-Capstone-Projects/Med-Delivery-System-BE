@@ -27,33 +27,56 @@ public class RedisConfig {
     @Value("${spring.data.redis.port}")
     private int redisPort;
 
+    @Value("${spring.data.redis.password:}")
+    private String redisPassword;
+
     @Bean
     public LettuceConnectionFactory redisConnectionFactory() {
         log.info("Configuring Redis connection to {}:{}", redisHost, redisPort);
+        log.info("Redis password present: {}", (redisPassword != null && !redisPassword.isEmpty()));
         
         // Redis standalone configuration
         RedisStandaloneConfiguration redisConfig = 
                 new RedisStandaloneConfiguration(redisHost, redisPort);
+        
+        // Set password if provided
+        if (redisPassword != null && !redisPassword.isEmpty()) {
+            redisConfig.setPassword(redisPassword);
+            log.info("Redis password configured");
+        }
 
-        // Socket options
+        // Socket options with longer timeout
         SocketOptions socketOptions = SocketOptions.builder()
-                .connectTimeout(Duration.ofSeconds(10))
+                .connectTimeout(Duration.ofSeconds(30))
                 .keepAlive(true)
                 .build();
 
-        // Client options
+        // Client options with auto-reconnect
         ClientOptions clientOptions = ClientOptions.builder()
                 .socketOptions(socketOptions)
+                .autoReconnect(true)
                 .build();
 
         // Lettuce pool configuration
         LettucePoolingClientConfiguration poolConfig = 
                 LettucePoolingClientConfiguration.builder()
-                        .commandTimeout(Duration.ofSeconds(5))
+                        .commandTimeout(Duration.ofSeconds(10))
                         .clientOptions(clientOptions)
                         .build();
 
-        return new LettuceConnectionFactory(redisConfig, poolConfig);
+        LettuceConnectionFactory factory = new LettuceConnectionFactory(redisConfig, poolConfig);
+        
+        // Test connection
+        try {
+            factory.afterPropertiesSet();
+            factory.getConnection().ping();
+            log.info("✅ Redis connection successful to {}:{}", redisHost, redisPort);
+        } catch (Exception e) {
+            log.error("❌ Redis connection failed to {}:{} - {}", redisHost, redisPort, e.getMessage());
+            log.warn("Application will continue with in-memory fallback for caching");
+        }
+        
+        return factory;
     }
 
     @Bean
