@@ -18,13 +18,4 @@ public class HealthController {
         response.put("version", "1.0.0");
         return ResponseEntity.ok(response);
     }
-
-    @GetMapping("/")
-    public ResponseEntity<Map<String, String>> root() {
-        Map<String, String> response = new HashMap<>();
-        response.put("message", "MedDelivery API is running");
-        response.put("documentation", "/swagger-ui.html");
-        response.put("health", "/health");
-        return ResponseEntity.ok(response);
-    }
 }
