@@ -77,6 +77,8 @@ public class AuthService {
     public String registerPatient(RegisterRequest request) {
 
         try {
+            log.info("👥 Starting patient registration process...");
+            
             if (request.getEmail() == null &&
                 request.getPhoneNumber() == null) {
                 throw new AuthException(
@@ -86,27 +88,33 @@ public class AuthService {
             // Check if user already exists
             User existingUser = null;
             if (request.getEmail() != null) {
+                log.info("👥 Checking if email exists: {}", request.getEmail());
                 existingUser = userRepository.findByEmail(request.getEmail()).orElse(null);
             }
             if (existingUser == null && request.getPhoneNumber() != null) {
+                log.info("👥 Checking if phone exists: {}", request.getPhoneNumber());
                 existingUser = userRepository.findByPhoneNumber(request.getPhoneNumber()).orElse(null);
             }
 
             // If user exists, just send OTP
             if (existingUser != null) {
+                log.info("👥 User already exists, resending OTP...");
                 String username = existingUser.getEmail() != null
                         ? existingUser.getEmail()
                         : existingUser.getPhoneNumber();
                 try {
+                    log.info("👥 Calling otpService.sendOtp() for existing user: {}", username);
                     otpService.sendOtp(username);
+                    log.info("✅ OTP sent successfully for existing user");
                 } catch (Exception e) {
-                    log.error("Failed to send OTP but continuing: {}", e.getMessage());
+                    log.error("❌ Failed to send OTP for existing user: {}", e.getMessage(), e);
                 }
-                log.info("Existing user, OTP resent to: {}", username);
                 return "OTP sent to your " +
                         (existingUser.getEmail() != null ? "email" : "phone");
             }
 
+            log.info("👥 Creating new user account...");
+            
             // Create new user with registration data
             User user = User.builder()
                     .fullName(request.getFullName())
@@ -127,25 +135,29 @@ public class AuthService {
             user.setPatientProfile(profile);
             
             // Save user to database BEFORE sending OTP
+            log.info("👥 Saving user to database...");
             User savedUser = userRepository.save(user);
-            log.info("New patient registered with ID: {} ({})", savedUser.getId(), savedUser.getFullName());
+            log.info("✅ New patient registered with ID: {} ({})", savedUser.getId(), savedUser.getFullName());
 
             // Now send OTP
             String username = request.getEmail() != null
                     ? request.getEmail()
                     : request.getPhoneNumber();
+            
+            log.info("👥 Calling otpService.sendOtp() for new user: {}", username);
             try {
                 otpService.sendOtp(username);
+                log.info("✅ OTP sending process completed");
             } catch (Exception e) {
-                log.error("Failed to send OTP but user created: {}", e.getMessage());
+                log.error("❌ Failed to send OTP but user was created: {}", e.getMessage(), e);
             }
 
-            log.info("Patient registered and OTP sent to: {}", username);
+            log.info("✅ Patient registration completed successfully");
 
             return "Registration successful. OTP sent to your " +
                     (request.getEmail() != null ? "email" : "phone") + ". Check logs for OTP if email fails.";
         } catch (Exception e) {
-            log.error("Registration failed: {}", e.getMessage(), e);
+            log.error("❌ Registration failed: {}", e.getMessage(), e);
             throw new AuthException("Registration failed: " + e.getMessage());
         }
     }

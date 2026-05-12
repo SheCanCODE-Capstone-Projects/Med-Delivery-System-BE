@@ -97,9 +97,17 @@ public class OtpService {
 
     // ── Send OTP via Email ───────────────────────
     public void sendOtpEmail(String email, String otp) {
+        log.info("📧 Attempting to send verification email to: {}", email);
+        log.info("📧 Mail sender configured: {}", mailSender != null ? "YES" : "NO");
+        
         try {
+            log.info("📧 Creating email message...");
             SimpleMailMessage message = new SimpleMailMessage();
-            message.setFrom("MedDelivery <noreply@meddelivery.com>");
+            
+            String fromEmail = env.getProperty("spring.mail.username");
+            log.info("📧 From email: {}", fromEmail != null ? fromEmail : "NOT CONFIGURED");
+            
+            message.setFrom(fromEmail != null ? fromEmail : "noreply@meddelivery.com");
             message.setTo(email);
             message.setSubject("MedDelivery - Your OTP Code");
             message.setText(
@@ -109,18 +117,40 @@ public class OtpService {
                     "If you did not request this code, " +
                     "please ignore this email."
             );
+            
+            log.info("📧 Connecting to SMTP server...");
+            log.info("📧 SMTP Host: {}", env.getProperty("spring.mail.host"));
+            log.info("📧 SMTP Port: {}", env.getProperty("spring.mail.port"));
+            log.info("📧 SMTP Auth: {}", env.getProperty("spring.mail.properties.mail.smtp.auth"));
+            log.info("📧 SMTP STARTTLS: {}", env.getProperty("spring.mail.properties.mail.smtp.starttls.enable"));
+            
             mailSender.send(message);
-            log.info("OTP email sent successfully to: {}", email);
+            
+            log.info("✅ OTP email sent successfully to: {}", email);
         } catch (Exception e) {
-            log.error("Failed to send OTP email to: {}. Error: {}", email, e.getMessage(), e);
-            // Don't throw exception - log OTP instead for testing
+            log.error("❌ FAILED to send OTP email to: {}", email);
+            log.error("❌ Exception type: {}", e.getClass().getName());
+            log.error("❌ Error message: {}", e.getMessage());
+            log.error("❌ Full stack trace:", e);
+            
+            // Log OTP for testing when email fails
             log.warn("🔑 [EMAIL FAILED] OTP for {}: {} (expires in {} minutes)", 
                     email, otp, OTP_EXPIRY_MINUTES);
+            
+            // Check configuration
+            log.error("❌ SMTP Configuration Check:");
+            log.error("   - MAIL_USERNAME env: {}", env.getProperty("MAIL_USERNAME") != null ? "SET" : "NOT SET");
+            log.error("   - MAIL_PASSWORD env: {}", env.getProperty("MAIL_PASSWORD") != null ? "SET" : "NOT SET");
+            log.error("   - spring.mail.username: {}", env.getProperty("spring.mail.username"));
+            log.error("   - spring.mail.host: {}", env.getProperty("spring.mail.host"));
+            log.error("   - spring.mail.port: {}", env.getProperty("spring.mail.port"));
         }
     }
 
     // ── Send OTP (auto detect email or phone) ────
     public void sendOtp(String username) {
+        log.info("🔐 sendOtp() called for username: {}", username);
+        
         // Check rate limit
         if (!rateLimitService.isOtpSendAllowed(username)) {
             int remaining = rateLimitService.getRemainingOtpSendAttempts(username);
@@ -129,22 +159,25 @@ public class OtpService {
         }
 
         String otp = generateOtp();
+        log.info("🔐 OTP generated: {}", otp);
+        
         saveOtp(username, otp);
+        log.info("🔐 OTP saved to cache/Redis");
 
-        // Log OTP in dev mode for testing
-        boolean isDev = Arrays.asList(env.getActiveProfiles()).contains("dev");
-        if (isDev) {
-            log.warn("🔑 [DEV OTP] Username: {} | OTP: {} (expires in {} minutes)", 
-                    username, otp, OTP_EXPIRY_MINUTES);
-        }
+        // Always log OTP for testing/debugging
+        log.warn("🔑 [OTP GENERATED] Username: {} | OTP: {} (expires in {} minutes)", 
+                username, otp, OTP_EXPIRY_MINUTES);
 
         if (username.contains("@")) {
             // It is an email
+            log.info("🔐 Detected email address, sending OTP via email...");
             sendOtpEmail(username, otp);
         } else {
             // It is a phone number
-            // Firebase SMS will be added later
-            log.info("Phone OTP for {}: {}", username, otp);
+            log.info("🔐 Detected phone number, SMS not yet implemented");
+            log.info("📱 Phone OTP for {}: {}", username, otp);
         }
+        
+        log.info("🔐 sendOtp() completed for: {}", username);
     }
 }
