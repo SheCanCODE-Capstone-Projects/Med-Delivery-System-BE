@@ -6,6 +6,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.env.Environment;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.mail.SimpleMailMessage;
@@ -29,6 +30,9 @@ class OtpServiceTest {
 
     @Mock
     private RateLimitService rateLimitService;
+
+    @Mock
+    private Environment env;
 
     @Mock
     private ValueOperations<String, String> valueOperations;
@@ -143,6 +147,17 @@ class OtpServiceTest {
     @DisplayName("SendOtpEmail → Sends email successfully")
     void sendOtpEmail_SendsEmailSuccessfully() {
 
+        when(env.getProperty("spring.mail.username"))
+                .thenReturn("test@meddelivery.com");
+        when(env.getProperty("spring.mail.host"))
+                .thenReturn("smtp.gmail.com");
+        when(env.getProperty("spring.mail.port"))
+                .thenReturn("587");
+        when(env.getProperty("spring.mail.properties.mail.smtp.auth"))
+                .thenReturn("true");
+        when(env.getProperty("spring.mail.properties.mail.smtp.starttls.enable"))
+                .thenReturn("true");
+        
         doNothing().when(mailSender)
                 .send(any(SimpleMailMessage.class));
 
@@ -157,6 +172,21 @@ class OtpServiceTest {
     @DisplayName("SendOtpEmail → Logs error when mail fails")
     void sendOtpEmail_WhenMailFails_LogsError() {
 
+        when(env.getProperty("spring.mail.username"))
+                .thenReturn("test@meddelivery.com");
+        when(env.getProperty("spring.mail.host"))
+                .thenReturn("smtp.gmail.com");
+        when(env.getProperty("spring.mail.port"))
+                .thenReturn("587");
+        when(env.getProperty("spring.mail.properties.mail.smtp.auth"))
+                .thenReturn("true");
+        when(env.getProperty("spring.mail.properties.mail.smtp.starttls.enable"))
+                .thenReturn("true");
+        when(env.getProperty("MAIL_USERNAME"))
+                .thenReturn("test@meddelivery.com");
+        when(env.getProperty("MAIL_PASSWORD"))
+                .thenReturn("password");
+        
         doThrow(new RuntimeException("Mail server error"))
                 .when(mailSender)
                 .send(any(SimpleMailMessage.class));
