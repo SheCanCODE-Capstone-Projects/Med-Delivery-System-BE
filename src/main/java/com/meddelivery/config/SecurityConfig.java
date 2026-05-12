@@ -106,27 +106,27 @@ public class SecurityConfig {
         CorsConfiguration configuration =
                 new CorsConfiguration();
 
-        configuration.setAllowedOriginPatterns(Arrays.asList("*"));
+        // Check if wildcard is requested
+        if (allowedOrigins.length == 1 && "*".equals(allowedOrigins[0])) {
+            configuration.setAllowedOriginPatterns(List.of("*"));
+            configuration.setAllowCredentials(false);
+        } else {
+            configuration.setAllowedOrigins(Arrays.asList(allowedOrigins));
+            configuration.setAllowCredentials(true);
+        }
 
         configuration.setAllowedMethods(Arrays.asList(
                 "GET", "POST", "PUT",
                 "PATCH", "DELETE", "OPTIONS"
         ));
 
-        configuration.setAllowedHeaders(Arrays.asList(
-                "Authorization",
-                "Content-Type",
-                "X-Requested-With",
-                "Accept",
-                "Origin"
-        ));
+        configuration.setAllowedHeaders(List.of("*"));
 
         configuration.setExposedHeaders(Arrays.asList(
                 "Authorization",
                 "Content-Type"
         ));
 
-        configuration.setAllowCredentials(true);
         configuration.setMaxAge(3600L);
 
         UrlBasedCorsConfigurationSource source =
