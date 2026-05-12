@@ -12,7 +12,7 @@ import java.io.IOException;
 import java.util.Enumeration;
 
 @Slf4j
-@Component
+// @Component - Temporarily disabled for debugging
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class RequestLoggingFilter implements Filter {
 
