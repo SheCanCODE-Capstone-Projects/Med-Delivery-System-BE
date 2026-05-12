@@ -17,7 +17,6 @@ import java.util.List;
 @RequestMapping("/api/pharmacies/{pharmacyId}/inventory")
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('MANAGER') or hasRole('PHARMACIST')")
-@CrossOrigin(origins = "*", allowedHeaders = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.OPTIONS})
 public class PharmacyInventoryController {
 
     private final PharmacyService pharmacyService;

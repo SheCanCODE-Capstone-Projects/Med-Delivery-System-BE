@@ -33,7 +33,6 @@ import java.util.List;
 @RequiredArgsConstructor
 @Tag(name = "Super Admin Dashboard")
 @PreAuthorize("hasRole('SUPER_ADMIN')")
-@CrossOrigin(origins = "*", allowedHeaders = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.OPTIONS, RequestMethod.PATCH})
 public class AdminController {
 
     private final AdminService adminService;

@@ -33,7 +33,6 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('PATIENT')")
 @Tag(name = "Patient Profile", description = "Endpoints for patient profile management, insurance cards, and location management")
-@CrossOrigin(origins = "*", allowedHeaders = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.OPTIONS, RequestMethod.PATCH})
 public class PatientProfileController {
 
      private final PatientProfileService profileService;

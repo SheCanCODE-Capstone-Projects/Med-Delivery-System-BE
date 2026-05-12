@@ -16,7 +16,6 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/substitutions")
 @RequiredArgsConstructor
-@CrossOrigin(origins = "*", allowedHeaders = "*", methods = {RequestMethod.GET, RequestMethod.POST, RequestMethod.PUT, RequestMethod.DELETE, RequestMethod.OPTIONS})
 public class SubstitutionController {
 
     private final MedicineSubstitutionService substitutionService;
