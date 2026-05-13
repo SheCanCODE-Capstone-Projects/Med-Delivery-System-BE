@@ -85,32 +85,20 @@ public class AuthService {
                         "Email or phone number is required");
             }
 
-            // Check if user already exists
-            User existingUser = null;
+            // Check if email already exists
             if (request.getEmail() != null) {
                 log.info("👥 Checking if email exists: {}", request.getEmail());
-                existingUser = userRepository.findByEmail(request.getEmail()).orElse(null);
-            }
-            if (existingUser == null && request.getPhoneNumber() != null) {
-                log.info("👥 Checking if phone exists: {}", request.getPhoneNumber());
-                existingUser = userRepository.findByPhoneNumber(request.getPhoneNumber()).orElse(null);
-            }
-
-            // If user exists, just send OTP
-            if (existingUser != null) {
-                log.info("👥 User already exists, resending OTP...");
-                String username = existingUser.getEmail() != null
-                        ? existingUser.getEmail()
-                        : existingUser.getPhoneNumber();
-                try {
-                    log.info("👥 Calling otpService.sendOtp() for existing user: {}", username);
-                    otpService.sendOtp(username);
-                    log.info("✅ OTP sent successfully for existing user");
-                } catch (Exception e) {
-                    log.error("❌ Failed to send OTP for existing user: {}", e.getMessage(), e);
+                if (userRepository.findByEmail(request.getEmail()).isPresent()) {
+                    throw new AuthException("Email already registered");
                 }
-                return "OTP sent to your " +
-                        (existingUser.getEmail() != null ? "email" : "phone");
+            }
+            
+            // Check if phone already exists
+            if (request.getPhoneNumber() != null) {
+                log.info("👥 Checking if phone exists: {}", request.getPhoneNumber());
+                if (userRepository.findByPhoneNumber(request.getPhoneNumber()).isPresent()) {
+                    throw new AuthException("Phone number already registered");
+                }
             }
 
             log.info("👥 Creating new user account...");
