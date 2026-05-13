@@ -169,8 +169,11 @@ jobs:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
       - name: Deploy to Railway
-        run: railway up --service "Med-Delivery-System-BE"
+        run: |
+          for i in 1 2 3; do
+            railway up --service "Med-Delivery-System-BE" --detach && break
+            echo "Retrying Railway deploy... attempt $i"
+            sleep 10
+          done
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-          RAILWAY_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
-          RAILWAY_ENVIRONMENT_ID: ${{ secrets.RAILWAY_ENVIRONMENT_ID }}

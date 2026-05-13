@@ -27,3 +27,4 @@ logs/
 # ── Docker files (not needed in build context) ─
 docker-compose.yml
 Dockerfile
+node_modules/
