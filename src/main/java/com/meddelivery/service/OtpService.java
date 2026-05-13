@@ -3,7 +3,7 @@ package com.meddelivery.service;
 import com.meddelivery.exception.OtpException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.core.env.Environment;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
@@ -22,7 +22,9 @@ public class OtpService {
     private final Optional<RedisTemplate<String, String>> redisTemplate;
     private final JavaMailSender mailSender;
     private final RateLimitService rateLimitService;
-    private final Environment env;
+
+    @Value("${app.mail.from:noreply@meddelivery.com}")
+    private String fromEmail;
 
     private static final int OTP_LENGTH = 6;
     private static final long OTP_EXPIRY_MINUTES = 5;
@@ -118,10 +120,9 @@ public class OtpService {
             log.info("📧 Creating email message...");
             SimpleMailMessage message = new SimpleMailMessage();
             
-            String fromEmail = env.getProperty("spring.mail.username");
-            log.info("📧 From email: {}", fromEmail != null ? fromEmail : "NOT CONFIGURED");
+            log.info("📧 From email: {}", fromEmail);
             
-            message.setFrom(fromEmail != null ? fromEmail : "noreply@meddelivery.com");
+            message.setFrom(fromEmail);
             message.setTo(email);
             message.setSubject("MedDelivery - Your OTP Code");
             message.setText(
@@ -131,12 +132,6 @@ public class OtpService {
                     "If you did not request this code, " +
                     "please ignore this email."
             );
-            
-            log.info("📧 Connecting to SMTP server...");
-            log.info("📧 SMTP Host: {}", env.getProperty("spring.mail.host"));
-            log.info("📧 SMTP Port: {}", env.getProperty("spring.mail.port"));
-            log.info("📧 SMTP Auth: {}", env.getProperty("spring.mail.properties.mail.smtp.auth"));
-            log.info("📧 SMTP STARTTLS: {}", env.getProperty("spring.mail.properties.mail.smtp.starttls.enable"));
             
             mailSender.send(message);
             
@@ -150,14 +145,6 @@ public class OtpService {
             // Log OTP for testing when email fails
             log.warn("🔑 [EMAIL FAILED] OTP for {}: {} (expires in {} minutes)", 
                     email, otp, OTP_EXPIRY_MINUTES);
-            
-            // Check configuration
-            log.error("❌ SMTP Configuration Check:");
-            log.error("   - MAIL_USERNAME env: {}", env.getProperty("MAIL_USERNAME") != null ? "SET" : "NOT SET");
-            log.error("   - MAIL_PASSWORD env: {}", env.getProperty("MAIL_PASSWORD") != null ? "SET" : "NOT SET");
-            log.error("   - spring.mail.username: {}", env.getProperty("spring.mail.username"));
-            log.error("   - spring.mail.host: {}", env.getProperty("spring.mail.host"));
-            log.error("   - spring.mail.port: {}", env.getProperty("spring.mail.port"));
         }
     }
 

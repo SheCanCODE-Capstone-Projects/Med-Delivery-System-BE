@@ -1,155 +1,100 @@
-# SendGrid Setup Guide (Alternative to Gmail)
+# SendGrid Setup for Railway
 
-## Why SendGrid?
-
-Railway is blocking outbound SMTP connections to Gmail (port 587 and possibly 465). SendGrid is a dedicated email service that works reliably on cloud platforms like Railway.
-
-## Setup Steps
-
-### 1. Create SendGrid Account
+## Step 1: Create SendGrid Account
 1. Go to https://sendgrid.com/
-2. Sign up for free account (100 emails/day free)
-3. Verify your email address
+2. Click "Start for Free"
+3. Sign up (100 emails/day free forever)
+4. Verify your email
 
-### 2. Create API Key
-1. Go to Settings → API Keys
-2. Click "Create API Key"
-3. Name it "MedDelivery Railway"
-4. Select "Full Access" or "Mail Send" only
-5. Click "Create & View"
-6. **Copy the API key** (you won't see it again)
+## Step 2: Create API Key
+1. Login to SendGrid dashboard
+2. Go to **Settings** → **API Keys**
+3. Click **Create API Key**
+4. Name: `MedDelivery-Railway`
+5. Permissions: Select **Full Access** or **Mail Send** (restricted)
+6. Click **Create & View**
+7. **COPY THE KEY NOW** (you won't see it again!)
 
-### 3. Verify Sender Identity
-1. Go to Settings → Sender Authentication
-2. Click "Verify a Single Sender"
-3. Enter your email (samillah.mutoni@gmail.com)
-4. Fill in the form
+Example key format:
+```
+SG.xxxxxxxxxxxxxxxxxxxxxxxx.yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
+```
+
+## Step 3: Verify Sender Email
+1. Go to **Settings** → **Sender Authentication**
+2. Click **Verify a Single Sender**
+3. Fill in the form:
+   - From Name: `MedDelivery`
+   - From Email: `samillah.mutoni@gmail.com` (or your email)
+   - Reply To: Same as above
+   - Company Address: Your address
+4. Click **Create**
 5. Check your email and click verification link
 
-### 4. Update Railway Environment Variables
+## Step 4: Set Railway Environment Variables
+
+In Railway dashboard, add these variables:
 
 ```bash
-MAIL_USERNAME=apikey
-MAIL_PASSWORD=<your-sendgrid-api-key>
+SENDGRID_API_KEY=SG.xxxxxxxxxxxxxxxxxxxxxxxx.yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy
+MAIL_FROM=samillah.mutoni@gmail.com
 ```
 
-**Important**: The username is literally the word "apikey", not your email!
+**Important:** `MAIL_FROM` must match the verified sender email from Step 3!
 
-### 5. Update application.properties
+## Step 5: Deploy
 
-```properties
-#EMAIL (OTP) - SendGrid Configuration
-
-spring.mail.host=smtp.sendgrid.net
-spring.mail.port=587
-spring.mail.username=${MAIL_USERNAME}
-spring.mail.password=${MAIL_PASSWORD}
-spring.mail.properties.mail.smtp.auth=true
-spring.mail.properties.mail.smtp.starttls.enable=true
-```
-
-### 6. Deploy
-
-```bash
-git add .
-git commit -m "Switch to SendGrid for email delivery"
-git push
-```
-
-## Expected Logs After SendGrid Setup
-
-```
-📧 EMAIL CONFIGURATION VALIDATION
-📧 Environment Variables:
-   - MAIL_USERNAME: ✅ SET
-   - MAIL_PASSWORD: ✅ SET (length: 69)
-📧 Spring Mail Properties:
-   - spring.mail.host: smtp.sendgrid.net
-   - spring.mail.port: 587
-   - spring.mail.username: apikey
-📧 Testing SMTP connection...
-✅ SMTP connection test SUCCESSFUL!
-```
-
-## Advantages of SendGrid
-
-1. ✅ **Not blocked by Railway** - Designed for cloud platforms
-2. ✅ **Better deliverability** - Dedicated email infrastructure
-3. ✅ **Email analytics** - Track opens, clicks, bounces
-4. ✅ **Higher limits** - 100 emails/day free (vs Gmail's strict limits)
-5. ✅ **No 2FA required** - Just API key
-6. ✅ **Production-ready** - Used by major companies
+Push your code to Railway. The app will now use SendGrid.
 
 ## Testing
 
-After setup, test registration:
-
+1. Deploy to Railway
+2. Call the OTP endpoint:
 ```bash
-curl -X POST https://your-app.railway.app/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"email":"test@example.com","fullName":"Test User"}'
+POST https://your-app.railway.app/api/auth/otp/send
+{
+  "username": "test@example.com"
+}
 ```
-
-Check logs for:
-```
-✅ OTP email sent successfully to: test@example.com
-```
+3. Check SendGrid dashboard → **Activity** to see email delivery status
 
 ## Troubleshooting
 
-### Issue: "550 The from address does not match a verified Sender Identity"
-**Solution**: Verify your sender email in SendGrid dashboard
-
-### Issue: "Authentication failed"
-**Solution**: 
-- Ensure username is "apikey" (not your email)
-- Regenerate API key if needed
+**Emails not sending?**
+- Check SendGrid dashboard → Activity for errors
+- Verify `MAIL_FROM` matches verified sender
 - Check API key has "Mail Send" permission
+- Look at Railway logs for errors
 
-### Issue: Still can't connect
-**Solution**: Railway might be blocking all SMTP. Contact Railway support or use SendGrid's HTTP API instead.
+**Emails going to spam?**
+- Add SPF/DKIM records (SendGrid → Sender Authentication → Domain Authentication)
+- Use a custom domain instead of Gmail
 
-## Alternative: SendGrid HTTP API
-
-If SMTP is completely blocked, use SendGrid's HTTP API:
-
-1. Add dependency to pom.xml:
-```xml
-<dependency>
-    <groupId>com.sendgrid</groupId>
-    <artifactId>sendgrid-java</artifactId>
-    <version>4.9.3</version>
-</dependency>
+**Still using Gmail locally?**
+Create `application-local.properties`:
+```properties
+spring.mail.host=smtp.gmail.com
+spring.mail.port=587
+spring.mail.username=${MAIL_USERNAME}
+spring.mail.password=${MAIL_PASSWORD}
 ```
 
-2. Create SendGridEmailService:
-```java
-@Service
-public class SendGridEmailService {
-    
-    @Value("${sendgrid.api.key}")
-    private String apiKey;
-    
-    public void sendEmail(String to, String subject, String body) {
-        Email from = new Email("noreply@meddelivery.com");
-        Email toEmail = new Email(to);
-        Content content = new Content("text/plain", body);
-        Mail mail = new Mail(from, subject, toEmail, content);
-        
-        SendGrid sg = new SendGrid(apiKey);
-        Request request = new Request();
-        
-        try {
-            request.setMethod(Method.POST);
-            request.setEndpoint("mail/send");
-            request.setBody(mail.build());
-            Response response = sg.api(request);
-            log.info("Email sent: {}", response.getStatusCode());
-        } catch (IOException e) {
-            log.error("Failed to send email", e);
-        }
-    }
-}
-```
+Run with: `mvn spring-boot:run -Dspring.profiles.active=local`
 
-This bypasses SMTP entirely and uses HTTPS (port 443) which is never blocked.
+## SendGrid Dashboard
+
+Monitor your emails:
+- **Activity**: See all sent emails and delivery status
+- **Statistics**: Open rates, click rates, bounces
+- **Suppressions**: Bounced/blocked emails
+
+## Free Tier Limits
+
+- 100 emails/day
+- 3,000 emails/month
+- No credit card required
+- Upgrade anytime for more volume
+
+## Alternative: SendGrid Web API
+
+If SMTP still doesn't work, use SendGrid's HTTP API instead (requires code changes).
