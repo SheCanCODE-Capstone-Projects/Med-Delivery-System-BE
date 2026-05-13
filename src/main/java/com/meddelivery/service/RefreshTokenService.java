@@ -71,12 +71,15 @@ public class RefreshTokenService {
     // ── Validate and Refresh Access Token ────────
     public String refreshAccessToken(String refreshToken) {
         String key = REFRESH_TOKEN_PREFIX + refreshToken;
-        String username = null;
+        String username;
         
         // Try Redis first, fallback to in-memory
         if (isRedisAvailable()) {
             try {
                 username = redisTemplate.opsForValue().get(key);
+                if (username == null) {
+                    username = inMemoryTokenStore.get(key);
+                }
             } catch (Exception e) {
                 log.warn("Redis unavailable, checking in-memory storage: {}", e.getMessage());
                 redisAvailable = false;
@@ -91,8 +94,9 @@ public class RefreshTokenService {
             throw new AuthException("Invalid or expired refresh token");
         }
 
-        User user = userRepository.findByEmail(username)
-                .or(() -> userRepository.findByPhoneNumber(username))
+        final String finalUsername = username;
+        User user = userRepository.findByEmail(finalUsername)
+                .or(() -> userRepository.findByPhoneNumber(finalUsername))
                 .orElseThrow(() -> new AuthException("User not found"));
 
         if (!user.isActive()) {
