@@ -5,12 +5,9 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.RedisTemplate;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 
 import java.security.SecureRandom;
-import java.util.Arrays;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
@@ -20,7 +17,7 @@ import java.util.concurrent.TimeUnit;
 public class OtpService {
 
     private final Optional<RedisTemplate<String, String>> redisTemplate;
-    private final JavaMailSender mailSender;
+    private final SendGridEmailService emailService;
     private final RateLimitService rateLimitService;
 
     @Value("${app.mail.from:noreply@meddelivery.com}")
@@ -114,38 +111,35 @@ public class OtpService {
     // ── Send OTP via Email ───────────────────────
     public void sendOtpEmail(String email, String otp) {
         log.info("📧 Attempting to send verification email to: {}", email);
-        log.info("📧 Mail sender configured: {}", mailSender != null ? "YES" : "NO");
         
         try {
-            log.info("📧 Creating email message...");
-            SimpleMailMessage message = new SimpleMailMessage();
-            
-            log.info("📧 From email: {}", fromEmail);
-            
-            message.setFrom(fromEmail);
-            message.setTo(email);
-            message.setSubject("MedDelivery - Your OTP Code");
-            message.setText(
-                    "Your OTP code is: " + otp + "\n\n" +
-                    "This code expires in " + OTP_EXPIRY_MINUTES +
-                    " minutes.\n\n" +
-                    "If you did not request this code, " +
-                    "please ignore this email."
-            );
-            
-            mailSender.send(message);
-            
+            String htmlContent = buildOtpEmailHtml(email, otp);
+            emailService.sendEmail(email, "MedDelivery - Your OTP Code", htmlContent);
             log.info("✅ OTP email sent successfully to: {}", email);
         } catch (Exception e) {
             log.error("❌ FAILED to send OTP email to: {}", email);
-            log.error("❌ Exception type: {}", e.getClass().getName());
             log.error("❌ Error message: {}", e.getMessage());
-            log.error("❌ Full stack trace:", e);
-            
-            // Log OTP for testing when email fails
             log.warn("🔑 [EMAIL FAILED] OTP for {}: {} (expires in {} minutes)", 
                     email, otp, OTP_EXPIRY_MINUTES);
         }
+    }
+
+    private String buildOtpEmailHtml(String email, String otp) {
+        return "<!DOCTYPE html>" +
+                "<html>" +
+                "<head><meta charset='UTF-8'></head>" +
+                "<body style='font-family: Arial, sans-serif; line-height: 1.6; color: #333;'>" +
+                "<div style='max-width: 600px; margin: 0 auto; padding: 20px;'>" +
+                "<h2 style='color: #2c3e50;'>MedDelivery - OTP Verification</h2>" +
+                "<p>Your OTP code is:</p>" +
+                "<div style='background: #f4f4f4; padding: 15px; text-align: center; font-size: 24px; font-weight: bold; letter-spacing: 5px; margin: 20px 0;'>" +
+                otp +
+                "</div>" +
+                "<p>This code expires in <strong>" + OTP_EXPIRY_MINUTES + " minutes</strong>.</p>" +
+                "<p style='color: #7f8c8d; font-size: 14px;'>If you did not request this code, please ignore this email.</p>" +
+                "</div>" +
+                "</body>" +
+                "</html>";
     }
 
     // ── Send OTP (auto detect email or phone) ────

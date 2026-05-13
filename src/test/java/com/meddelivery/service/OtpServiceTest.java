@@ -8,8 +8,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.test.util.ReflectionTestUtils;
 
 import java.util.Optional;
@@ -27,7 +25,7 @@ class OtpServiceTest {
     private RedisTemplate<String, String> redisTemplate;
 
     @Mock
-    private JavaMailSender mailSender;
+    private SendGridEmailService emailService;
 
     @Mock
     private RateLimitService rateLimitService;
@@ -39,7 +37,7 @@ class OtpServiceTest {
 
     @BeforeEach
     void setUp() {
-        otpService = new OtpService(Optional.of(redisTemplate), mailSender, rateLimitService);
+        otpService = new OtpService(Optional.of(redisTemplate), emailService, rateLimitService);
         ReflectionTestUtils.setField(otpService, "fromEmail", "noreply@meddelivery.com");
     }
 
@@ -149,21 +147,21 @@ class OtpServiceTest {
     @Test
     @DisplayName("SendOtpEmail → Sends email successfully")
     void sendOtpEmail_SendsEmailSuccessfully() {
-        doNothing().when(mailSender).send(any(SimpleMailMessage.class));
+        doNothing().when(emailService).sendEmail(anyString(), anyString(), anyString());
 
         assertDoesNotThrow(() -> otpService.sendOtpEmail("test@gmail.com", "123456"));
 
-        verify(mailSender).send(any(SimpleMailMessage.class));
+        verify(emailService).sendEmail(eq("test@gmail.com"), anyString(), anyString());
     }
 
     @Test
     @DisplayName("SendOtpEmail → Logs error when mail fails")
     void sendOtpEmail_WhenMailFails_LogsError() {
-        doThrow(new RuntimeException("Mail server error"))
-                .when(mailSender).send(any(SimpleMailMessage.class));
+        doThrow(new RuntimeException("SendGrid API error"))
+                .when(emailService).sendEmail(anyString(), anyString(), anyString());
 
         assertDoesNotThrow(() -> otpService.sendOtpEmail("test@gmail.com", "123456"));
 
-        verify(mailSender).send(any(SimpleMailMessage.class));
+        verify(emailService).sendEmail(eq("test@gmail.com"), anyString(), anyString());
     }
 }

@@ -3,47 +3,37 @@ package com.meddelivery.config;
 import jakarta.annotation.PostConstruct;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.env.Environment;
-import org.springframework.mail.javamail.JavaMailSender;
 
 @Slf4j
 @Configuration
 @RequiredArgsConstructor
 public class MailConfig {
 
-    private final Environment env;
-    private final JavaMailSender mailSender;
+    @Value("${app.sendgrid.api-key}")
+    private String sendGridApiKey;
+
+    @Value("${app.mail.from}")
+    private String fromEmail;
 
     @PostConstruct
     public void validateMailConfiguration() {
         log.info("=".repeat(60));
-        log.info("📧 EMAIL CONFIGURATION VALIDATION");
+        log.info("📧 EMAIL CONFIGURATION VALIDATION (SendGrid Web API)");
         log.info("=".repeat(60));
 
-        String springMailHost = env.getProperty("spring.mail.host");
-        String springMailPort = env.getProperty("spring.mail.port");
-        String springMailUsername = env.getProperty("spring.mail.username");
-        String springMailPassword = env.getProperty("spring.mail.password");
-        
-        log.info("📧 Mail Configuration:");
-        log.info("   - Host: {}", springMailHost);
-        log.info("   - Port: {}", springMailPort);
-        log.info("   - Username: {}", springMailUsername);
-        log.info("   - Password: {}", springMailPassword != null ? "SET (length: " + springMailPassword.length() + ")" : "NOT SET");
-        log.info("   - Bean configured: {}", mailSender != null ? "✅ YES" : "❌ NO");
+        log.info("📧 SendGrid Configuration:");
+        log.info("   - API Key: {}", sendGridApiKey != null && !sendGridApiKey.isEmpty() 
+            ? "SET (length: " + sendGridApiKey.length() + ")" : "❌ NOT SET");
+        log.info("   - From Email: {}", fromEmail);
+        log.info("   - Transport: HTTPS (SendGrid Web API)");
 
-        try {
-            log.info("📧 Testing SMTP connection...");
-            if (mailSender instanceof org.springframework.mail.javamail.JavaMailSenderImpl) {
-                org.springframework.mail.javamail.JavaMailSenderImpl senderImpl = 
-                    (org.springframework.mail.javamail.JavaMailSenderImpl) mailSender;
-                senderImpl.testConnection();
-                log.info("✅ SMTP connection test SUCCESSFUL!");
-            }
-        } catch (Exception e) {
-            log.warn("⚠️ SMTP connection test failed: {}", e.getMessage());
-            log.warn("   Emails may not be sent. Verify your mail configuration.");
+        if (sendGridApiKey == null || sendGridApiKey.isEmpty()) {
+            log.error("❌ SENDGRID_API_KEY is not configured!");
+            log.error("   Set SENDGRID_API_KEY environment variable to enable email sending.");
+        } else {
+            log.info("✅ SendGrid Email Service configured successfully!");
         }
 
         log.info("=".repeat(60));
