@@ -143,7 +143,7 @@ public class AuthService {
             log.info("✅ Patient registration completed successfully");
 
             return "Registration successful. OTP sent to your " +
-                    (request.getEmail() != null ? "email" : "phone") + ". Check logs for OTP if email fails.";
+                    (request.getEmail() != null ? "email" : "phone") + ".Check Spam folder if you don't see it in inbox.";
         } catch (Exception e) {
             log.error("❌ Registration failed: {}", e.getMessage(), e);
             throw new AuthException("Registration failed: " + e.getMessage());

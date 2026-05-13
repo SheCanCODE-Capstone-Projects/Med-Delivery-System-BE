@@ -28,10 +28,13 @@ public class SendGridEmailService {
 
     public void sendEmail(String to, String subject, String htmlContent) {
         try {
-            Email from = new Email(fromEmail);
+            Email from = new Email(fromEmail, "MedDelivery");
             Email toEmail = new Email(to);
             Content content = new Content("text/html", htmlContent);
             Mail mail = new Mail(from, subject, toEmail, content);
+            
+            // Add reply-to to improve deliverability
+            mail.setReplyTo(new Email(fromEmail));
 
             Request request = new Request();
             request.setMethod(Method.POST);
