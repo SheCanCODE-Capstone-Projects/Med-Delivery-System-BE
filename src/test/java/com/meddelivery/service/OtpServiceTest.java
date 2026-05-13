@@ -1,17 +1,18 @@
 package com.meddelivery.service;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.core.env.Environment;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.test.util.ReflectionTestUtils;
 
+import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.*;
@@ -32,13 +33,15 @@ class OtpServiceTest {
     private RateLimitService rateLimitService;
 
     @Mock
-    private Environment env;
-
-    @Mock
     private ValueOperations<String, String> valueOperations;
 
-    @InjectMocks
     private OtpService otpService;
+
+    @BeforeEach
+    void setUp() {
+        otpService = new OtpService(Optional.of(redisTemplate), mailSender, rateLimitService);
+        ReflectionTestUtils.setField(otpService, "fromEmail", "noreply@meddelivery.com");
+    }
 
     // ── Generate OTP Tests ───────────────────────
 
@@ -146,24 +149,9 @@ class OtpServiceTest {
     @Test
     @DisplayName("SendOtpEmail → Sends email successfully")
     void sendOtpEmail_SendsEmailSuccessfully() {
+        doNothing().when(mailSender).send(any(SimpleMailMessage.class));
 
-        when(env.getProperty("spring.mail.username"))
-                .thenReturn("test@meddelivery.com");
-        when(env.getProperty("spring.mail.host"))
-                .thenReturn("smtp.gmail.com");
-        when(env.getProperty("spring.mail.port"))
-                .thenReturn("587");
-        when(env.getProperty("spring.mail.properties.mail.smtp.auth"))
-                .thenReturn("true");
-        when(env.getProperty("spring.mail.properties.mail.smtp.starttls.enable"))
-                .thenReturn("true");
-        
-        doNothing().when(mailSender)
-                .send(any(SimpleMailMessage.class));
-
-        assertDoesNotThrow(() ->
-                otpService.sendOtpEmail(
-                        "test@gmail.com", "123456"));
+        assertDoesNotThrow(() -> otpService.sendOtpEmail("test@gmail.com", "123456"));
 
         verify(mailSender).send(any(SimpleMailMessage.class));
     }
@@ -171,29 +159,10 @@ class OtpServiceTest {
     @Test
     @DisplayName("SendOtpEmail → Logs error when mail fails")
     void sendOtpEmail_WhenMailFails_LogsError() {
-
-        when(env.getProperty("spring.mail.username"))
-                .thenReturn("test@meddelivery.com");
-        when(env.getProperty("spring.mail.host"))
-                .thenReturn("smtp.gmail.com");
-        when(env.getProperty("spring.mail.port"))
-                .thenReturn("587");
-        when(env.getProperty("spring.mail.properties.mail.smtp.auth"))
-                .thenReturn("true");
-        when(env.getProperty("spring.mail.properties.mail.smtp.starttls.enable"))
-                .thenReturn("true");
-        when(env.getProperty("MAIL_USERNAME"))
-                .thenReturn("test@meddelivery.com");
-        when(env.getProperty("MAIL_PASSWORD"))
-                .thenReturn("password");
-        
         doThrow(new RuntimeException("Mail server error"))
-                .when(mailSender)
-                .send(any(SimpleMailMessage.class));
+                .when(mailSender).send(any(SimpleMailMessage.class));
 
-        assertDoesNotThrow(() ->
-                otpService.sendOtpEmail(
-                        "test@gmail.com", "123456"));
+        assertDoesNotThrow(() -> otpService.sendOtpEmail("test@gmail.com", "123456"));
 
         verify(mailSender).send(any(SimpleMailMessage.class));
     }
