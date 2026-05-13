@@ -177,8 +177,8 @@ class AuthServiceTest {
     }
 
     @Test
-    @DisplayName("Register → Existing user just sends OTP")
-    void registerPatient_WithExistingUser_JustSendsOtp() {
+    @DisplayName("Register → Existing email throws exception")
+    void registerPatient_WithExistingUser_ThrowsException() {
 
         // Arrange
         RegisterRequest request = new RegisterRequest();
@@ -187,16 +187,16 @@ class AuthServiceTest {
 
         when(userRepository.findByEmail("test@gmail.com"))
                 .thenReturn(Optional.of(mockUser));
-        doNothing().when(otpService).sendOtp(anyString());
 
-        // Act
-        String result = authService.registerPatient(request);
+        // Act & Assert
+        RuntimeException ex = assertThrows(
+                RuntimeException.class,
+                () -> authService.registerPatient(request));
 
-        // Assert
-        assertNotNull(result);
-        assertTrue(result.contains("OTP sent"));
+        assertEquals("Registration failed: Email already registered",
+                ex.getMessage());
         verify(userRepository, never()).save(any(User.class));
-        verify(otpService).sendOtp("test@gmail.com");
+        verify(otpService, never()).sendOtp(anyString());
     }
 
     @Test
