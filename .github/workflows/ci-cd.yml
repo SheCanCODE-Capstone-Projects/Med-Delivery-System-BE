@@ -169,6 +169,6 @@ jobs:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
 
       - name: Deploy to Railway
-        run: railway up --service meddelivery
+        run: railway up --service  Med-Delivery-System-BE
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
