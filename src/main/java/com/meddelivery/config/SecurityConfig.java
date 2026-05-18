@@ -87,6 +87,12 @@ public class SecurityConfig {
                         SessionCreationPolicy.STATELESS)
             )
 
+            // ── 401 instead of redirect ──────────
+            .exceptionHandling(ex -> ex
+                .authenticationEntryPoint((req, res, e) ->
+                    res.sendError(401, "Unauthorized"))
+            )
+
             // ── OAuth2 ───────────────────────────
             .oauth2Login(oauth2 -> oauth2
                 .successHandler(oauth2SuccessHandler)
@@ -107,7 +113,7 @@ public class SecurityConfig {
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
         
-        configuration.setAllowedOriginPatterns(List.of("*"));
+        configuration.setAllowedOrigins(Arrays.asList(allowedOrigins));
         configuration.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(List.of("*"));
         configuration.setExposedHeaders(List.of("Authorization", "Content-Type"));
