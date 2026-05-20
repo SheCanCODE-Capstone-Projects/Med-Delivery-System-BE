@@ -19,6 +19,9 @@ import com.meddelivery.repository.MedicineRequestRepository;
 import com.meddelivery.repository.PatientLocationRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,6 +41,7 @@ public class MedicineRequestService {
     private final PatientMapper mapper;
 
     @Transactional
+    @CacheEvict(value = "medicineRequests", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
     public MedicineRequestResponse submit(MedicineRequestRequest request) {
         PatientProfile profile = profileService.resolveCurrentProfile();
 
@@ -103,6 +107,7 @@ public class MedicineRequestService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "medicineRequests", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
     public List<MedicineRequestResponse> getMyRequests() {
         PatientProfile profile = profileService.resolveCurrentProfile();
         return requestRepository
@@ -114,6 +119,7 @@ public class MedicineRequestService {
 
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "medicineRequest", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser() + '-' + #requestId")
     public MedicineRequestResponse getById(Long requestId) {
         PatientProfile profile = profileService.resolveCurrentProfile();
         MedicineRequest medicineRequest = requestRepository
@@ -124,6 +130,10 @@ public class MedicineRequestService {
 
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "medicineRequests", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()"),
+            @CacheEvict(value = "medicineRequest",  key = "T(com.meddelivery.config.CacheKeyUtils).currentUser() + '-' + #requestId")
+    })
     public MedicineRequestResponse confirm(Long requestId) {
         PatientProfile profile = profileService.resolveCurrentProfile();
         MedicineRequest medicineRequest = requestRepository
@@ -148,6 +158,10 @@ public class MedicineRequestService {
     }
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "medicineRequests", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()"),
+            @CacheEvict(value = "medicineRequest",  key = "T(com.meddelivery.config.CacheKeyUtils).currentUser() + '-' + #requestId")
+    })
     public MedicineRequestResponse cancel(Long requestId) {
         PatientProfile profile = profileService.resolveCurrentProfile();
         MedicineRequest medicineRequest = requestRepository

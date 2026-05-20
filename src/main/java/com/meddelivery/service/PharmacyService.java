@@ -23,6 +23,7 @@ package com.meddelivery.service;
  import lombok.extern.slf4j.Slf4j;
  import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
  import org.springframework.transaction.annotation.Transactional;
 
@@ -96,6 +97,10 @@ import org.springframework.stereotype.Service;
     }
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "pharmacies", key = "#pharmacyId"),
+            @CacheEvict(value = "activePharmacies", allEntries = true)
+    })
     public PharmacyResponse updateStatus(Long pharmacyId, PharmacyStatus newStatus) {
 
         Pharmacy pharmacy = findByIdOrThrow(pharmacyId);
@@ -113,6 +118,7 @@ import org.springframework.stereotype.Service;
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "pharmacies", key = "#pharmacyId")
     public PharmacyResponse getPharmacy(Long pharmacyId) {
         return mapToResponse(findByIdOrThrow(pharmacyId));
     }
@@ -375,6 +381,10 @@ import org.springframework.stereotype.Service;
     }
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "pharmacies", allEntries = true),
+            @CacheEvict(value = "activePharmacies", allEntries = true)
+    })
     public PharmacyResponse transferManager(String currentManagerUsername, ManagerUpdateRequest request) {
         // ── Find current manager user ────────────────────────────────────────
         User currentManager = userRepository.findByEmail(currentManagerUsername)

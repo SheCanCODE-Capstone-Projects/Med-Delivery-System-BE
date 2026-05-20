@@ -1,46 +1,46 @@
 package com.meddelivery.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
+import com.github.benmanes.caffeine.cache.Caffeine;
 import org.springframework.cache.CacheManager;
 import org.springframework.cache.annotation.EnableCaching;
+import org.springframework.cache.caffeine.CaffeineCache;
+import org.springframework.cache.support.SimpleCacheManager;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.data.redis.cache.RedisCacheConfiguration;
-import org.springframework.data.redis.cache.RedisCacheManager;
-import org.springframework.data.redis.connection.RedisConnectionFactory;
-import org.springframework.data.redis.serializer.GenericJackson2JsonRedisSerializer;
-import org.springframework.data.redis.serializer.RedisSerializationContext;
-import org.springframework.data.redis.serializer.StringRedisSerializer;
 
-import java.time.Duration;
+import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 @Configuration
 @EnableCaching
 public class CacheConfig {
 
     @Bean
-    public CacheManager cacheManager(RedisConnectionFactory connectionFactory) {
-        ObjectMapper objectMapper = new ObjectMapper();
-        objectMapper.registerModule(new JavaTimeModule());
-        objectMapper.disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS);
-        
-        GenericJackson2JsonRedisSerializer serializer = 
-                new GenericJackson2JsonRedisSerializer(objectMapper);
-        
-        RedisCacheConfiguration config = RedisCacheConfiguration.defaultCacheConfig()
-                .entryTtl(Duration.ofMinutes(10))
-                .serializeKeysWith(
-                        RedisSerializationContext.SerializationPair
-                                .fromSerializer(new StringRedisSerializer()))
-                .serializeValuesWith(
-                        RedisSerializationContext.SerializationPair
-                                .fromSerializer(serializer))
-                .disableCachingNullValues();
+    public CacheManager cacheManager() {
+        SimpleCacheManager manager = new SimpleCacheManager();
+        manager.setCaches(List.of(
+                cache("insuranceProviders",    60),
+                cache("pharmacies",             5),
+                cache("activePharmacies",       5),
+                cache("pharmacyInventory",      5),
+                cache("insuranceCards",        10),
+                cache("pharmacists",           10),
+                cache("pharmacist",            10),
+                cache("patientProfile",         5),
+                cache("patientInsuranceCards",  5),
+                cache("patientLocations",       5),
+                cache("prescriptions",          5),
+                cache("prescription",           5),
+                cache("medicineRequests",       2),
+                cache("medicineRequest",        2)
+        ));
+        return manager;
+    }
 
-        return RedisCacheManager.builder(connectionFactory)
-                .cacheDefaults(config)
-                .build();
+    private CaffeineCache cache(String name, int ttlMinutes) {
+        return new CaffeineCache(name, Caffeine.newBuilder()
+                .expireAfterWrite(ttlMinutes, TimeUnit.MINUTES)
+                .maximumSize(500)
+                .build());
     }
 }

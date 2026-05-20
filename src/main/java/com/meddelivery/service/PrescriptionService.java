@@ -11,6 +11,9 @@ import com.meddelivery.model.enums.PrescriptionStatus;
 import com.meddelivery.repository.PrescriptionRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -29,6 +32,7 @@ public class PrescriptionService {
 
 
     @Transactional
+    @CacheEvict(value = "prescriptions", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
     public PrescriptionResponse upload(PrescriptionRequest request) {
         PatientProfile profile = profileService.resolveCurrentProfile();
 
@@ -51,6 +55,7 @@ public class PrescriptionService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "prescriptions", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
     public List<PrescriptionResponse> getMyPrescriptions() {
         PatientProfile profile = profileService.resolveCurrentProfile();
         return prescriptionRepository
@@ -61,6 +66,7 @@ public class PrescriptionService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "prescription", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser() + '-' + #prescriptionId")
     public PrescriptionResponse getById(Long prescriptionId) {
         PatientProfile profile = profileService.resolveCurrentProfile();
         Prescription prescription = prescriptionRepository
@@ -70,6 +76,10 @@ public class PrescriptionService {
     }
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "prescriptions", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()"),
+            @CacheEvict(value = "prescription",  key = "T(com.meddelivery.config.CacheKeyUtils).currentUser() + '-' + #prescriptionId")
+    })
     public void delete(Long prescriptionId) {
         PatientProfile profile = profileService.resolveCurrentProfile();
         Prescription prescription = prescriptionRepository

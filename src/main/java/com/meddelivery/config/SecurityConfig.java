@@ -70,6 +70,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(PUBLIC_URLS).permitAll()
                 .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                .requestMatchers(HttpMethod.GET, "/api/insurance-providers").permitAll()
                 .requestMatchers("/api/admin/**")
                     .hasRole("SUPER_ADMIN")
                 .requestMatchers("/api/manager/**")

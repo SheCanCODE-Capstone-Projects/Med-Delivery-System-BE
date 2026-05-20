@@ -24,6 +24,9 @@ import com.meddelivery.repository.*;
 import com.meddelivery.service.OtpService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -162,6 +165,10 @@ public class AdminService {
     }
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "pharmacies", key = "#pharmacyId"),
+            @CacheEvict(value = "activePharmacies", allEntries = true)
+    })
     public ApiResponse<Void> processPharmacyApproval(Long pharmacyId, PharmacyApprovalRequest request) {
         Pharmacy pharmacy = pharmacyRepository.findById(pharmacyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Pharmacy not found with id: " + pharmacyId));
@@ -197,6 +204,10 @@ public class AdminService {
     }
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "pharmacies", key = "#pharmacyId"),
+            @CacheEvict(value = "activePharmacies", allEntries = true)
+    })
     public ApiResponse<Void> replacePharmacyManager(Long pharmacyId, ManagerUpdateRequest request) {
         Pharmacy pharmacy = pharmacyRepository.findById(pharmacyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Pharmacy not found with id: " + pharmacyId));
@@ -248,6 +259,10 @@ public class AdminService {
     }
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "pharmacies", key = "#pharmacyId"),
+            @CacheEvict(value = "activePharmacies", allEntries = true)
+    })
     public ApiResponse<Void> suspendPharmacy(Long pharmacyId, String reason) {
         Pharmacy pharmacy = pharmacyRepository.findById(pharmacyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Pharmacy not found with id: " + pharmacyId));
@@ -259,6 +274,7 @@ public class AdminService {
         return ApiResponse.success("Pharmacy suspended", (Void) null);
     }
 
+    @Cacheable("insuranceProviders")
     public ApiResponse<List<InsuranceProvider>> getAllInsuranceProviders() {
         List<InsuranceProvider> providers = insuranceProviderRepository.findAll();
         return ApiResponse.success(providers);

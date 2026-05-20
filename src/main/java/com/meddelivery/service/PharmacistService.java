@@ -19,6 +19,9 @@ import com.meddelivery.repository.UserRepository;
 import com.meddelivery.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import java.util.List;
@@ -36,6 +39,7 @@ public class PharmacistService {
     private final OrderService orderService;
 
     @Transactional
+    @CacheEvict(value = "pharmacists", key = "#pharmacyId")
     public PharmacistResponse addPharmacist(Long pharmacyId, AddPharmacistRequest request) {
 
         Pharmacy pharmacy = pharmacyRepository.findById(pharmacyId)
@@ -79,6 +83,7 @@ public class PharmacistService {
 
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "pharmacist", key = "#pharmacyId + '-' + #pharmacistId")
     public PharmacistResponse getPharmacist(Long pharmacyId, Long pharmacistId) {
         PharmacistProfile pharmacist = pharmacistRepository
                 .findByIdAndPharmacyId(pharmacistId, pharmacyId)
@@ -90,6 +95,7 @@ public class PharmacistService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "pharmacists", key = "#pharmacyId")
     public List<PharmacistResponse> getPharmacistsByPharmacy(Long pharmacyId) {
         if (!pharmacyRepository.existsById(pharmacyId)) {
             throw new PharmacyNotFoundException(pharmacyId);
@@ -102,6 +108,10 @@ public class PharmacistService {
     }
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "pharmacists", key = "#pharmacyId"),
+            @CacheEvict(value = "pharmacist", key = "#pharmacyId + '-' + #pharmacistId")
+    })
     public void removePharmacist(Long pharmacyId, Long pharmacistId) {
         PharmacistProfile pharmacist = pharmacistRepository
                 .findByIdAndPharmacyId(pharmacistId, pharmacyId)

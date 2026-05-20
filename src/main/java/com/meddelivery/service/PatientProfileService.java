@@ -20,6 +20,9 @@
  import com.meddelivery.repository.UserRepository;
  import lombok.RequiredArgsConstructor;
  import lombok.extern.slf4j.Slf4j;
+ import org.springframework.cache.annotation.CacheEvict;
+ import org.springframework.cache.annotation.Cacheable;
+ import org.springframework.cache.annotation.Caching;
  import org.springframework.stereotype.Service;
  import org.springframework.transaction.annotation.Transactional;
 
@@ -41,6 +44,7 @@ public class PatientProfileService {
 
 
      @Transactional
+     @CacheEvict(value = "patientProfile", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
      public PatientProfileResponse createProfile(PatientProfileRequest request) {
          User currentUser = contextService.getCurrentUser();
          User user = userRepository.findById(currentUser.getId())
@@ -91,6 +95,7 @@ public class PatientProfileService {
      }
 
      @Transactional
+     @CacheEvict(value = "patientProfile", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
      public PatientProfileResponse updateProfile(PatientProfileRequest request) {
          User currentUser = contextService.getCurrentUser();
          
@@ -151,6 +156,7 @@ public class PatientProfileService {
 
 //      Returns the full profile summary for the authenticated patient.
     @Transactional(readOnly = true)
+    @Cacheable(value = "patientProfile", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
     public PatientProfileResponse getMyProfile() {
         PatientProfile profile = resolveCurrentProfile();
         return mapper.toProfileResponse(profile);
@@ -167,6 +173,7 @@ public class PatientProfileService {
      }
 
      @Transactional
+     @CacheEvict(value = "patientProfile", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
      public PatientProfileResponse updateProfileImage(String imageUrl) {
          User currentUser = contextService.getCurrentUser();
          currentUser.setProfileImageUrl(imageUrl);
@@ -183,6 +190,7 @@ public class PatientProfileService {
 
     // INSURANCE CARDS
      @Transactional
+     @CacheEvict(value = "patientInsuranceCards", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
      public InsuranceCardResponse addInsuranceCard(InsuranceCardRequest request) {
          PatientProfile profile = resolveCurrentProfile();
 
@@ -202,6 +210,7 @@ public class PatientProfileService {
      }
 
     @Transactional(readOnly = true)
+    @Cacheable(value = "patientInsuranceCards", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
     public List<InsuranceCardResponse> getMyInsuranceCards() {
         PatientProfile profile = resolveCurrentProfile();
         return insuranceCardRepository
@@ -221,6 +230,7 @@ public class PatientProfileService {
     }
 
      @Transactional
+     @CacheEvict(value = "patientInsuranceCards", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
      public void deleteInsuranceCard(Long cardId) {
          PatientProfile profile = resolveCurrentProfile();
          InsuranceCard card = insuranceCardRepository
@@ -231,6 +241,7 @@ public class PatientProfileService {
      }
 
      @Transactional
+     @CacheEvict(value = "patientInsuranceCards", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
      public InsuranceCardResponse updateInsuranceCard(Long cardId, InsuranceCardUpdateRequest request) {
          PatientProfile profile = resolveCurrentProfile();
          InsuranceCard card = insuranceCardRepository.findByIdAndPatientProfileId(cardId, profile.getId())
@@ -258,6 +269,7 @@ public class PatientProfileService {
      // ==================== LOCATION MANAGEMENT (Multiple) ====================
 
      @Transactional
+     @CacheEvict(value = "patientLocations", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
      public PatientLocationResponse createLocation(PatientLocationRequest request) {
          validateLocationRequest(request);
          PatientProfile profile = resolveCurrentProfile();
@@ -282,6 +294,7 @@ public class PatientProfileService {
      }
 
      @Transactional(readOnly = true)
+     @Cacheable(value = "patientLocations", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
      public List<PatientLocationResponse> getAllLocations() {
          PatientProfile profile = resolveCurrentProfile();
          return locationRepository.findByPatientProfileId(profile.getId()).stream()
@@ -299,6 +312,7 @@ public class PatientProfileService {
      }
 
      @Transactional
+     @CacheEvict(value = "patientLocations", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
      public PatientLocationResponse updateLocation(Long locationId, PatientLocationRequest request) {
          validateLocationRequest(request);
          PatientProfile profile = resolveCurrentProfile();
@@ -326,6 +340,7 @@ public class PatientProfileService {
      }
 
      @Transactional
+     @CacheEvict(value = "patientLocations", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
      public void deleteLocation(Long locationId) {
          PatientProfile profile = resolveCurrentProfile();
          PatientLocation location = locationRepository.findById(locationId)
@@ -336,6 +351,7 @@ public class PatientProfileService {
      }
 
      @Transactional
+     @CacheEvict(value = "patientLocations", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
      public void setDefaultLocation(Long locationId) {
          PatientProfile profile = resolveCurrentProfile();
          PatientLocation location = locationRepository.findById(locationId)

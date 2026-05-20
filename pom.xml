@@ -94,7 +94,7 @@
             <artifactId>flyway-database-postgresql</artifactId>
         </dependency>
 
-		 <!-- ── Redis + Cache ──────────────────────────── -->
+		 <!-- ── Redis (OTP + rate limiting only) ────────── -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-data-redis</artifactId>
@@ -105,9 +105,15 @@
             <artifactId>commons-pool2</artifactId>
         </dependency>
 
+        <!-- ── Spring Cache + Caffeine (in-memory cache) ─── -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-cache</artifactId>
+        </dependency>
+
+        <dependency>
+            <groupId>com.github.ben-manes.caffeine</groupId>
+            <artifactId>caffeine</artifactId>
         </dependency>
 
 		<!-- ── WebSocket ──────────────────────────────── -->
