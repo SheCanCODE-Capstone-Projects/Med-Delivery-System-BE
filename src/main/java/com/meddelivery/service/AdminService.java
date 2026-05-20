@@ -2,6 +2,8 @@ package com.meddelivery.service;
 
 import com.meddelivery.dto.request.*;
 import com.meddelivery.dto.response.*;
+import com.meddelivery.dto.request.InsuranceProviderRequest;
+import com.meddelivery.dto.response.InsuranceProviderResponse;
 import com.meddelivery.exception.BusinessException;
 import com.meddelivery.exception.ResourceNotFoundException;
 import com.meddelivery.model.InsuranceCard;
@@ -275,9 +277,63 @@ public class AdminService {
     }
 
     @Cacheable("insuranceProviders")
-    public ApiResponse<List<InsuranceProvider>> getAllInsuranceProviders() {
-        List<InsuranceProvider> providers = insuranceProviderRepository.findAll();
+    public ApiResponse<List<InsuranceProviderResponse>> getAllInsuranceProviders() {
+        List<InsuranceProviderResponse> providers = insuranceProviderRepository.findAll()
+                .stream()
+                .map(this::toInsuranceProviderResponse)
+                .collect(Collectors.toList());
         return ApiResponse.success(providers);
+    }
+
+    @Transactional
+    @CacheEvict(value = "insuranceProviders", allEntries = true)
+    public ApiResponse<InsuranceProviderResponse> createInsuranceProvider(InsuranceProviderRequest request) {
+        if (insuranceProviderRepository.existsByCodeIgnoreCase(request.getCode())) {
+            throw new BusinessException("Insurance provider with code '" + request.getCode() + "' already exists");
+        }
+        InsuranceProvider provider = InsuranceProvider.builder()
+                .name(request.getName())
+                .code(request.getCode().toUpperCase())
+                .coveragePercentage(request.getCoveragePercentage())
+                .build();
+        InsuranceProvider saved = insuranceProviderRepository.save(provider);
+        log.info("Insurance provider created: id={}, code={}", saved.getId(), saved.getCode());
+        return ApiResponse.success("Insurance provider created", toInsuranceProviderResponse(saved));
+    }
+
+    @Transactional
+    @CacheEvict(value = "insuranceProviders", allEntries = true)
+    public ApiResponse<InsuranceProviderResponse> updateInsuranceProvider(Long id, InsuranceProviderRequest request) {
+        InsuranceProvider provider = insuranceProviderRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("InsuranceProvider", id));
+        if (insuranceProviderRepository.existsByCodeIgnoreCaseAndIdNot(request.getCode(), id)) {
+            throw new BusinessException("Insurance provider with code '" + request.getCode() + "' already exists");
+        }
+        provider.setName(request.getName());
+        provider.setCode(request.getCode().toUpperCase());
+        provider.setCoveragePercentage(request.getCoveragePercentage());
+        InsuranceProvider saved = insuranceProviderRepository.save(provider);
+        log.info("Insurance provider updated: id={}", saved.getId());
+        return ApiResponse.success("Insurance provider updated", toInsuranceProviderResponse(saved));
+    }
+
+    @Transactional
+    @CacheEvict(value = "insuranceProviders", allEntries = true)
+    public ApiResponse<Void> deleteInsuranceProvider(Long id) {
+        InsuranceProvider provider = insuranceProviderRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("InsuranceProvider", id));
+        insuranceProviderRepository.delete(provider);
+        log.info("Insurance provider deleted: id={}", id);
+        return ApiResponse.success("Insurance provider deleted", (Void) null);
+    }
+
+    private InsuranceProviderResponse toInsuranceProviderResponse(InsuranceProvider p) {
+        return InsuranceProviderResponse.builder()
+                .id(p.getId())
+                .name(p.getName())
+                .code(p.getCode())
+                .coveragePercentage(p.getCoveragePercentage())
+                .build();
     }
 
     // --- D. Order & Logistics Oversight ---

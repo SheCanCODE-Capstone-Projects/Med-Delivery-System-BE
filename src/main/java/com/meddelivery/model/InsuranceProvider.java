@@ -29,6 +29,10 @@ public class InsuranceProvider {
     @Column(unique = true, nullable = false)
     private String code;
 
+    @Column(name = "coverage_percentage", nullable = false)
+    @Builder.Default
+    private Double coveragePercentage = 0.0;
+
     @ManyToMany(mappedBy = "supportedInsuranceProviders")
     @Builder.Default
     private List<Pharmacy> pharmacies = new ArrayList<>();

@@ -2,6 +2,7 @@ package com.meddelivery.controller;
 
 import com.meddelivery.dto.response.*;
 import com.meddelivery.dto.request.AdminUserSearchRequest;
+import com.meddelivery.dto.request.InsuranceProviderRequest;
 import com.meddelivery.dto.request.ManagerUpdateRequest;
 import com.meddelivery.dto.request.OrderInterventionRequest;
 import com.meddelivery.dto.request.PharmacyApprovalRequest;
@@ -90,8 +91,29 @@ public class AdminController {
 
     @GetMapping("/insurance-providers")
     @Operation(summary = "List Insurance Providers")
-    public ResponseEntity<ApiResponse<List<InsuranceProvider>>> getInsurances() {
+    public ResponseEntity<ApiResponse<List<InsuranceProviderResponse>>> getInsurances() {
         return ResponseEntity.ok(adminService.getAllInsuranceProviders());
+    }
+
+    @PostMapping("/insurance-providers")
+    @Operation(summary = "Create Insurance Provider")
+    public ResponseEntity<ApiResponse<InsuranceProviderResponse>> createInsuranceProvider(
+            @Valid @RequestBody InsuranceProviderRequest request) {
+        return ResponseEntity.ok(adminService.createInsuranceProvider(request));
+    }
+
+    @PutMapping("/insurance-providers/{id}")
+    @Operation(summary = "Update Insurance Provider")
+    public ResponseEntity<ApiResponse<InsuranceProviderResponse>> updateInsuranceProvider(
+            @PathVariable Long id,
+            @Valid @RequestBody InsuranceProviderRequest request) {
+        return ResponseEntity.ok(adminService.updateInsuranceProvider(id, request));
+    }
+
+    @DeleteMapping("/insurance-providers/{id}")
+    @Operation(summary = "Delete Insurance Provider")
+    public ResponseEntity<ApiResponse<Void>> deleteInsuranceProvider(@PathVariable Long id) {
+        return ResponseEntity.ok(adminService.deleteInsuranceProvider(id));
     }
 
     @GetMapping("/orders")
