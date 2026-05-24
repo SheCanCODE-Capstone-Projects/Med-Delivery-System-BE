@@ -2,6 +2,7 @@ package com.meddelivery.controller;
 
 import com.meddelivery.dto.request.ManagerUpdateRequest;
 import com.meddelivery.dto.request.PharmacyRegistrationRequest;
+import com.meddelivery.dto.request.PharmacyUpdateRequest;
 import com.meddelivery.dto.response.PharmacyResponse;
 import com.meddelivery.model.enums.PharmacyStatus;
 import com.meddelivery.service.PharmacyService;
@@ -35,6 +36,16 @@ public class PharmacyController {
     public ResponseEntity<PharmacyResponse> getMyPharmacy(Authentication authentication) {
         String username = authentication.getName();
         PharmacyResponse response = pharmacyService.getMyPharmacy(username);
+        return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/me")
+    @PreAuthorize("hasRole('MANAGER')")
+    public ResponseEntity<PharmacyResponse> updateMyPharmacy(
+            Authentication authentication,
+            @RequestBody PharmacyUpdateRequest request) {
+        String username = authentication.getName();
+        PharmacyResponse response = pharmacyService.updateMyPharmacy(username, request);
         return ResponseEntity.ok(response);
     }
 

@@ -5,6 +5,7 @@ import lombok.*;
 import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Entity
@@ -31,6 +32,12 @@ public class PharmacyInventory {
     private BigDecimal price;
 
     private String dosageInstructions;
+
+    private String unit;
+
+    private LocalDate expiryDate;
+
+    private Integer lowStockThreshold;
 
     @UpdateTimestamp
     private LocalDateTime lastUpdated;

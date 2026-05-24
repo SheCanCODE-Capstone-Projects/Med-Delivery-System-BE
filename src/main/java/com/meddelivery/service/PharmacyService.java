@@ -98,6 +98,29 @@ import org.springframework.stereotype.Service;
 
     @Transactional
     @Caching(evict = {
+            @CacheEvict(value = "pharmacies", allEntries = true),
+            @CacheEvict(value = "activePharmacies", allEntries = true)
+    })
+    public PharmacyResponse updateMyPharmacy(String username, com.meddelivery.dto.request.PharmacyUpdateRequest request) {
+        User currentUser = userRepository.findByEmail(username)
+                .or(() -> userRepository.findByPhoneNumber(username))
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+        ManagerProfile mp = currentUser.getManagerProfile();
+        if (mp == null || mp.getPharmacy() == null) {
+            throw new ResourceNotFoundException("No pharmacy found for this manager");
+        }
+        Pharmacy pharmacy = mp.getPharmacy();
+        if (request.getContactInfo() != null && !request.getContactInfo().isBlank()) {
+            pharmacy.setContactInfo(request.getContactInfo());
+        }
+        if (request.getAddress() != null && !request.getAddress().isBlank()) {
+            pharmacy.setAddress(request.getAddress());
+        }
+        return mapToResponse(pharmacyRepository.save(pharmacy));
+    }
+
+    @Transactional
+    @Caching(evict = {
             @CacheEvict(value = "pharmacies", key = "#pharmacyId"),
             @CacheEvict(value = "activePharmacies", allEntries = true)
     })
@@ -173,6 +196,9 @@ import org.springframework.stereotype.Service;
          inventory.setQuantity(request.getQuantity());
          inventory.setPrice(request.getPrice());
          inventory.setDosageInstructions(request.getDosageInstructions());
+         if (request.getUnit() != null) inventory.setUnit(request.getUnit());
+         if (request.getExpiryDate() != null) inventory.setExpiryDate(request.getExpiryDate());
+         if (request.getLowStockThreshold() != null) inventory.setLowStockThreshold(request.getLowStockThreshold());
 
          PharmacyInventory saved = inventoryRepository.save(inventory);
          log.info("Inventory item {} updated for pharmacyId={}", saved.getId(), pharmacyId);
@@ -317,6 +343,9 @@ import org.springframework.stereotype.Service;
                  .quantity(inv.getQuantity())
                  .price(inv.getPrice())
                  .dosageInstructions(inv.getDosageInstructions())
+                 .unit(inv.getUnit())
+                 .expiryDate(inv.getExpiryDate())
+                 .lowStockThreshold(inv.getLowStockThreshold())
                  .lastUpdated(inv.getLastUpdated())
                  .build();
      }

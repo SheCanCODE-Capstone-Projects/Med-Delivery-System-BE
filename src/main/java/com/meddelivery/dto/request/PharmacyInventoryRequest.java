@@ -5,6 +5,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 @Data
 public class PharmacyInventoryRequest {
@@ -21,6 +22,12 @@ public class PharmacyInventoryRequest {
     private BigDecimal price;
 
     private String dosageInstructions;
+
+    private String unit;
+
+    private LocalDate expiryDate;
+
+    private Integer lowStockThreshold;
 
     // Optional: if provided, we'll use existing medicine; otherwise find-or-create by name
     private Long medicineId;

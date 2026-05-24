@@ -3,6 +3,7 @@ package com.meddelivery.dto.response;
 import lombok.Builder;
 import lombok.Data;
 import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 @Data
@@ -15,5 +16,8 @@ public class PharmacyInventoryResponse {
     private Integer quantity;
     private BigDecimal price;
     private String dosageInstructions;
+    private String unit;
+    private LocalDate expiryDate;
+    private Integer lowStockThreshold;
     private LocalDateTime lastUpdated;
 }
