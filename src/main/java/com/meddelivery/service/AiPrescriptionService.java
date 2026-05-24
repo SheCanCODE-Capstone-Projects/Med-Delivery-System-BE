@@ -17,7 +17,7 @@ public class AiPrescriptionService {
 
     private final WebClient.Builder webClientBuilder;
 
-    @Value("${app.ai.openai-api-key}")
+    @Value("${app.ai.openai-api-key:}")
     private String openAiApiKey;
 
     @Value("${app.ai.enabled:false}")
