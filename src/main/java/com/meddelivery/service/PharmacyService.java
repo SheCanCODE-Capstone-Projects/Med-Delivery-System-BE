@@ -3,6 +3,7 @@ package com.meddelivery.service;
  import com.meddelivery.dto.request.ManagerUpdateRequest;
  import com.meddelivery.dto.request.PharmacyInventoryRequest;
  import com.meddelivery.dto.request.PharmacyRegistrationRequest;
+ import com.meddelivery.dto.response.InsuranceProviderResponse;
  import com.meddelivery.dto.response.PharmacyInventoryResponse;
  import com.meddelivery.dto.response.PharmacyResponse;
  import com.meddelivery.dto.response.PatientProfileResponse;
@@ -29,6 +30,8 @@ import org.springframework.stereotype.Service;
 
  import java.math.BigDecimal;
  import java.time.LocalDateTime;
+ import java.util.ArrayList;
+ import java.util.Collections;
  import java.util.List;
  import java.util.Optional;
  import java.util.stream.Collectors;
@@ -47,6 +50,7 @@ import org.springframework.stereotype.Service;
      private final PatientContextService contextService;
      private final OrderRepository orderRepository;
      private final PatientMapper patientMapper;
+     private final InsuranceProviderRepository insuranceProviderRepository;
 
     @Transactional
     public PharmacyResponse registerPharmacy(PharmacyRegistrationRequest request) {
@@ -92,6 +96,13 @@ import org.springframework.stereotype.Service;
 
         // ── Save Pharmacy (cascades managerProfile) ────────────────────────
         Pharmacy saved = pharmacyRepository.save(pharmacy);
+
+        // ── Link Insurance Providers ───────────────────────────────────────
+        if (request.getInsuranceProviderIds() != null && !request.getInsuranceProviderIds().isEmpty()) {
+            List<InsuranceProvider> providers = insuranceProviderRepository.findAllById(request.getInsuranceProviderIds());
+            saved.setSupportedInsuranceProviders(new ArrayList<>(providers));
+            saved = pharmacyRepository.save(saved);
+        }
 
         return mapToResponse(saved);
     }
@@ -478,6 +489,50 @@ import org.springframework.stereotype.Service;
         log.info("AUDIT: {} - {} - {}", action, target, details);
     }
 
+    // ── Insurance Provider CRUD ────────────────────────────────────────────────
+
+    @Transactional(readOnly = true)
+    public List<InsuranceProviderResponse> getPharmacyInsuranceProviders(Long pharmacyId) {
+        Pharmacy pharmacy = findByIdOrThrow(pharmacyId);
+        List<InsuranceProvider> providers = pharmacy.getSupportedInsuranceProviders();
+        if (providers == null) return Collections.emptyList();
+        return providers.stream().map(this::toInsuranceProviderResponse).collect(Collectors.toList());
+    }
+
+    @Transactional
+    @CacheEvict(value = "pharmacies", allEntries = true)
+    public void addInsuranceProvider(Long pharmacyId, Long providerId) {
+        Pharmacy pharmacy = findByIdOrThrow(pharmacyId);
+        InsuranceProvider provider = insuranceProviderRepository.findById(providerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Insurance provider not found"));
+        List<InsuranceProvider> current = pharmacy.getSupportedInsuranceProviders();
+        if (current == null) {
+            pharmacy.setSupportedInsuranceProviders(new ArrayList<>(List.of(provider)));
+        } else if (current.stream().noneMatch(p -> p.getId().equals(providerId))) {
+            current.add(provider);
+        }
+        pharmacyRepository.save(pharmacy);
+    }
+
+    @Transactional
+    @CacheEvict(value = "pharmacies", allEntries = true)
+    public void removeInsuranceProvider(Long pharmacyId, Long providerId) {
+        Pharmacy pharmacy = findByIdOrThrow(pharmacyId);
+        List<InsuranceProvider> current = pharmacy.getSupportedInsuranceProviders();
+        if (current != null) {
+            current.removeIf(p -> p.getId().equals(providerId));
+            pharmacyRepository.save(pharmacy);
+        }
+    }
+
+    private InsuranceProviderResponse toInsuranceProviderResponse(InsuranceProvider p) {
+        return InsuranceProviderResponse.builder()
+                .id(p.getId())
+                .name(p.getName())
+                .code(p.getCode())
+                .coveragePercentage(p.getCoveragePercentage())
+                .build();
+    }
 
     private Pharmacy findByIdOrThrow(Long id) {
         return pharmacyRepository.findById(id)

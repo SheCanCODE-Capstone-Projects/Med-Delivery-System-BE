@@ -3,6 +3,7 @@ package com.meddelivery.controller;
 import com.meddelivery.dto.request.ManagerUpdateRequest;
 import com.meddelivery.dto.request.PharmacyRegistrationRequest;
 import com.meddelivery.dto.request.PharmacyUpdateRequest;
+import com.meddelivery.dto.response.InsuranceProviderResponse;
 import com.meddelivery.dto.response.PharmacyResponse;
 import com.meddelivery.model.enums.PharmacyStatus;
 import com.meddelivery.service.PharmacyService;
@@ -94,5 +95,25 @@ public class PharmacyController {
      @PreAuthorize("hasRole('PATIENT') or hasRole('PHARMACIST')")
      public ResponseEntity<List<PharmacyResponse>> getActivePharmacies() {
          return ResponseEntity.ok(pharmacyService.getActivePharmacies());
+     }
+
+     @GetMapping("/{id}/insurance-providers")
+     @PreAuthorize("hasRole('MANAGER') or hasRole('SUPER_ADMIN') or hasRole('PHARMACIST')")
+     public ResponseEntity<List<InsuranceProviderResponse>> getInsuranceProviders(@PathVariable Long id) {
+         return ResponseEntity.ok(pharmacyService.getPharmacyInsuranceProviders(id));
+     }
+
+     @PostMapping("/{id}/insurance-providers/{providerId}")
+     @PreAuthorize("hasRole('MANAGER') or hasRole('SUPER_ADMIN')")
+     public ResponseEntity<Void> addInsuranceProvider(@PathVariable Long id, @PathVariable Long providerId) {
+         pharmacyService.addInsuranceProvider(id, providerId);
+         return ResponseEntity.ok().build();
+     }
+
+     @DeleteMapping("/{id}/insurance-providers/{providerId}")
+     @PreAuthorize("hasRole('MANAGER') or hasRole('SUPER_ADMIN')")
+     public ResponseEntity<Void> removeInsuranceProvider(@PathVariable Long id, @PathVariable Long providerId) {
+         pharmacyService.removeInsuranceProvider(id, providerId);
+         return ResponseEntity.ok().build();
      }
  }
