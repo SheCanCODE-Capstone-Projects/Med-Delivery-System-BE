@@ -107,13 +107,13 @@ public class PharmacyController {
      @PreAuthorize("hasRole('MANAGER') or hasRole('SUPER_ADMIN')")
      public ResponseEntity<Void> addInsuranceProvider(@PathVariable Long id, @PathVariable Long providerId) {
          pharmacyService.addInsuranceProvider(id, providerId);
-         return ResponseEntity.ok().build();
+         return ResponseEntity.noContent().build();
      }
 
      @DeleteMapping("/{id}/insurance-providers/{providerId}")
      @PreAuthorize("hasRole('MANAGER') or hasRole('SUPER_ADMIN')")
      public ResponseEntity<Void> removeInsuranceProvider(@PathVariable Long id, @PathVariable Long providerId) {
          pharmacyService.removeInsuranceProvider(id, providerId);
-         return ResponseEntity.ok().build();
+         return ResponseEntity.noContent().build();
      }
  }
