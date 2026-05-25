@@ -6,7 +6,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -17,91 +19,91 @@ public class AiPrescriptionService {
 
     private final WebClient.Builder webClientBuilder;
 
-    @Value("${app.ai.openai-api-key:}")
-    private String openAiApiKey;
+    @Value("${app.ai.anthropic-api-key:}")
+    private String anthropicApiKey;
+
+    // OpenAI commented out — using Anthropic Claude instead
+    // @Value("${app.ai.openai-api-key:}")
+    // private String openAiApiKey;
 
     @Value("${app.ai.enabled:false}")
     private boolean aiEnabled;
 
-    @Value("${app.ai.model:gpt-3.5-turbo}")
+    @Value("${app.ai.model:claude-haiku-4-5-20251001}")
     private String model;
 
-    /**
-     * Validates if the requested medicines match the prescription content using OpenAI.
-     */
+    private static final String ANTHROPIC_URL     = "https://api.anthropic.com/v1/messages";
+    private static final String ANTHROPIC_VERSION = "2023-06-01";
+
     public boolean validatePrescription(String prescriptionText, List<String> requestedMedicines) {
-        // 1. Skip if disabled
         if (!aiEnabled) {
             log.warn("AI Validation is DISABLED. Skipping check.");
             return false;
         }
 
-        // 2. Basic Checks
+        if (anthropicApiKey == null || anthropicApiKey.isBlank()) {
+            log.warn("Anthropic API key not configured. Skipping AI prescription validation.");
+            return false;
+        }
+
         if (prescriptionText == null || prescriptionText.isBlank()) {
             throw new BusinessException("Prescription text is empty. Cannot validate via AI.");
         }
 
-        // 3. Construct Prompt
         String prompt = String.format(
-            "You are a strict medical pharmacist assistant. \n"
-                + "Prescription Content: \"%s\" \n"
-                + "Requested Medicines: %s \n"
-                + "Task: Determine if EVERY requested medicine is explicitly listed or clearly implied in the prescription. \n"
-                + "Response: Return ONLY the word 'VALID' if they all match, or 'INVALID' if any do not.",
+            "You are a strict medical pharmacist assistant.\n" +
+            "Prescription Content: \"%s\"\n" +
+            "Requested Medicines: %s\n" +
+            "Task: Determine if EVERY requested medicine is explicitly listed or clearly implied in the prescription.\n" +
+            "Response: Return ONLY the word 'VALID' if they all match, or 'INVALID' if any do not.",
             prescriptionText,
             requestedMedicines.toString()
         );
 
         try {
-            // 4. Call OpenAI API
-            Map<String, Object> response = webClientBuilder.build()
+            Map<String, Object> requestBody = new LinkedHashMap<>();
+            requestBody.put("model", model);
+            requestBody.put("max_tokens", 10);
+            requestBody.put("messages", List.of(Map.of("role", "user", "content", prompt)));
+
+            Map<?, ?> response = webClientBuilder.build()
                 .post()
-                .uri("https://api.openai.com/v1/chat/completions")
-                .header("Authorization", "Bearer " + openAiApiKey)
+                .uri(ANTHROPIC_URL)
+                .header("x-api-key", anthropicApiKey)
+                .header("anthropic-version", ANTHROPIC_VERSION)
                 .header("Content-Type", "application/json")
-                .bodyValue(Map.of(
-                    "model", model,
-                    "messages", List.of(Map.of("role", "user", "content", prompt)),
-                    "temperature", 0.1
-                ))
+                .bodyValue(requestBody)
                 .retrieve()
                 .bodyToMono(Map.class)
                 .block();
 
-            // 5. Parse Response
-            if (response == null || !response.containsKey("choices")) {
-                log.error("AI Service returned invalid or empty response: {}", response);
+            if (response == null) {
+                log.error("Claude returned null response for prescription validation");
                 return false;
             }
 
-            List<Map<String, Object>> choices = (List<Map<String, Object>>) response.get("choices");
-            if (choices == null || choices.isEmpty()) {
-                log.error("AI Service response choices is null or empty");
+            List<Map<String, Object>> content = (List<Map<String, Object>>) response.get("content");
+            if (content == null || content.isEmpty()) {
+                log.error("Claude response content is empty");
                 return false;
             }
 
-            Map<String, Object> message = (Map<String, Object>) choices.get(0).get("message");
-            if (message == null) {
-                log.error("AI Service response message is null");
-                return false;
-            }
+            String text = (String) content.get(0).get("text");
+            log.info("AI Prescription Validation Result: {}", text);
 
-            String content = (String) message.get("content");
+            String normalized = text == null ? "" : text.trim().toUpperCase();
+            return normalized.contains("VALID") && !normalized.contains("INVALID");
 
-            log.info("AI Validation Result: {}", content);
-            String normalized = content == null ? "" : content.trim().toUpperCase();
-            return normalized.equals("VALID");
-
+        } catch (WebClientResponseException e) {
+            log.error("Claude API error during prescription validation — status: {}, body: {}",
+                    e.getStatusCode(), e.getResponseBodyAsString());
+            return false;
         } catch (Exception e) {
-            log.error("AI Validation failed: ", e);
+            log.error("AI prescription validation failed: {}", e.getMessage(), e);
             return false;
         }
     }
 
-    /**
-     * Validates if the requested medicines match the prescription content.
-     * Alias for validatePrescription for backwards compatibility.
-     */
     public boolean validateMedicinesMatchPrescription(String prescriptionText, List<String> requestedMedicines) {
         return validatePrescription(prescriptionText, requestedMedicines);
     }
