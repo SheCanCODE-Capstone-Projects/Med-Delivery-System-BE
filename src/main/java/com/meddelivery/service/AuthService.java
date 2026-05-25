@@ -11,8 +11,10 @@ import com.meddelivery.dto.response.AuthResponse;
 import com.meddelivery.exception.AuthException;
 import com.meddelivery.exception.OtpException;
 import com.meddelivery.model.PatientProfile;
+import com.meddelivery.model.PharmacistProfile;
 import com.meddelivery.model.User;
 import com.meddelivery.model.enums.UserRole;
+import com.meddelivery.repository.PharmacistRepository;
 import com.meddelivery.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -28,12 +30,22 @@ import org.springframework.transaction.annotation.Transactional;
 public class AuthService {
 
     private final UserRepository userRepository;
+    private final PharmacistRepository pharmacistRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
     private final OtpService otpService;
     private final FirebaseOtpService firebaseOtpService;
     private final RefreshTokenService refreshTokenService;
+
+    private Long resolvePharmacyId(User user) {
+        if (user.getRole() == UserRole.PHARMACIST) {
+            return pharmacistRepository.findByUserId(user.getId())
+                    .map(p -> p.getPharmacy() != null ? p.getPharmacy().getId() : null)
+                    .orElse(null);
+        }
+        return null;
+    }
 
     // ── FLOW 1: Login with Email/Password ────────
     public AuthResponse login(LoginRequest request) {
@@ -69,6 +81,7 @@ public class AuthService {
                 .email(user.getEmail())
                 .phoneNumber(user.getPhoneNumber())
                 .fullName(user.getFullName())
+                .pharmacyId(resolvePharmacyId(user))
                 .build();
     }
 
@@ -182,6 +195,7 @@ public class AuthService {
                 .email(user.getEmail())
                 .phoneNumber(user.getPhoneNumber())
                 .fullName(user.getFullName())
+                .pharmacyId(resolvePharmacyId(user))
                 .build();
     }
 
@@ -237,6 +251,7 @@ public class AuthService {
                 .email(user.getEmail())
                 .phoneNumber(user.getPhoneNumber())
                 .fullName(user.getFullName())
+                .pharmacyId(resolvePharmacyId(user))
                 .build();
     }
 
