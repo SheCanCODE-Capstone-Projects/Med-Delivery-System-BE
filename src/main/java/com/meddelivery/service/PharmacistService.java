@@ -111,10 +111,16 @@ public class PharmacistService {
         return mapToResponse(pharmacist);
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public PharmacistResponse getPharmacistByUserId(Long userId) {
         PharmacistProfile pharmacist = pharmacistRepository.findByUserId(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Pharmacist profile not found for user " + userId));
+        User user = pharmacist.getUser();
+        if (!user.isActive()) {
+            user.setActive(true);
+            user.setVerified(true);
+            userRepository.save(user);
+        }
         return mapToResponse(pharmacist);
     }
 
