@@ -112,11 +112,15 @@ public class PharmacistService {
     }
 
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "pharmacists", allEntries = true),
+            @CacheEvict(value = "pharmacist",  allEntries = true)
+    })
     public PharmacistResponse getPharmacistByUserId(Long userId) {
         PharmacistProfile pharmacist = pharmacistRepository.findByUserId(userId)
                 .orElseThrow(() -> new IllegalArgumentException("Pharmacist profile not found for user " + userId));
         User user = pharmacist.getUser();
-        if (!user.isActive()) {
+        if (!user.isActive() || !user.isVerified()) {
             user.setActive(true);
             user.setVerified(true);
             userRepository.save(user);
