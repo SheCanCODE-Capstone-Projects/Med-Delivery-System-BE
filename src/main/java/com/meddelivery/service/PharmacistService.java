@@ -112,6 +112,13 @@ public class PharmacistService {
     }
 
     @Transactional(readOnly = true)
+    public PharmacistResponse getPharmacistByUserId(Long userId) {
+        PharmacistProfile pharmacist = pharmacistRepository.findByUserId(userId)
+                .orElseThrow(() -> new IllegalArgumentException("Pharmacist profile not found for user " + userId));
+        return mapToResponse(pharmacist);
+    }
+
+    @Transactional(readOnly = true)
     @Cacheable(value = "pharmacists", key = "#pharmacyId")
     public List<PharmacistResponse> getPharmacistsByPharmacy(Long pharmacyId) {
         if (!pharmacyRepository.existsById(pharmacyId)) {

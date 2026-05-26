@@ -6,8 +6,11 @@ import com.meddelivery.dto.request.ValidatePrescriptionRequest;
 import com.meddelivery.dto.response.ActionLogResponse;
 import com.meddelivery.dto.response.ApiResponse;
 import com.meddelivery.dto.response.DispensingOrderResponse;
+import com.meddelivery.dto.response.PharmacistResponse;
 import com.meddelivery.dto.response.SubstitutionResponse;
+import com.meddelivery.model.User;
 import com.meddelivery.service.DispensingService;
+import com.meddelivery.service.PharmacistService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -25,7 +28,16 @@ import java.util.List;
 public class DispensingController {
 
     private final DispensingService dispensingService;
+    private final PharmacistService pharmacistService;
 
+
+    @GetMapping("/me")
+    public ResponseEntity<ApiResponse<PharmacistResponse>> getMyProfile(
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(ApiResponse.success(
+                pharmacistService.getPharmacistByUserId(user.getId())
+        ));
+    }
 
     @GetMapping("/orders")
     public ResponseEntity<ApiResponse<List<DispensingOrderResponse>>> getAssignedOrders(
