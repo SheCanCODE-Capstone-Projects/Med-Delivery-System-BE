@@ -398,7 +398,7 @@ public class OrderService {
     }
 
     private OrderResponse mapToResponse(Order order) {
-        List<OrderItemResponse> itemDtos = (order.getOrderItems() != null ? order.getOrderItems() : List.of()).stream()
+        List<OrderItemResponse> itemDtos = (order.getOrderItems() != null ? order.getOrderItems() : List.<OrderItem>of()).stream()
                 .map(item -> OrderItemResponse.builder()
                         .id(item.getId())
                         .medicineId(item.getMedicine().getId())
