@@ -6,6 +6,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -112,6 +113,20 @@ public class GlobalExceptionHandler {
         log.warn("Method Not Supported: {}", ex.getMessage());
         return ResponseEntity.status(HttpStatus.METHOD_NOT_ALLOWED)
                 .body(ApiResponse.error("HTTP method not supported: " + ex.getMethod()));
+    }
+
+    @ExceptionHandler(InvalidRequestException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInvalidRequest(InvalidRequestException ex) {
+        log.warn("Invalid Request: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleUnreadableMessage(HttpMessageNotReadableException ex) {
+        log.warn("Unreadable request body: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error("Invalid request format. Please check your input."));
     }
 
     // ── Generic Errors ───────────────────────────

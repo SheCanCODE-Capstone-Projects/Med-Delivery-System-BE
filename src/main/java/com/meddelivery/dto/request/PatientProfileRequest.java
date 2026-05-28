@@ -1,6 +1,5 @@
 package com.meddelivery.dto.request;
 
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Past;
 import lombok.Data;
@@ -11,10 +10,8 @@ import java.time.LocalDate;
 @Data
 public class PatientProfileRequest {
 
-    @NotBlank(message = "Full name is required")
     private String fullName;
 
-    @NotBlank(message = "Phone number is required")
     @Pattern(regexp = "^\\+?[0-9]{7,15}$", message = "Invalid phone number")
     private String phoneNumber;
 

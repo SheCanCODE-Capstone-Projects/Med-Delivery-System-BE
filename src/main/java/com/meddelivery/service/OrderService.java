@@ -91,9 +91,15 @@ public class OrderService {
             String prescriptionText = prescription.getNotes();
             List<String> requestedMedNames = request.getItems().stream()
                 .map(item -> {
-                    Medicine med = medicineRepository.findById(item.getMedicineId())
-                        .orElseThrow(() -> new ResourceNotFoundException("Medicine with id " + item.getMedicineId() + " not found"));
-                    return med.getName();
+                    if (item.getMedicineName() != null && !item.getMedicineName().isBlank()) {
+                        return item.getMedicineName().trim();
+                    }
+                    if (item.getMedicineId() != null) {
+                        Medicine med = medicineRepository.findById(item.getMedicineId())
+                            .orElseThrow(() -> new ResourceNotFoundException("Medicine with id " + item.getMedicineId() + " not found"));
+                        return med.getName();
+                    }
+                    throw new BusinessException("Each item must have a medicine name or ID");
                 })
                 .collect(Collectors.toList());
 
@@ -163,8 +169,16 @@ public class OrderService {
         // 6. Create Order Items first
         List<OrderItem> items = new ArrayList<>();
         for (CreateOrderRequest.OrderItemRequest itemReq : request.getItems()) {
-            Medicine medicine = medicineRepository.findById(itemReq.getMedicineId())
-                    .orElseThrow(() -> new ResourceNotFoundException("Medicine not found"));
+            Medicine medicine;
+            if (itemReq.getMedicineId() != null) {
+                medicine = medicineRepository.findById(itemReq.getMedicineId())
+                        .orElseThrow(() -> new ResourceNotFoundException("Medicine not found"));
+            } else if (itemReq.getMedicineName() != null && !itemReq.getMedicineName().isBlank()) {
+                medicine = medicineRepository.findByNameIgnoreCase(itemReq.getMedicineName().trim())
+                        .orElseThrow(() -> new BusinessException("Medicine '" + itemReq.getMedicineName() + "' is not available in our system. Please check the name and try again."));
+            } else {
+                throw new BusinessException("Each item must have a medicine name or ID");
+            }
 
             OrderItem item = OrderItem.builder()
                     .order(order)
