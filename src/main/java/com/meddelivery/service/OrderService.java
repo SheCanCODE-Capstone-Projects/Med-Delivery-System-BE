@@ -58,7 +58,8 @@ public class OrderService {
         if (request == null) {
             throw new BusinessException("Request cannot be null");
         }
-        if (request.getItems() == null || request.getItems().isEmpty()) {
+        if (request.getOrderType() == OrderType.PRIVATE_PURCHASE &&
+            (request.getItems() == null || request.getItems().isEmpty())) {
             throw new BusinessException("Order must contain at least one item");
         }
 
@@ -87,25 +88,27 @@ public class OrderService {
                 throw new AccessDeniedException("This prescription does not belong to you.");
             }
 
-            // AI VALIDATION
-            String prescriptionText = prescription.getNotes();
-            List<String> requestedMedNames = request.getItems().stream()
-                .map(item -> {
-                    if (item.getMedicineName() != null && !item.getMedicineName().isBlank()) {
-                        return item.getMedicineName().trim();
-                    }
-                    if (item.getMedicineId() != null) {
-                        Medicine med = medicineRepository.findById(item.getMedicineId())
-                            .orElseThrow(() -> new ResourceNotFoundException("Medicine with id " + item.getMedicineId() + " not found"));
-                        return med.getName();
-                    }
-                    throw new BusinessException("Each item must have a medicine name or ID");
-                })
-                .collect(Collectors.toList());
+            // AI VALIDATION — only when the patient explicitly provides items (optional for prescription orders)
+            if (request.getItems() != null && !request.getItems().isEmpty()) {
+                String prescriptionText = prescription.getNotes();
+                List<String> requestedMedNames = request.getItems().stream()
+                    .map(item -> {
+                        if (item.getMedicineName() != null && !item.getMedicineName().isBlank()) {
+                            return item.getMedicineName().trim();
+                        }
+                        if (item.getMedicineId() != null) {
+                            Medicine med = medicineRepository.findById(item.getMedicineId())
+                                .orElseThrow(() -> new ResourceNotFoundException("Medicine with id " + item.getMedicineId() + " not found"));
+                            return med.getName();
+                        }
+                        throw new BusinessException("Each item must have a medicine name or ID");
+                    })
+                    .collect(Collectors.toList());
 
-            boolean isValid = aiPrescriptionService.validatePrescription(prescriptionText, requestedMedNames);
-            if (!isValid) {
-                throw new BusinessException("AI Validation Failed: The requested medicines do not match the prescription details.");
+                boolean isValid = aiPrescriptionService.validatePrescription(prescriptionText, requestedMedNames);
+                if (!isValid) {
+                    throw new BusinessException("AI Validation Failed: The requested medicines do not match the prescription details.");
+                }
             }
         }
 
@@ -120,16 +123,19 @@ public class OrderService {
                 throw new AccessDeniedException("This insurance card does not belong to you.");
             }
 
-            if (insuranceCard.getStatus() != InsuranceStatus.VERIFIED) {
-                throw new BusinessException("Insurance card is not verified. Status: " + insuranceCard.getStatus());
+            if (insuranceCard.getStatus() == InsuranceStatus.PENDING_VERIFICATION) {
+                throw new BusinessException("This insurance card is still pending verification and cannot be used for payments.");
             }
 
-            // Handle null coverage gracefully
-            if (insuranceCard.getCoveragePercentage() != null) {
-                coveragePercentage = insuranceCard.getCoveragePercentage();
+            if (insuranceCard.getStatus() == InsuranceStatus.REJECTED) {
+                // Rejected card → silently fall back to full cash payment
+                log.warn("Insurance card {} is REJECTED — order will proceed as full cash payment", insuranceCard.getId());
+                insuranceCard = null;
             } else {
-                log.warn("Insurance card {} has null coverage percentage, defaulting to 0", insuranceCard.getId());
-                coveragePercentage = BigDecimal.ZERO;
+                // VERIFIED — apply coverage
+                if (insuranceCard.getCoveragePercentage() != null) {
+                    coveragePercentage = insuranceCard.getCoveragePercentage();
+                }
             }
         }
 
@@ -168,14 +174,27 @@ public class OrderService {
 
         // 6. Create Order Items first
         List<OrderItem> items = new ArrayList<>();
-        for (CreateOrderRequest.OrderItemRequest itemReq : request.getItems()) {
+        List<CreateOrderRequest.OrderItemRequest> requestItems = request.getItems() != null ? request.getItems() : List.of();
+        for (CreateOrderRequest.OrderItemRequest itemReq : requestItems) {
             Medicine medicine;
             if (itemReq.getMedicineId() != null) {
                 medicine = medicineRepository.findById(itemReq.getMedicineId())
                         .orElseThrow(() -> new ResourceNotFoundException("Medicine not found"));
             } else if (itemReq.getMedicineName() != null && !itemReq.getMedicineName().isBlank()) {
-                medicine = medicineRepository.findByNameIgnoreCase(itemReq.getMedicineName().trim())
-                        .orElseThrow(() -> new BusinessException("Medicine '" + itemReq.getMedicineName() + "' is not available in our system. Please check the name and try again."));
+                String medName = itemReq.getMedicineName().trim();
+                medicine = medicineRepository.findByNameIgnoreCase(medName)
+                        .orElseGet(() -> {
+                            // Try "name contains query" — e.g. patient typed "Amox 500mg", DB has "Amoxicillin 500mg Capsules"
+                            List<Medicine> fuzzy = medicineRepository.findByNameContainingIgnoreCase(medName);
+                            if (!fuzzy.isEmpty()) return fuzzy.get(0);
+                            // Try first word only — e.g. patient typed "Amoxicillin 500mg", DB has "Amoxicillin"
+                            String firstWord = medName.split("\\s+")[0];
+                            if (!firstWord.equalsIgnoreCase(medName)) {
+                                List<Medicine> wordMatch = medicineRepository.findByNameContainingIgnoreCase(firstWord);
+                                if (!wordMatch.isEmpty()) return wordMatch.get(0);
+                            }
+                            throw new BusinessException("Medicine '" + medName + "' is not available in our system. Please check the name and try again.");
+                        });
             } else {
                 throw new BusinessException("Each item must have a medicine name or ID");
             }
@@ -379,7 +398,7 @@ public class OrderService {
     }
 
     private OrderResponse mapToResponse(Order order) {
-        List<OrderItemResponse> itemDtos = order.getOrderItems().stream()
+        List<OrderItemResponse> itemDtos = (order.getOrderItems() != null ? order.getOrderItems() : List.of()).stream()
                 .map(item -> OrderItemResponse.builder()
                         .id(item.getId())
                         .medicineId(item.getMedicine().getId())

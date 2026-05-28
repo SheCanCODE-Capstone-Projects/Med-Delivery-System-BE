@@ -9,7 +9,6 @@ import com.meddelivery.repository.PharmacyInventoryRepository;
 import com.meddelivery.repository.PharmacyRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,8 +37,18 @@ public class PharmacyMatchingEngine {
 
         List<OrderItem> orderItems = order.getOrderItems();
         if (orderItems == null || orderItems.isEmpty()) {
-            log.warn("Order {} has no items", order.getId());
-            return null;
+            // Prescription orders have no items yet — find nearest active pharmacy by distance
+            log.info("Order {} has no items (prescription order), matching by proximity", order.getId());
+            List<Pharmacy> activePharmacies = pharmacyRepository.findAllByStatus(PharmacyStatus.ACTIVE);
+            if (activePharmacies.isEmpty()) {
+                log.warn("No active pharmacies available");
+                return null;
+            }
+            return activePharmacies.stream()
+                    .min(Comparator.comparingDouble(p -> calculateDistance(
+                            patientLocation.getLatitude(), patientLocation.getLongitude(),
+                            p.getLatitude(), p.getLongitude())))
+                    .orElse(null);
         }
 
         // Get all active pharmacies
@@ -88,7 +97,6 @@ public class PharmacyMatchingEngine {
         return pharmacyRepository.findById(bestMatch.getPharmacyId()).orElse(null);
     }
 
-    @Cacheable(value = "pharmacyMatches", key = "#pharmacy.id + '_' + #orderItems.size()")
     private PharmacyMatchResponse calculateMatch(Pharmacy pharmacy, List<OrderItem> orderItems,
                                                   PatientLocation patientLocation) {
         int totalItems = orderItems.size();

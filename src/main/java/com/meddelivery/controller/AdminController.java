@@ -1,6 +1,7 @@
 package com.meddelivery.controller;
 
 import com.meddelivery.dto.response.*;
+import com.meddelivery.dto.request.AdminProfileUpdateRequest;
 import com.meddelivery.dto.request.AdminUserSearchRequest;
 import com.meddelivery.dto.request.InsuranceProviderRequest;
 import com.meddelivery.dto.request.ManagerUpdateRequest;
@@ -16,6 +17,7 @@ import com.meddelivery.dto.response.DashboardStatsResponse;
 import com.meddelivery.dto.response.PharmacyApprovalDetailResponse;
 import com.meddelivery.model.*;
 import com.meddelivery.service.AdminService;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -37,6 +39,21 @@ import java.util.List;
 public class AdminController {
 
     private final AdminService adminService;
+
+    @GetMapping("/me")
+    @Operation(summary = "Get Admin Profile")
+    public ResponseEntity<ApiResponse<AdminUserResponse>> getMyProfile(
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(adminService.getAdminProfile(user.getId()));
+    }
+
+    @PutMapping("/me")
+    @Operation(summary = "Update Admin Profile")
+    public ResponseEntity<ApiResponse<AdminUserResponse>> updateMyProfile(
+            @AuthenticationPrincipal User user,
+            @RequestBody AdminProfileUpdateRequest request) {
+        return ResponseEntity.ok(adminService.updateAdminProfile(user.getId(), request));
+    }
 
     @GetMapping("/dashboard/stats")
     @Operation(summary = "Get Live Dashboard Metrics")
@@ -186,11 +203,26 @@ public class AdminController {
         return ResponseEntity.ok(adminService.processInsuranceClaim(id, action));
     }
 
+    @GetMapping("/insurance-cards")
+    @Operation(summary = "List all insurance cards")
+    public ResponseEntity<ApiResponse<List<InsuranceCardResponse>>> getAllInsuranceCards(
+            @RequestParam(required = false) String status) {
+        return ResponseEntity.ok(adminService.getAllInsuranceCards(status));
+    }
+
     @PostMapping("/insurance-cards/{id}/verify")
     @Operation(summary = "Verify Insurance Card and Set Coverage Percentage")
     public ResponseEntity<ApiResponse<InsuranceCardResponse>> verifyInsuranceCard(
             @PathVariable Long id,
             @RequestParam @DecimalMin(value = "0.0") @DecimalMax(value = "100.0") Double coveragePercentage) {
         return ResponseEntity.ok(adminService.verifyInsuranceCard(id, coveragePercentage));
+    }
+
+    @PostMapping("/insurance-cards/{id}/reject")
+    @Operation(summary = "Reject Insurance Card")
+    public ResponseEntity<ApiResponse<InsuranceCardResponse>> rejectInsuranceCard(
+            @PathVariable Long id,
+            @RequestParam(required = false) String notes) {
+        return ResponseEntity.ok(adminService.rejectInsuranceCard(id, notes));
     }
 }

@@ -1,6 +1,7 @@
 package com.meddelivery.service;
 
 import com.meddelivery.dto.request.*;
+import com.meddelivery.dto.request.AdminProfileUpdateRequest;
 import com.meddelivery.dto.response.*;
 import com.meddelivery.dto.request.InsuranceProviderRequest;
 import com.meddelivery.dto.response.InsuranceProviderResponse;
@@ -537,6 +538,24 @@ public class AdminService {
         return ApiResponse.success("Claim " + action.toLowerCase() + " successfully", mapToPaymentResponse(payment));
     }
 
+    public ApiResponse<List<InsuranceCardResponse>> getAllInsuranceCards(String status) {
+        List<InsuranceCard> cards;
+        if (status != null && !status.isBlank()) {
+            try {
+                InsuranceStatus s = InsuranceStatus.valueOf(status.toUpperCase());
+                cards = insuranceCardRepository.findAllByStatus(s);
+            } catch (IllegalArgumentException e) {
+                throw new BusinessException("Invalid status: " + status);
+            }
+        } else {
+            cards = insuranceCardRepository.findAllByOrderByCreatedAtDesc();
+        }
+        List<InsuranceCardResponse> responses = cards.stream()
+                .map(this::mapToInsuranceCardResponse)
+                .collect(Collectors.toList());
+        return ApiResponse.success("Insurance cards retrieved", responses);
+    }
+
     @Transactional
     public ApiResponse<InsuranceCardResponse> verifyInsuranceCard(Long cardId, Double coveragePercentage) {
         InsuranceCard card = insuranceCardRepository.findById(cardId)
@@ -551,10 +570,32 @@ public class AdminService {
         insuranceCardRepository.save(card);
 
         log.info("Insurance card verified: id={}, coverage={}%", cardId, coveragePercentage);
+        return ApiResponse.success("Insurance card verified successfully", mapToInsuranceCardResponse(card));
+    }
 
-        // Manual mapping to InsuranceCardResponse
-        InsuranceCardResponse response = InsuranceCardResponse.builder()
+    @Transactional
+    public ApiResponse<InsuranceCardResponse> rejectInsuranceCard(Long cardId, String notes) {
+        InsuranceCard card = insuranceCardRepository.findById(cardId)
+                .orElseThrow(() -> new ResourceNotFoundException("InsuranceCard", cardId));
+
+        card.setStatus(InsuranceStatus.REJECTED);
+        if (notes != null && !notes.isBlank()) {
+            card.setVerificationNotes(notes);
+        }
+        insuranceCardRepository.save(card);
+
+        log.info("Insurance card rejected: id={}", cardId);
+        return ApiResponse.success("Insurance card rejected", mapToInsuranceCardResponse(card));
+    }
+
+    private InsuranceCardResponse mapToInsuranceCardResponse(InsuranceCard card) {
+        String patientName = null;
+        if (card.getPatientProfile() != null && card.getPatientProfile().getUser() != null) {
+            patientName = card.getPatientProfile().getUser().getFullName();
+        }
+        return InsuranceCardResponse.builder()
                 .id(card.getId())
+                .patientName(patientName)
                 .providerName(card.getProviderName())
                 .memberId(card.getMemberId())
                 .frontImageUrl(card.getFrontImageUrl())
@@ -563,8 +604,6 @@ public class AdminService {
                 .coveragePercentage(card.getCoveragePercentage() != null ? card.getCoveragePercentage().doubleValue() : null)
                 .createdAt(card.getCreatedAt())
                 .build();
-
-        return ApiResponse.success("Insurance card verified successfully", response);
     }
 
     private PaymentResponse mapToPaymentResponse(Payment payment) {
@@ -581,6 +620,42 @@ public class AdminService {
                 .failureReason(payment.getFailureReason())
                 .createdAt(payment.getCreatedAt())
                 .paidAt(payment.getPaidAt())
+                .build();
+    }
+
+    // --- Admin Profile ---
+
+    public ApiResponse<AdminUserResponse> getAdminProfile(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", userId));
+        return ApiResponse.success(mapToAdminUserResponse(user));
+    }
+
+    @Transactional
+    public ApiResponse<AdminUserResponse> updateAdminProfile(Long userId, AdminProfileUpdateRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User", userId));
+
+        if (request.getFullName() != null && !request.getFullName().isBlank()) {
+            user.setFullName(request.getFullName());
+        }
+        if (request.getPhoneNumber() != null) {
+            user.setPhoneNumber(request.getPhoneNumber());
+        }
+        userRepository.save(user);
+        log.info("Admin profile updated for userId={}", userId);
+        return ApiResponse.success("Profile updated successfully", mapToAdminUserResponse(user));
+    }
+
+    private AdminUserResponse mapToAdminUserResponse(User user) {
+        return AdminUserResponse.builder()
+                .id(user.getId())
+                .fullName(user.getFullName())
+                .email(user.getEmail())
+                .phoneNumber(user.getPhoneNumber())
+                .role(user.getRole())
+                .isActive(user.isActive())
+                .createdAt(user.getCreatedAt())
                 .build();
     }
 

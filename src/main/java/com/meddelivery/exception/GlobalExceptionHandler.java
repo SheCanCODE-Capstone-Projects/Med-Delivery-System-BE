@@ -2,11 +2,12 @@ package com.meddelivery.exception;
 
 import com.meddelivery.dto.response.ApiResponse;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
-import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -19,8 +20,6 @@ import java.util.Map;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    // ── Custom Exceptions ────────────────────────
-    
     @ExceptionHandler(AuthException.class)
     public ResponseEntity<ApiResponse<Void>> handleAuthException(AuthException ex) {
         log.warn("Auth Error: {}", ex.getMessage());
@@ -34,7 +33,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(ApiResponse.error(ex.getMessage()));
     }
-    
+
     @ExceptionHandler(ResourceNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>> handleNotFound(ResourceNotFoundException ex) {
         log.warn("Resource Not Found: {}", ex.getMessage());
@@ -49,12 +48,40 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error(ex.getMessage()));
     }
 
-    // ── Validation Errors ────────────────────────
-    
+    @ExceptionHandler(InvalidRequestException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInvalidRequest(InvalidRequestException ex) {
+        log.warn("Invalid Request: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ApiResponse<Void>> handleIllegalArgument(IllegalArgumentException ex) {
+        log.warn("Illegal Argument: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ApiResponse<Void>> handleIllegalState(IllegalStateException ex) {
+        log.warn("Illegal State: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error(ex.getMessage()));
+    }
+
+    @ExceptionHandler(DataIntegrityViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleDataIntegrity(DataIntegrityViolationException ex) {
+        log.warn("Data Integrity Violation: {}", ex.getMessage());
+        String msg = ex.getMessage() != null && ex.getMessage().contains("phone")
+                ? "This phone number is already in use by another account."
+                : "A data constraint was violated. Please check your input.";
+        return ResponseEntity.status(HttpStatus.CONFLICT)
+                .body(ApiResponse.error(msg));
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Map<String, String>>>
     handleValidationErrors(MethodArgumentNotValidException ex) {
-
         Map<String, String> errors = new HashMap<>();
         ex.getBindingResult()
           .getAllErrors()
@@ -72,11 +99,16 @@ public class GlobalExceptionHandler {
                         .build());
     }
 
-    // ── Pharmacy Exceptions ───────────────────────
+    @ExceptionHandler(HttpMessageNotReadableException.class)
+    public ResponseEntity<ApiResponse<Void>> handleUnreadableMessage(HttpMessageNotReadableException ex) {
+        log.warn("Unreadable request body: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                .body(ApiResponse.error("Invalid request format. Please check your input."));
+    }
+
     @ExceptionHandler(PharmacyNotFoundException.class)
     public ResponseEntity<ApiResponse<Void>>
     handlePharmacyNotFound(PharmacyNotFoundException ex) {
-
         return ResponseEntity
                 .status(HttpStatus.NOT_FOUND)
                 .body(ApiResponse.error(ex.getMessage()));
@@ -85,13 +117,11 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(PharmacyNotApprovedException.class)
     public ResponseEntity<ApiResponse<Void>>
     handlePharmacyNotApproved(PharmacyNotApprovedException ex) {
-
         return ResponseEntity
                 .status(HttpStatus.FORBIDDEN)
                 .body(ApiResponse.error(ex.getMessage()));
     }
 
-    // ── Bad Credentials ──────────────────────────
     @ExceptionHandler(BadCredentialsException.class)
     public ResponseEntity<ApiResponse<Void>>
     handleBadCredentials(BadCredentialsException ex) {
@@ -115,28 +145,10 @@ public class GlobalExceptionHandler {
                 .body(ApiResponse.error("HTTP method not supported: " + ex.getMethod()));
     }
 
-    @ExceptionHandler(InvalidRequestException.class)
-    public ResponseEntity<ApiResponse<Void>> handleInvalidRequest(InvalidRequestException ex) {
-        log.warn("Invalid Request: {}", ex.getMessage());
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error(ex.getMessage()));
-    }
-
-    @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<ApiResponse<Void>> handleUnreadableMessage(HttpMessageNotReadableException ex) {
-        log.warn("Unreadable request body: {}", ex.getMessage());
-        return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                .body(ApiResponse.error("Invalid request format. Please check your input."));
-    }
-
-    // ── Generic Errors ───────────────────────────
-
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>>
     handleGenericException(Exception ex) {
-        // Log the full stack trace to see the REAL error in your console
-        log.error("Unexpected error occurred: ", ex); 
-
+        log.error("Unexpected error occurred: ", ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.error("An internal server error occurred. Check logs for details."));
     }

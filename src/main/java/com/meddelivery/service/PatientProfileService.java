@@ -1,34 +1,32 @@
- package com.meddelivery.service;
+package com.meddelivery.service;
 
- import com.meddelivery.dto.request.InsuranceCardRequest;
- import com.meddelivery.dto.request.InsuranceCardUpdateRequest;
- import com.meddelivery.dto.request.PatientLocationRequest;
- import com.meddelivery.dto.request.PatientProfileRequest;
- import com.meddelivery.dto.response.InsuranceCardResponse;
- import com.meddelivery.dto.response.PatientLocationResponse;
- import com.meddelivery.dto.response.PatientProfileResponse;
- import com.meddelivery.exception.InvalidRequestException;
- import com.meddelivery.exception.ResourceNotFoundException;
- import com.meddelivery.exception.UnauthorizedAccessException;
- import com.meddelivery.mapper.PatientMapper;
- import com.meddelivery.model.*;
- import com.meddelivery.model.enums.InsuranceStatus;
- import com.meddelivery.model.enums.LocationInputType;
- import com.meddelivery.repository.InsuranceCardRepository;
- import com.meddelivery.repository.PatientLocationRepository;
- import com.meddelivery.repository.PatientProfileRepository;
- import com.meddelivery.repository.UserRepository;
- import lombok.RequiredArgsConstructor;
- import lombok.extern.slf4j.Slf4j;
- import org.springframework.cache.annotation.CacheEvict;
- import org.springframework.cache.annotation.Cacheable;
- import org.springframework.cache.annotation.Caching;
- import org.springframework.stereotype.Service;
- import org.springframework.transaction.annotation.Transactional;
+import com.meddelivery.dto.request.InsuranceCardRequest;
+import com.meddelivery.dto.request.InsuranceCardUpdateRequest;
+import com.meddelivery.dto.request.PatientLocationRequest;
+import com.meddelivery.dto.request.PatientProfileRequest;
+import com.meddelivery.dto.response.InsuranceCardResponse;
+import com.meddelivery.dto.response.PatientLocationResponse;
+import com.meddelivery.dto.response.PatientProfileResponse;
+import com.meddelivery.exception.InvalidRequestException;
+import com.meddelivery.exception.ResourceNotFoundException;
+import com.meddelivery.exception.UnauthorizedAccessException;
+import com.meddelivery.mapper.PatientMapper;
+import com.meddelivery.model.*;
+import com.meddelivery.model.enums.InsuranceStatus;
+import com.meddelivery.model.enums.LocationInputType;
+import com.meddelivery.repository.InsuranceCardRepository;
+import com.meddelivery.repository.PatientLocationRepository;
+import com.meddelivery.repository.PatientProfileRepository;
+import com.meddelivery.repository.UserRepository;
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
- import java.math.BigDecimal;
 import java.util.List;
- import java.util.stream.Collectors;
+import java.util.stream.Collectors;
 
 @Slf4j
 @Service
@@ -42,119 +40,114 @@ public class PatientProfileService {
     private final PatientContextService contextService;
     private final UserRepository userRepository;
 
+    @Transactional
+    @CacheEvict(value = "patientProfile", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
+    public PatientProfileResponse createProfile(PatientProfileRequest request) {
+        User currentUser = contextService.getCurrentUser();
+        User user = userRepository.findById(currentUser.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("User", currentUser.getId()));
 
-     @Transactional
-     @CacheEvict(value = "patientProfile", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
-     public PatientProfileResponse createProfile(PatientProfileRequest request) {
-         User currentUser = contextService.getCurrentUser();
-         User user = userRepository.findById(currentUser.getId())
-                 .orElseThrow(() -> new ResourceNotFoundException("User", currentUser.getId()));
+        PatientProfile profile = profileRepository.findByUserId(currentUser.getId())
+                .orElseGet(() -> {
+                    PatientProfile newProfile = PatientProfile.builder().user(user).build();
+                    return profileRepository.save(newProfile);
+                });
 
-         // Find or create patient profile
-         PatientProfile profile = profileRepository.findByUserId(currentUser.getId())
-                 .orElseGet(() -> {
-                     PatientProfile newProfile = PatientProfile.builder().user(user).build();
-                     return profileRepository.save(newProfile);
-                 });
+        if (request.getFullName() != null && !request.getFullName().isBlank()) {
+            user.setFullName(request.getFullName());
+        }
+        if (request.getPhoneNumber() != null && !request.getPhoneNumber().isBlank()) {
+            user.setPhoneNumber(request.getPhoneNumber());
+        }
+        if (request.getProfileImageUrl() != null) {
+            user.setProfileImageUrl(request.getProfileImageUrl());
+        }
+        if (request.getEmailNotifications() != null) {
+            user.setEmailNotifications(request.getEmailNotifications());
+        }
+        if (request.getSmsNotifications() != null) {
+            user.setSmsNotifications(request.getSmsNotifications());
+        }
+        userRepository.save(user);
 
-         // Update user fields ONLY if provided (non-null and non-blank)
-         if (request.getFullName() != null && !request.getFullName().isBlank()) {
-             user.setFullName(request.getFullName());
-         }
-         if (request.getPhoneNumber() != null && !request.getPhoneNumber().isBlank()) {
-             user.setPhoneNumber(request.getPhoneNumber());
-         }
-         if (request.getProfileImageUrl() != null) {
-             user.setProfileImageUrl(request.getProfileImageUrl());
-         }
-         if (request.getEmailNotifications() != null) {
-             user.setEmailNotifications(request.getEmailNotifications());
-         }
-         if (request.getSmsNotifications() != null) {
-             user.setSmsNotifications(request.getSmsNotifications());
-         }
-         userRepository.save(user);
+        if (request.getDateOfBirth() != null) {
+            profile.setDateOfBirth(request.getDateOfBirth());
+        }
+        if (request.getGender() != null) {
+            profile.setGender(request.getGender());
+        }
+        if (request.getBloodType() != null) {
+            profile.setBloodType(request.getBloodType());
+        }
+        if (request.getAllergies() != null) {
+            profile.setAllergies(request.getAllergies());
+        }
+        if (request.getMedicalNotes() != null) {
+            profile.setMedicalNotes(request.getMedicalNotes());
+        }
 
-         // Update profile fields ONLY if provided
-         if (request.getDateOfBirth() != null) {
-             profile.setDateOfBirth(request.getDateOfBirth());
-         }
-         if (request.getGender() != null) {
-             profile.setGender(request.getGender());
-         }
-         if (request.getAllergies() != null) {
-             profile.setAllergies(request.getAllergies());
-         }
-         if (request.getMedicalNotes() != null) {
-             profile.setMedicalNotes(request.getMedicalNotes());
-         }
+        PatientProfile saved = profileRepository.save(profile);
+        log.info("Patient profile updated for userId={}", currentUser.getId());
+        return mapper.toProfileResponse(saved);
+    }
 
-         PatientProfile saved = profileRepository.save(profile);
-         log.info("Patient profile updated for userId={}", currentUser.getId());
-         return mapper.toProfileResponse(saved);
-     }
+    @Transactional
+    @CacheEvict(value = "patientProfile", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
+    public PatientProfileResponse updateProfile(PatientProfileRequest request) {
+        User currentUser = contextService.getCurrentUser();
 
-     @Transactional
-     @CacheEvict(value = "patientProfile", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
-     public PatientProfileResponse updateProfile(PatientProfileRequest request) {
-         User currentUser = contextService.getCurrentUser();
-         
-         // Fetch fresh user and profile from database
-         User user = userRepository.findById(currentUser.getId())
-                 .orElseThrow(() -> new ResourceNotFoundException("User", currentUser.getId()));
+        User user = userRepository.findById(currentUser.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("User", currentUser.getId()));
 
-         PatientProfile profile = profileRepository.findByUserId(currentUser.getId())
-                 .orElseGet(() -> {
-                     PatientProfile newProfile = PatientProfile.builder().user(user).build();
-                     return profileRepository.save(newProfile);
-                 });
+        PatientProfile profile = profileRepository.findByUserId(currentUser.getId())
+                .orElseGet(() -> {
+                    PatientProfile newProfile = PatientProfile.builder().user(user).build();
+                    return profileRepository.save(newProfile);
+                });
 
-         // Update user fields ONLY if provided (non-null and non-blank)
-         if (request.getFullName() != null && !request.getFullName().isBlank()) {
-             user.setFullName(request.getFullName());
-         }
-         if (request.getPhoneNumber() != null && !request.getPhoneNumber().isBlank()) {
-             user.setPhoneNumber(request.getPhoneNumber());
-         }
-         if (request.getProfileImageUrl() != null) {
-             user.setProfileImageUrl(request.getProfileImageUrl());
-         }
-         if (request.getEmailNotifications() != null) {
-             user.setEmailNotifications(request.getEmailNotifications());
-         }
-         if (request.getSmsNotifications() != null) {
-             user.setSmsNotifications(request.getSmsNotifications());
-         }
-         User savedUser = userRepository.save(user);
+        if (request.getFullName() != null && !request.getFullName().isBlank()) {
+            user.setFullName(request.getFullName());
+        }
+        if (request.getPhoneNumber() != null && !request.getPhoneNumber().isBlank()) {
+            user.setPhoneNumber(request.getPhoneNumber());
+        }
+        if (request.getProfileImageUrl() != null) {
+            user.setProfileImageUrl(request.getProfileImageUrl());
+        }
+        if (request.getEmailNotifications() != null) {
+            user.setEmailNotifications(request.getEmailNotifications());
+        }
+        if (request.getSmsNotifications() != null) {
+            user.setSmsNotifications(request.getSmsNotifications());
+        }
+        User savedUser = userRepository.save(user);
 
-         // Update profile fields ONLY if provided
-         if (request.getDateOfBirth() != null) {
-             profile.setDateOfBirth(request.getDateOfBirth());
-         }
-         if (request.getGender() != null) {
-             profile.setGender(request.getGender());
-         }
-         if (request.getAllergies() != null) {
-             profile.setAllergies(request.getAllergies());
-         }
-         if (request.getMedicalNotes() != null) {
-             profile.setMedicalNotes(request.getMedicalNotes());
-         }
+        if (request.getDateOfBirth() != null) {
+            profile.setDateOfBirth(request.getDateOfBirth());
+        }
+        if (request.getGender() != null) {
+            profile.setGender(request.getGender());
+        }
+        if (request.getBloodType() != null) {
+            profile.setBloodType(request.getBloodType());
+        }
+        if (request.getAllergies() != null) {
+            profile.setAllergies(request.getAllergies());
+        }
+        if (request.getMedicalNotes() != null) {
+            profile.setMedicalNotes(request.getMedicalNotes());
+        }
 
-         PatientProfile savedProfile = profileRepository.save(profile);
-         
-         // Refresh to get latest data
-         profileRepository.flush();
-         userRepository.flush();
-         
-         log.info("Patient profile updated for userId={}, fullName={}", 
-                 currentUser.getId(), savedUser.getFullName());
-         
-         return mapper.toProfileResponse(savedProfile);
-     }
+        PatientProfile savedProfile = profileRepository.save(profile);
+        profileRepository.flush();
+        userRepository.flush();
 
+        log.info("Patient profile updated for userId={}, fullName={}",
+                currentUser.getId(), savedUser.getFullName());
 
-//      Returns the full profile summary for the authenticated patient.
+        return mapper.toProfileResponse(savedProfile);
+    }
+
     @Transactional(readOnly = true)
     @Cacheable(value = "patientProfile", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
     public PatientProfileResponse getMyProfile() {
@@ -162,52 +155,45 @@ public class PatientProfileService {
         return mapper.toProfileResponse(profile);
     }
 
+    @Transactional(readOnly = true)
+    public PatientProfileResponse getProfileById(Long profileId) {
+        PatientProfile profile = profileRepository.findById(profileId)
+                .orElseThrow(() -> new ResourceNotFoundException("PatientProfile", profileId));
+        return mapper.toProfileResponse(profile);
+    }
 
-//     ADMIN: get any patient's profile by profile ID.
+    @Transactional
+    @CacheEvict(value = "patientProfile", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
+    public PatientProfileResponse updateProfileImage(String imageUrl) {
+        User currentUser = contextService.getCurrentUser();
+        currentUser.setProfileImageUrl(imageUrl);
+        userRepository.save(currentUser);
 
-     @Transactional(readOnly = true)
-     public PatientProfileResponse getProfileById(Long profileId) {
-         PatientProfile profile = profileRepository.findById(profileId)
-                 .orElseThrow(() -> new ResourceNotFoundException("PatientProfile", profileId));
-         return mapper.toProfileResponse(profile);
-     }
-
-     @Transactional
-     @CacheEvict(value = "patientProfile", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
-     public PatientProfileResponse updateProfileImage(String imageUrl) {
-         User currentUser = contextService.getCurrentUser();
-         currentUser.setProfileImageUrl(imageUrl);
-         userRepository.save(currentUser);
-
-         PatientProfile profile = profileRepository.findByUserId(currentUser.getId())
-                 .orElseThrow(() -> new ResourceNotFoundException("Patient profile not found"));
-         return mapper.toProfileResponse(profile);
-     }
-
-
-
-
+        PatientProfile profile = profileRepository.findByUserId(currentUser.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("Patient profile not found"));
+        return mapper.toProfileResponse(profile);
+    }
 
     // INSURANCE CARDS
-     @Transactional
-     @CacheEvict(value = "patientInsuranceCards", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
-     public InsuranceCardResponse addInsuranceCard(InsuranceCardRequest request) {
-         PatientProfile profile = resolveCurrentProfile();
 
-         InsuranceCard card = InsuranceCard.builder()
-                 .patientProfile(profile)
-                 .providerName(request.getProviderName())
-                 .memberId(request.getMemberId())
-                 .frontImageUrl(request.getFrontImageUrl())
-                 .backImageUrl(request.getBackImageUrl())
-                 // coveragePercentage is set by admin during verification
-                 .status(InsuranceStatus.PENDING_VERIFICATION) // Admin verifies insurance
-                 .build();
+    @Transactional
+    @CacheEvict(value = "patientInsuranceCards", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
+    public InsuranceCardResponse addInsuranceCard(InsuranceCardRequest request) {
+        PatientProfile profile = resolveCurrentProfile();
 
-         InsuranceCard saved = insuranceCardRepository.save(card);
-         log.info("Insurance card added for patientProfileId={}", profile.getId());
-         return mapper.toInsuranceResponse(saved);
-     }
+        InsuranceCard card = InsuranceCard.builder()
+                .patientProfile(profile)
+                .providerName(request.getProviderName())
+                .memberId(request.getMemberId())
+                .frontImageUrl(request.getFrontImageUrl())
+                .backImageUrl(request.getBackImageUrl())
+                .status(InsuranceStatus.PENDING_VERIFICATION)
+                .build();
+
+        InsuranceCard saved = insuranceCardRepository.save(card);
+        log.info("Insurance card added for patientProfileId={}", profile.getId());
+        return mapper.toInsuranceResponse(saved);
+    }
 
     @Transactional(readOnly = true)
     @Cacheable(value = "patientInsuranceCards", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
@@ -229,155 +215,154 @@ public class PatientProfileService {
         return mapper.toInsuranceResponse(card);
     }
 
-     @Transactional
-     @CacheEvict(value = "patientInsuranceCards", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
-     public void deleteInsuranceCard(Long cardId) {
-         PatientProfile profile = resolveCurrentProfile();
-         InsuranceCard card = insuranceCardRepository
-                 .findByIdAndPatientProfileId(cardId, profile.getId())
-                 .orElseThrow(() -> new ResourceNotFoundException("InsuranceCard", cardId));
-         insuranceCardRepository.delete(card);
-         log.info("Insurance card {} deleted for patientProfileId={}", cardId, profile.getId());
-     }
+    @Transactional
+    @CacheEvict(value = "patientInsuranceCards", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
+    public void deleteInsuranceCard(Long cardId) {
+        PatientProfile profile = resolveCurrentProfile();
+        InsuranceCard card = insuranceCardRepository
+                .findByIdAndPatientProfileId(cardId, profile.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("InsuranceCard", cardId));
+        insuranceCardRepository.delete(card);
+        log.info("Insurance card {} deleted for patientProfileId={}", cardId, profile.getId());
+    }
 
-     @Transactional
-     @CacheEvict(value = "patientInsuranceCards", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
-     public InsuranceCardResponse updateInsuranceCard(Long cardId, InsuranceCardUpdateRequest request) {
-         PatientProfile profile = resolveCurrentProfile();
-         InsuranceCard card = insuranceCardRepository.findByIdAndPatientProfileId(cardId, profile.getId())
-                 .orElseThrow(() -> new ResourceNotFoundException("InsuranceCard", cardId));
+    @Transactional
+    @CacheEvict(value = "patientInsuranceCards", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
+    public InsuranceCardResponse updateInsuranceCard(Long cardId, InsuranceCardUpdateRequest request) {
+        PatientProfile profile = resolveCurrentProfile();
+        InsuranceCard card = insuranceCardRepository.findByIdAndPatientProfileId(cardId, profile.getId())
+                .orElseThrow(() -> new ResourceNotFoundException("InsuranceCard", cardId));
 
-         if (request.getProviderName() != null) {
-             card.setProviderName(request.getProviderName());
-         }
-         if (request.getMemberId() != null) {
-             card.setMemberId(request.getMemberId());
-         }
-          if (request.getFrontImageUrl() != null) {
-              card.setFrontImageUrl(request.getFrontImageUrl());
-          }
-          if (request.getBackImageUrl() != null) {
-              card.setBackImageUrl(request.getBackImageUrl());
-          }
+        if (request.getProviderName() != null) {
+            card.setProviderName(request.getProviderName());
+        }
+        if (request.getMemberId() != null) {
+            card.setMemberId(request.getMemberId());
+        }
+        if (request.getFrontImageUrl() != null) {
+            card.setFrontImageUrl(request.getFrontImageUrl());
+        }
+        if (request.getBackImageUrl() != null) {
+            card.setBackImageUrl(request.getBackImageUrl());
+        }
 
-          // Note: coveragePercentage can only be set by admin via verification endpoint
-          InsuranceCard saved = insuranceCardRepository.save(card);
-          log.info("Insurance card updated: id={}", cardId);
-          return mapper.toInsuranceResponse(saved);
-     }
+        InsuranceCard saved = insuranceCardRepository.save(card);
+        log.info("Insurance card updated: id={}", cardId);
+        return mapper.toInsuranceResponse(saved);
+    }
 
-     // ==================== LOCATION MANAGEMENT (Multiple) ====================
+    // LOCATION MANAGEMENT
 
-     @Transactional
-     @CacheEvict(value = "patientLocations", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
-     public PatientLocationResponse createLocation(PatientLocationRequest request) {
-         validateLocationRequest(request);
-         PatientProfile profile = resolveCurrentProfile();
+    @Transactional
+    @CacheEvict(value = "patientLocations", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
+    public PatientLocationResponse createLocation(PatientLocationRequest request) {
+        validateLocationRequest(request);
+        PatientProfile profile = resolveCurrentProfile();
 
-         // If marking as default, clear existing defaults
-         if (Boolean.TRUE.equals(request.getIsDefault())) {
-             locationRepository.clearDefaultForProfile(profile.getId());
-         }
+        if (Boolean.TRUE.equals(request.getIsDefault())) {
+            locationRepository.clearDefaultForProfile(profile.getId());
+        }
 
-         PatientLocation location = PatientLocation.builder()
-                 .patientProfile(profile)
-                 .inputType(request.getInputType())
-                 .latitude(request.getLatitude())
-                 .longitude(request.getLongitude())
-                 .manualAddress(request.getManualAddress())
-                 .isDefault(Boolean.TRUE.equals(request.getIsDefault()))
-                 .build();
+        PatientLocation location = PatientLocation.builder()
+                .patientProfile(profile)
+                .inputType(request.getInputType())
+                .latitude(request.getLatitude())
+                .longitude(request.getLongitude())
+                .manualAddress(request.getManualAddress())
+                .label(request.getLabel())
+                .isDefault(Boolean.TRUE.equals(request.getIsDefault()))
+                .build();
 
-         PatientLocation saved = locationRepository.save(location);
-         log.info("Location added for patientProfileId={}, locationId={}", profile.getId(), saved.getId());
-         return mapper.toLocationResponse(saved);
-     }
+        PatientLocation saved = locationRepository.save(location);
+        log.info("Location added for patientProfileId={}, locationId={}", profile.getId(), saved.getId());
+        return mapper.toLocationResponse(saved);
+    }
 
-     @Transactional(readOnly = true)
-     @Cacheable(value = "patientLocations", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
-     public List<PatientLocationResponse> getAllLocations() {
-         PatientProfile profile = resolveCurrentProfile();
-         return locationRepository.findByPatientProfileId(profile.getId()).stream()
-                 .map(mapper::toLocationResponse)
-                 .collect(Collectors.toList());
-     }
+    @Transactional(readOnly = true)
+    @Cacheable(value = "patientLocations", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
+    public List<PatientLocationResponse> getAllLocations() {
+        PatientProfile profile = resolveCurrentProfile();
+        return locationRepository.findByPatientProfileId(profile.getId()).stream()
+                .map(mapper::toLocationResponse)
+                .collect(Collectors.toList());
+    }
 
-     @Transactional(readOnly = true)
-     public PatientLocationResponse getLocationById(Long locationId) {
-         PatientProfile profile = resolveCurrentProfile();
-         PatientLocation location = locationRepository.findById(locationId)
-                 .filter(loc -> loc.getPatientProfile().getId().equals(profile.getId()))
-                 .orElseThrow(() -> new ResourceNotFoundException("Location not found or does not belong to you"));
-         return mapper.toLocationResponse(location);
-     }
+    @Transactional(readOnly = true)
+    public PatientLocationResponse getLocationById(Long locationId) {
+        PatientProfile profile = resolveCurrentProfile();
+        PatientLocation location = locationRepository.findById(locationId)
+                .filter(loc -> loc.getPatientProfile().getId().equals(profile.getId()))
+                .orElseThrow(() -> new ResourceNotFoundException("Location not found or does not belong to you"));
+        return mapper.toLocationResponse(location);
+    }
 
-     @Transactional
-     @CacheEvict(value = "patientLocations", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
-     public PatientLocationResponse updateLocation(Long locationId, PatientLocationRequest request) {
-         validateLocationRequest(request);
-         PatientProfile profile = resolveCurrentProfile();
-         PatientLocation location = locationRepository.findById(locationId)
-                 .filter(loc -> loc.getPatientProfile().getId().equals(profile.getId()))
-                 .orElseThrow(() -> new ResourceNotFoundException("Location not found or does not belong to you"));
+    @Transactional
+    @CacheEvict(value = "patientLocations", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
+    public PatientLocationResponse updateLocation(Long locationId, PatientLocationRequest request) {
+        validateLocationRequest(request);
+        PatientProfile profile = resolveCurrentProfile();
+        PatientLocation location = locationRepository.findById(locationId)
+                .filter(loc -> loc.getPatientProfile().getId().equals(profile.getId()))
+                .orElseThrow(() -> new ResourceNotFoundException("Location not found or does not belong to you"));
 
-         location.setInputType(request.getInputType());
-         location.setLatitude(request.getLatitude());
-         location.setLongitude(request.getLongitude());
-         location.setManualAddress(request.getManualAddress());
+        location.setInputType(request.getInputType());
+        location.setLatitude(request.getLatitude());
+        location.setLongitude(request.getLongitude());
+        location.setManualAddress(request.getManualAddress());
+        if (request.getLabel() != null) {
+            location.setLabel(request.getLabel());
+        }
 
-         // Handle default flag
-         boolean makeDefault = Boolean.TRUE.equals(request.getIsDefault());
-         if (makeDefault) {
-             locationRepository.clearDefaultForProfileExcept(profile.getId(), locationId);
-             location.setDefault(true);
-         } else {
-             location.setDefault(false);
-         }
+        boolean makeDefault = Boolean.TRUE.equals(request.getIsDefault());
+        if (makeDefault) {
+            locationRepository.clearDefaultForProfileExcept(profile.getId(), locationId);
+            location.setDefault(true);
+        } else {
+            location.setDefault(false);
+        }
 
-         PatientLocation saved = locationRepository.save(location);
-         log.info("Location updated id={}", saved.getId());
-         return mapper.toLocationResponse(saved);
-     }
+        PatientLocation saved = locationRepository.save(location);
+        log.info("Location updated id={}", saved.getId());
+        return mapper.toLocationResponse(saved);
+    }
 
-     @Transactional
-     @CacheEvict(value = "patientLocations", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
-     public void deleteLocation(Long locationId) {
-         PatientProfile profile = resolveCurrentProfile();
-         PatientLocation location = locationRepository.findById(locationId)
-                 .filter(loc -> loc.getPatientProfile().getId().equals(profile.getId()))
-                 .orElseThrow(() -> new ResourceNotFoundException("Location not found or does not belong to you"));
-         locationRepository.delete(location);
-         log.info("Location deleted id={}", locationId);
-     }
+    @Transactional
+    @CacheEvict(value = "patientLocations", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
+    public void deleteLocation(Long locationId) {
+        PatientProfile profile = resolveCurrentProfile();
+        PatientLocation location = locationRepository.findById(locationId)
+                .filter(loc -> loc.getPatientProfile().getId().equals(profile.getId()))
+                .orElseThrow(() -> new ResourceNotFoundException("Location not found or does not belong to you"));
+        locationRepository.delete(location);
+        log.info("Location deleted id={}", locationId);
+    }
 
-     @Transactional
-     @CacheEvict(value = "patientLocations", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
-     public void setDefaultLocation(Long locationId) {
-         PatientProfile profile = resolveCurrentProfile();
-         PatientLocation location = locationRepository.findById(locationId)
-                 .filter(loc -> loc.getPatientProfile().getId().equals(profile.getId()))
-                 .orElseThrow(() -> new ResourceNotFoundException("Location not found or does not belong to you"));
-         // Clear other defaults
-         locationRepository.clearDefaultForProfile(profile.getId());
-         location.setDefault(true);
-         locationRepository.save(location);
-         log.info("Default location set to id={} for profile {}", locationId, profile.getId());
-     }
+    @Transactional
+    @CacheEvict(value = "patientLocations", key = "T(com.meddelivery.config.CacheKeyUtils).currentUser()")
+    public void setDefaultLocation(Long locationId) {
+        PatientProfile profile = resolveCurrentProfile();
+        PatientLocation location = locationRepository.findById(locationId)
+                .filter(loc -> loc.getPatientProfile().getId().equals(profile.getId()))
+                .orElseThrow(() -> new ResourceNotFoundException("Location not found or does not belong to you"));
+        locationRepository.clearDefaultForProfile(profile.getId());
+        location.setDefault(true);
+        locationRepository.save(location);
+        log.info("Default location set to id={} for profile {}", locationId, profile.getId());
+    }
 
-     public PatientProfile resolveCurrentProfile() {
+    public PatientProfile resolveCurrentProfile() {
         Long userId = contextService.getCurrentUser().getId();
         return profileRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Patient profile not found. Please complete your profile setup first."));
     }
 
-//   used when a patient tries to access another patient's resource.
-
     public void assertOwnership(PatientProfile profile, Long resourcePatientProfileId) {
         if (!profile.getId().equals(resourcePatientProfileId)) {
             throw new UnauthorizedAccessException("resource");
         }
     }
+
     private void validateLocationRequest(PatientLocationRequest request) {
         if (request.getInputType() == LocationInputType.GPS) {
             if (request.getLatitude() == null || request.getLongitude() == null) {

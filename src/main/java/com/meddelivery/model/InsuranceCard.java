@@ -31,17 +31,15 @@ public class InsuranceCard {
     @Column(nullable = false)
     private String memberId;
 
-    @Column(nullable = false)
     private String frontImageUrl;
 
-    @Column(nullable = false)
     private String backImageUrl;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private InsuranceStatus status;
 
-    @Column(nullable = false, precision = 5, scale = 2)
+    @Column(precision = 5, scale = 2)
     private BigDecimal coveragePercentage;
 
     @CreationTimestamp

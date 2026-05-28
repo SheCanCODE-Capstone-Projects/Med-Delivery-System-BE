@@ -5,8 +5,6 @@ import jakarta.validation.constraints.Past;
 import lombok.Data;
 import java.time.LocalDate;
 
-
-
 @Data
 public class PatientProfileRequest {
 
@@ -20,13 +18,12 @@ public class PatientProfileRequest {
 
     private String gender;
 
-    // Optional — patient can add allergies to help pharmacist
+    private String bloodType;
+
     private String allergies;
 
-    // Optional — chronic conditions, ongoing treatment notes
     private String medicalNotes;
 
-    // User-level settings
     private String profileImageUrl;
     private Boolean emailNotifications;
     private Boolean smsNotifications;

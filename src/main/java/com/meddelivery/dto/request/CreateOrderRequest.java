@@ -5,7 +5,6 @@ import com.meddelivery.model.enums.OrderType;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.NotEmpty;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -27,11 +26,12 @@ public class CreateOrderRequest {
 
     private Long insuranceCardId; // Optional - used for PRESCRIPTION_BASED with insurance
 
-    @NotEmpty(message = "At least one item is required")
     @Valid
     private List<OrderItemRequest> items;
 
     private String deliveryAddress; // Required if fulfillmentType = DELIVERY
+
+    private String notes;
 
     @Data
     @Builder

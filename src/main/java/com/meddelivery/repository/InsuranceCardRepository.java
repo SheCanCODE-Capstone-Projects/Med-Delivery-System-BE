@@ -17,7 +17,10 @@ public interface InsuranceCardRepository extends JpaRepository<InsuranceCard, Lo
 
     boolean existsByIdAndPatientProfileId(Long id, Long patientProfileId);
 
-    // Active insurance cards only (ACTIVE status)
     List<InsuranceCard> findAllByPatientProfileIdAndStatus(
             Long patientProfileId, InsuranceStatus status);
+
+    List<InsuranceCard> findAllByStatus(InsuranceStatus status);
+
+    List<InsuranceCard> findAllByOrderByCreatedAtDesc();
 }

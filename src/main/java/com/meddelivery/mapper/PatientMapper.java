@@ -5,51 +5,47 @@ import com.meddelivery.model.*;
 import com.meddelivery.model.enums.InsuranceStatus;
 import org.springframework.stereotype.Component;
 
-import static com.meddelivery.model.enums.InsuranceStatus.UNVERIFIED;
-import static com.meddelivery.model.enums.PharmacyStatus.ACTIVE;
-
 
 @Component
 public class PatientMapper {
 
-    // PatientProfile
-     public PatientProfileResponse toProfileResponse(PatientProfile profile) {
-         User user = profile.getUser();
-         return PatientProfileResponse.builder()
-                 .id(profile.getId())
-                 .userId(user.getId())
-                 .fullName(user.getFullName())
-                 .email(user.getEmail())
-                 .phoneNumber(user.getPhoneNumber())
-                 .profileImageUrl(user.getProfileImageUrl())
-                 .emailNotifications(user.isEmailNotifications())
-                 .smsNotifications(user.isSmsNotifications())
-                 .dateOfBirth(profile.getDateOfBirth())
-                 .gender(profile.getGender())
-                 .allergies(profile.getAllergies())
-                 .medicalNotes(profile.getMedicalNotes())
-                 .hasLocation(profile.getLocations() != null && !profile.getLocations().isEmpty())
-                 .hasInsurance(profile.getInsuranceCards() != null && profile.getInsuranceCards().stream()
-                         .anyMatch(card -> card.getStatus() == UNVERIFIED))
-                 .createdAt(profile.getCreatedAt())
-                 .updatedAt(profile.getUpdatedAt())
-                 .build();
-     }
+    public PatientProfileResponse toProfileResponse(PatientProfile profile) {
+        User user = profile.getUser();
+        return PatientProfileResponse.builder()
+                .id(profile.getId())
+                .userId(user.getId())
+                .fullName(user.getFullName())
+                .email(user.getEmail())
+                .phoneNumber(user.getPhoneNumber())
+                .profileImageUrl(user.getProfileImageUrl())
+                .emailNotifications(user.isEmailNotifications())
+                .smsNotifications(user.isSmsNotifications())
+                .dateOfBirth(profile.getDateOfBirth())
+                .gender(profile.getGender())
+                .bloodType(profile.getBloodType())
+                .allergies(profile.getAllergies())
+                .medicalNotes(profile.getMedicalNotes())
+                .hasLocation(profile.getLocations() != null && !profile.getLocations().isEmpty())
+                .hasInsurance(profile.getInsuranceCards() != null && profile.getInsuranceCards().stream()
+                        .anyMatch(card -> card.getStatus() == InsuranceStatus.VERIFIED || card.getStatus() == InsuranceStatus.PENDING_VERIFICATION))
+                .createdAt(profile.getCreatedAt())
+                .updatedAt(profile.getUpdatedAt())
+                .build();
+    }
 
-     // PatientLocation
-     public PatientLocationResponse toLocationResponse(PatientLocation location) {
-         return PatientLocationResponse.builder()
-                 .id(location.getId())
-                 .latitude(location.getLatitude())
-                 .longitude(location.getLongitude())
-                 .manualAddress(location.getManualAddress())
-                 .inputType(location.getInputType())
-                 .isDefault(location.isDefault())
-                 .updatedAt(location.getUpdatedAt())
-                 .build();
-     }
+    public PatientLocationResponse toLocationResponse(PatientLocation location) {
+        return PatientLocationResponse.builder()
+                .id(location.getId())
+                .label(location.getLabel())
+                .latitude(location.getLatitude())
+                .longitude(location.getLongitude())
+                .manualAddress(location.getManualAddress())
+                .inputType(location.getInputType())
+                .isDefault(location.isDefault())
+                .updatedAt(location.getUpdatedAt())
+                .build();
+    }
 
-    // InsuranceCard
     public InsuranceCardResponse toInsuranceResponse(InsuranceCard card) {
         return InsuranceCardResponse.builder()
                 .id(card.getId())
@@ -63,7 +59,6 @@ public class PatientMapper {
                 .build();
     }
 
-    // Prescription
     public PrescriptionResponse toPrescriptionResponse(Prescription prescription) {
         return PrescriptionResponse.builder()
                 .id(prescription.getId())
@@ -79,7 +74,6 @@ public class PatientMapper {
                 .build();
     }
 
-    //  MedicineRequest
     public MedicineRequestResponse toMedicineRequestResponse(MedicineRequest req) {
         MedicineRequestResponse.MedicineRequestResponseBuilder builder =
                 MedicineRequestResponse.builder()
@@ -93,19 +87,16 @@ public class PatientMapper {
                         .createdAt(req.getCreatedAt())
                         .updatedAt(req.getUpdatedAt());
 
-        // Prescription details — only if linked
         if (req.getPrescription() != null) {
             builder.prescriptionId(req.getPrescription().getId());
             builder.prescriptionFileUrl(req.getPrescription().getFileUrl());
         }
 
-        // Insurance details — only if linked
         if (req.getInsuranceCard() != null) {
             builder.insuranceCardId(req.getInsuranceCard().getId());
             builder.insuranceProviderName(req.getInsuranceCard().getProviderName());
         }
 
-        // Order ID — only after pharmacy matching
         if (req.getOrder() != null) {
             builder.orderId(req.getOrder().getId());
         }

@@ -3,7 +3,6 @@ package com.meddelivery.service;
 import com.meddelivery.dto.response.OrderResponse;
 import com.meddelivery.model.enums.OrderStatus;
 import com.meddelivery.repository.PharmacistRepository;
-import com.meddelivery.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -20,7 +19,6 @@ public class WebSocketNotificationService {
     private final SimpMessagingTemplate messagingTemplate;
     private final NotificationService notificationService;
     private final PharmacistRepository pharmacistRepository;
-    private final UserRepository userRepository;
 
     public void notifyOrderStatusChange(Long userId, OrderResponse order) {
         String destination = "/topic/orders/" + userId;
@@ -79,10 +77,12 @@ public class WebSocketNotificationService {
             notificationService.send(p.getUser().getId(), title, message, "ORDER")
         );
 
-        // Also notify the pharmacy manager
-        userRepository.findById(pharmacyId).ifPresent(u ->
-            notificationService.send(u.getId(), title, message, "ORDER")
-        );
+        // Also notify the pharmacy manager via their pharmacist profile
+        pharmacistRepository.findAllByPharmacyId(pharmacyId).stream()
+            .filter(p -> p.getUser() != null)
+            .map(p -> p.getUser().getId())
+            .distinct()
+            .forEach(uid -> notificationService.send(uid, title, message, "ORDER"));
     }
 
     public void notifyInsuranceVerification(Long userId, Long insuranceCardId, boolean approved) {
@@ -107,14 +107,15 @@ public class WebSocketNotificationService {
 
     private String getStatusMessage(OrderStatus status) {
         return switch (status) {
-            case UPLOADED        -> "Your order has been received.";
-            case MATCHING        -> "We're finding the best pharmacy for your order.";
-            case ASSIGNED        -> "Your order has been assigned to a pharmacy.";
-            case IN_PROGRESS     -> "The pharmacy is preparing your order.";
+            case UPLOADED         -> "Your order has been received.";
+            case MATCHING         -> "We're finding the best pharmacy for your order.";
+            case ASSIGNED         -> "Your order has been assigned to a pharmacy.";
+            case IN_PROGRESS      -> "The pharmacy is preparing your order.";
+            case STOCK_CONFIRMED  -> "Your pharmacy has confirmed all medicines are in stock.";
             case READY_FOR_PICKUP -> "Your order is ready for pickup!";
-            case COMPLETED       -> "Your order has been completed. Thank you!";
-            case CANCELLED       -> "Your order has been cancelled.";
-            default              -> "Your order status has been updated.";
+            case OUT_FOR_DELIVERY -> "Your order is out for delivery!";
+            case COMPLETED        -> "Your order has been completed. Thank you!";
+            case CANCELLED        -> "Your order has been cancelled.";
         };
     }
 }

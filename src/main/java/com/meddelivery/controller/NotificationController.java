@@ -3,7 +3,6 @@ package com.meddelivery.controller;
 import com.meddelivery.dto.response.ApiResponse;
 import com.meddelivery.dto.response.NotificationResponse;
 import com.meddelivery.model.User;
-import com.meddelivery.repository.UserRepository;
 import com.meddelivery.service.NotificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -19,7 +18,6 @@ import java.util.stream.Collectors;
 public class NotificationController {
 
     private final NotificationService notificationService;
-    private final UserRepository userRepository;
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<NotificationResponse>>> getMyNotifications(Authentication auth) {
@@ -50,8 +48,10 @@ public class NotificationController {
     }
 
     private Long resolveUserId(Authentication auth) {
-        return userRepository.findByEmail(auth.getName())
-                .map(User::getId)
-                .orElseThrow();
+        Object principal = auth.getPrincipal();
+        if (principal instanceof User user) {
+            return user.getId();
+        }
+        throw new IllegalStateException("Cannot resolve user from authentication principal");
     }
 }

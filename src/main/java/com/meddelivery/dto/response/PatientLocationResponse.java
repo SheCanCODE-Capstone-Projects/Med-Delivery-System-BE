@@ -5,14 +5,15 @@ import lombok.Builder;
 import lombok.Data;
 import java.time.LocalDateTime;
 
- @Data
- @Builder
- public class PatientLocationResponse {
-     private Long id;
-     private Double latitude;
-     private Double longitude;
-     private String manualAddress;
-     private LocationInputType inputType;
-     private boolean isDefault;
-     private LocalDateTime updatedAt;
- }
+@Data
+@Builder
+public class PatientLocationResponse {
+    private Long id;
+    private String label;
+    private Double latitude;
+    private Double longitude;
+    private String manualAddress;
+    private LocationInputType inputType;
+    private boolean isDefault;
+    private LocalDateTime updatedAt;
+}

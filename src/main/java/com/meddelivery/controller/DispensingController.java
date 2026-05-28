@@ -16,7 +16,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -41,20 +40,20 @@ public class DispensingController {
 
     @GetMapping("/orders")
     public ResponseEntity<ApiResponse<List<DispensingOrderResponse>>> getAssignedOrders(
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @AuthenticationPrincipal User user) {
 
         return ResponseEntity.ok(ApiResponse.success(
-                dispensingService.getAssignedOrders(userDetails.getUsername())
+                dispensingService.getAssignedOrders(user.getEmail() != null ? user.getEmail() : user.getPhoneNumber())
         ));
     }
 
     @GetMapping("/orders/{orderId}")
     public ResponseEntity<ApiResponse<DispensingOrderResponse>> getOrderDetail(
             @PathVariable Long orderId,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @AuthenticationPrincipal User user) {
 
         return ResponseEntity.ok(ApiResponse.success(
-                dispensingService.getOrderDetail(orderId, userDetails.getUsername())
+                dispensingService.getOrderDetail(orderId, user.getEmail() != null ? user.getEmail() : user.getPhoneNumber())
         ));
     }
 
@@ -63,24 +62,24 @@ public class DispensingController {
     public ResponseEntity<ApiResponse<DispensingOrderResponse>> validatePrescription(
             @PathVariable Long orderId,
             @RequestBody(required = false) ValidatePrescriptionRequest request,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @AuthenticationPrincipal User user) {
 
         if (request == null) request = new ValidatePrescriptionRequest();
 
         return ResponseEntity.ok(ApiResponse.success(
                 "Prescription validated",
-                dispensingService.validatePrescription(orderId, request, userDetails.getUsername())
+                dispensingService.validatePrescription(orderId, request, user.getEmail() != null ? user.getEmail() : user.getPhoneNumber())
         ));
     }
 
     @PostMapping("/orders/{orderId}/stock")
     public ResponseEntity<ApiResponse<DispensingOrderResponse>> confirmStock(
             @PathVariable Long orderId,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @AuthenticationPrincipal User user) {
 
         return ResponseEntity.ok(ApiResponse.success(
                 "Stock confirmed",
-                dispensingService.confirmStock(orderId, userDetails.getUsername())
+                dispensingService.confirmStock(orderId, user.getEmail() != null ? user.getEmail() : user.getPhoneNumber())
         ));
     }
 
@@ -89,11 +88,11 @@ public class DispensingController {
     public ResponseEntity<ApiResponse<SubstitutionResponse>> suggestSubstitution(
             @PathVariable Long orderId,
             @Valid @RequestBody SuggestSubstitutionRequest request,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @AuthenticationPrincipal User user) {
 
         return ResponseEntity.ok(ApiResponse.success(
                 "Substitution suggested, awaiting patient approval",
-                dispensingService.suggestSubstitution(orderId, request, userDetails.getUsername())
+                dispensingService.suggestSubstitution(orderId, request, user.getEmail() != null ? user.getEmail() : user.getPhoneNumber())
         ));
     }
 
@@ -101,23 +100,23 @@ public class DispensingController {
     public ResponseEntity<ApiResponse<DispensingOrderResponse>> dispenseMedicine(
             @PathVariable Long orderId,
             @RequestBody(required = false) DispenseMedicineRequest request,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @AuthenticationPrincipal User user) {
 
         if (request == null) request = new DispenseMedicineRequest();
 
         return ResponseEntity.ok(ApiResponse.success(
                 "Medicine dispensed successfully",
-                dispensingService.dispenseMedicine(orderId, request, userDetails.getUsername())
+                dispensingService.dispenseMedicine(orderId, request, user.getEmail() != null ? user.getEmail() : user.getPhoneNumber())
         ));
     }
 
     @GetMapping("/orders/{orderId}/logs")
     public ResponseEntity<ApiResponse<List<ActionLogResponse>>> getActionLogs(
             @PathVariable Long orderId,
-            @AuthenticationPrincipal UserDetails userDetails) {
+            @AuthenticationPrincipal User user) {
 
         return ResponseEntity.ok(ApiResponse.success(
-                dispensingService.getActionLogs(orderId, userDetails.getUsername())
+                dispensingService.getActionLogs(orderId, user.getEmail() != null ? user.getEmail() : user.getPhoneNumber())
         ));
     }
 }

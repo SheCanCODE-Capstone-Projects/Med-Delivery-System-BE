@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 @Builder
 public class InsuranceCardResponse {
     private Long id;
+    private String patientName;
     private String providerName;
     private String memberId;
     private String frontImageUrl;
