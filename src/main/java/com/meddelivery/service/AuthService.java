@@ -81,6 +81,7 @@ public class AuthService {
                 .email(user.getEmail())
                 .phoneNumber(user.getPhoneNumber())
                 .fullName(user.getFullName())
+                .userId(user.getId())
                 .pharmacyId(resolvePharmacyId(user))
                 .build();
     }
@@ -195,6 +196,7 @@ public class AuthService {
                 .email(user.getEmail())
                 .phoneNumber(user.getPhoneNumber())
                 .fullName(user.getFullName())
+                .userId(user.getId())
                 .pharmacyId(resolvePharmacyId(user))
                 .build();
     }
@@ -251,6 +253,7 @@ public class AuthService {
                 .email(user.getEmail())
                 .phoneNumber(user.getPhoneNumber())
                 .fullName(user.getFullName())
+                .userId(user.getId())
                 .pharmacyId(resolvePharmacyId(user))
                 .build();
     }
@@ -304,6 +307,7 @@ public class AuthService {
                 .email(user.getEmail())
                 .phoneNumber(user.getPhoneNumber())
                 .fullName(user.getFullName())
+                .userId(user.getId())
                 .build();
     }
 
@@ -355,6 +359,7 @@ public class AuthService {
                 .role(user.getRole().name())
                 .phoneNumber(user.getPhoneNumber())
                 .fullName(user.getFullName())
+                .userId(user.getId())
                 .build();
     }
 

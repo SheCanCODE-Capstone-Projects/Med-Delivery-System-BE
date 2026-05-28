@@ -8,6 +8,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.DisabledException;
+import org.springframework.security.authentication.LockedException;
+import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -126,7 +129,31 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ApiResponse<Void>>
     handleBadCredentials(BadCredentialsException ex) {
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .body(ApiResponse.error("Invalid credentials"));
+                .body(ApiResponse.error("Invalid credentials. Please check your email/phone and password."));
+    }
+
+    @ExceptionHandler(DisabledException.class)
+    public ResponseEntity<ApiResponse<Void>>
+    handleDisabled(DisabledException ex) {
+        log.warn("Login attempt on disabled account: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ApiResponse.error("Your account is not active yet. Please contact support."));
+    }
+
+    @ExceptionHandler(LockedException.class)
+    public ResponseEntity<ApiResponse<Void>>
+    handleLocked(LockedException ex) {
+        log.warn("Login attempt on locked account: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ApiResponse.error("Your account has been locked. Please contact support."));
+    }
+
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ApiResponse<Void>>
+    handleAuthenticationException(AuthenticationException ex) {
+        log.warn("Authentication failed: {}", ex.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .body(ApiResponse.error("Authentication failed: " + ex.getMessage()));
     }
 
     @ExceptionHandler(AccessDeniedException.class)
