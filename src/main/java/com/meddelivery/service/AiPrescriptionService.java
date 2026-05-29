@@ -130,7 +130,12 @@ public class AiPrescriptionService {
             return true;
         }
 
-        String lower = fileRelativePath.toLowerCase();
+        // fileUrl stored in DB has /api/files/ prefix — strip it to get the storage-relative path
+        String storagePath = fileRelativePath.startsWith("/api/files/")
+                ? fileRelativePath.substring("/api/files/".length())
+                : fileRelativePath;
+
+        String lower = storagePath.toLowerCase();
         String mediaType;
         if (lower.endsWith(".jpg") || lower.endsWith(".jpeg")) {
             mediaType = "image/jpeg";
@@ -146,7 +151,7 @@ public class AiPrescriptionService {
         }
 
         try {
-            Resource resource = fileStorageService.loadFileAsResource(fileRelativePath);
+            Resource resource = fileStorageService.loadFileAsResource(storagePath);
             byte[] bytes = resource.getInputStream().readAllBytes();
             String base64Data = Base64.getEncoder().encodeToString(bytes);
 
@@ -204,7 +209,7 @@ public class AiPrescriptionService {
             return normalized.contains("VALID") && !normalized.contains("INVALID");
 
         } catch (IOException e) {
-            log.error("Could not load prescription image '{}' for validation: {}", fileRelativePath, e.getMessage());
+            log.error("Could not load prescription image '{}' for validation: {}", storagePath, e.getMessage());
             return true;
         } catch (WebClientResponseException e) {
             log.error("Claude API error during image validation — status: {}, body: {}",
