@@ -44,7 +44,8 @@ public class PrescriptionController {
             ? fileTypeStr.toUpperCase() 
             : extractFileType(file.getOriginalFilename());
         String storedPath = fileStorageService.storeFile(file, "prescriptions");
-        String fileUrl = "/api/files/" + storedPath;
+        // Cloudinary returns a full https:// URL; local storage returns a relative path
+        String fileUrl = storedPath.startsWith("http") ? storedPath : "/api/files/" + storedPath;
 
         PrescriptionRequest request = new PrescriptionRequest();
         request.setFileUrl(fileUrl);
