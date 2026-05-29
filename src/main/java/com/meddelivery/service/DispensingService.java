@@ -73,20 +73,23 @@ public class DispensingService {
             throw new ResourceNotFoundException("Order not assigned to your pharmacy");
         }
 
+        boolean approved = request.getValid() == null || Boolean.TRUE.equals(request.getValid());
+
         // Update prescription validation status
         if (order.getPrescription() != null) {
             Prescription prescription = order.getPrescription();
             prescription.setValidatedByPharmacist(true);
-            prescription.setValidationStatus("VALIDATED");
+            prescription.setValidationStatus(approved ? "VALIDATED" : "INVALID");
             prescription.setValidatorPharmacist(pharmacist);
             prescriptionRepository.save(prescription);
         }
 
         // Log the action
+        String defaultNote = approved ? "Prescription validated" : "Prescription rejected";
         logAction(order, pharmacist, PharmacistAction.PRESCRIPTION_VALIDATED,
-                request.getNotes() != null ? request.getNotes() : "Prescription validated");
+                request.getNotes() != null ? request.getNotes() : defaultNote);
 
-        order.setStatus(OrderStatus.ASSIGNED);
+        order.setStatus(approved ? OrderStatus.ASSIGNED : OrderStatus.CANCELLED);
         order = orderRepository.save(order);
 
         return mapToDispensingOrderResponse(order, pharmacist);
@@ -230,18 +233,66 @@ public class DispensingService {
     }
 
     private DispensingOrderResponse mapToDispensingOrderResponse(Order order, PharmacistProfile pharmacist) {
+        String frontendStatus = mapOrderStatus(order.getStatus());
+        boolean stockConfirmed = isStockConfirmed(order.getStatus());
+
+        String prescriptionUrl = null;
+        String prescriptionNotes = null;
+        String validationStatus = null;
+        if (order.getPrescription() != null) {
+            prescriptionUrl = order.getPrescription().getFileUrl();
+            prescriptionNotes = order.getPrescription().getNotes();
+            String vs = order.getPrescription().getValidationStatus();
+            validationStatus = "VALIDATED".equals(vs) ? "VALID" : (vs != null ? vs : "PENDING");
+        }
+
+        List<com.meddelivery.dto.response.OrderItemResponse> medicines = null;
+        if (order.getOrderItems() != null && !order.getOrderItems().isEmpty()) {
+            medicines = order.getOrderItems().stream()
+                    .map(item -> com.meddelivery.dto.response.OrderItemResponse.builder()
+                            .id(item.getId())
+                            .medicineId(item.getMedicine().getId())
+                            .medicineName(item.getMedicine().getName())
+                            .quantity(item.getQuantity())
+                            .unitPrice(item.getUnitPrice() != null ? item.getUnitPrice().doubleValue() : null)
+                            .status(item.getStatus())
+                            .build())
+                    .collect(java.util.stream.Collectors.toList());
+        }
+
         return DispensingOrderResponse.builder()
-                .orderId(order.getId())
+                .id(order.getId())
                 .patientName(order.getPatientProfile().getUser().getFullName())
                 .patientEmail(order.getPatientProfile().getUser().getEmail())
                 .pharmacistUniqueId(pharmacist.getPharmacistUniqueId())
                 .pharmacistName(pharmacist.getUser().getFullName())
-                .orderStatus(order.getStatus().name())
-                .prescriptionNotes(order.getPrescription() != null ? order.getPrescription().getNotes() : null)
+                .status(frontendStatus)
+                .stockConfirmed(stockConfirmed)
+                .prescriptionUrl(prescriptionUrl)
+                .prescriptionNotes(prescriptionNotes)
+                .validationStatus(validationStatus)
+                .medicines(medicines)
                 .lastAction(getLastAction(order))
                 .createdAt(order.getCreatedAt())
                 .updatedAt(order.getUpdatedAt())
                 .build();
+    }
+
+    private String mapOrderStatus(com.meddelivery.model.enums.OrderStatus status) {
+        return switch (status) {
+            case UPLOADED, MATCHING -> "PENDING";
+            case ASSIGNED -> "CONFIRMED";
+            case STOCK_CONFIRMED, IN_PROGRESS, READY_FOR_PICKUP, OUT_FOR_DELIVERY -> "PROCESSING";
+            case COMPLETED -> "COMPLETED";
+            case CANCELLED -> "CANCELLED";
+        };
+    }
+
+    private boolean isStockConfirmed(com.meddelivery.model.enums.OrderStatus status) {
+        return switch (status) {
+            case STOCK_CONFIRMED, IN_PROGRESS, READY_FOR_PICKUP, OUT_FOR_DELIVERY, COMPLETED -> true;
+            default -> false;
+        };
     }
 
     private PharmacistAction getLastAction(Order order) {
