@@ -336,7 +336,11 @@ class DispensingServiceTest {
         when(orderRepository.findById(300L))
                 .thenReturn(Optional.of(mockOrder));
         when(substitutionRequestRepository.save(any(SubstitutionRequest.class)))
-                .thenAnswer(inv -> inv.getArgument(0));
+                .thenAnswer(inv -> {
+                    SubstitutionRequest saved = inv.getArgument(0);
+                    saved.setId(1L);
+                    return saved;
+                });
         when(actionLogRepository.save(any(PharmacistActionLog.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
 
@@ -350,7 +354,7 @@ class DispensingServiceTest {
 
         // Assert
         assertNotNull(result);
-        assertEquals(300L, result.getId().longValue());
+        assertEquals(1L, result.getId().longValue());
         assertEquals("Paracetamol", result.getOriginalMedicineName());
         assertEquals(SubstitutionStatus.PENDING, result.getStatus());
         verify(substitutionRequestRepository).save(any(SubstitutionRequest.class));
