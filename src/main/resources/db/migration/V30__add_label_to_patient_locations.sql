@@ -1,0 +1,2 @@
+ALTER TABLE patient_locations
+    ADD COLUMN IF NOT EXISTS label VARCHAR(100);
