@@ -136,7 +136,7 @@ class DispensingServiceTest {
         // Assert
         assertNotNull(result);
         assertEquals(1, result.size());
-        assertEquals(300L, result.get(0).getOrderId().longValue());
+        assertEquals(300L, result.get(0).getId().longValue());
         assertEquals("John Doe", result.get(0).getPatientName());
         assertEquals("john@gmail.com", result.get(0).getPatientEmail());
 
@@ -191,9 +191,9 @@ class DispensingServiceTest {
 
         // Assert
         assertNotNull(result);
-        assertEquals(300L, result.getOrderId().longValue());
+        assertEquals(300L, result.getId().longValue());
         assertEquals("John Doe", result.getPatientName());
-        assertEquals("ASSIGNED", result.getOrderStatus());
+        assertEquals("CONFIRMED", result.getStatus());
 
         verify(orderRepository).findById(300L);
     }
@@ -259,7 +259,7 @@ class DispensingServiceTest {
 
         // Assert
         assertNotNull(result);
-        assertEquals(300L, result.getOrderId().longValue());
+        assertEquals(300L, result.getId().longValue());
         verify(prescriptionRepository).save(any(Prescription.class));
         verify(orderRepository).save(any(Order.class));
         verify(actionLogRepository).save(any(PharmacistActionLog.class));
@@ -300,7 +300,7 @@ class DispensingServiceTest {
 
         // Assert
         assertNotNull(result);
-        assertEquals(300L, result.getOrderId().longValue());
+        assertEquals(300L, result.getId().longValue());
         verify(orderRepository).save(any(Order.class));
         verify(actionLogRepository).save(any(PharmacistActionLog.class));
     }
@@ -350,7 +350,7 @@ class DispensingServiceTest {
 
         // Assert
         assertNotNull(result);
-        assertEquals(300L, result.getOrderId().longValue());
+        assertEquals(300L, result.getId().longValue());
         assertEquals("Paracetamol", result.getOriginalMedicineName());
         assertEquals(SubstitutionStatus.PENDING, result.getStatus());
         verify(substitutionRequestRepository).save(any(SubstitutionRequest.class));
@@ -400,8 +400,8 @@ class DispensingServiceTest {
 
         // Assert
         assertNotNull(result);
-        assertEquals(300L, result.getOrderId().longValue());
-        assertEquals("COMPLETED", result.getOrderStatus());
+        assertEquals(300L, result.getId().longValue());
+        assertEquals("COMPLETED", result.getStatus());
         verify(orderRepository).save(any(Order.class));
         verify(actionLogRepository).save(any(PharmacistActionLog.class));
     }
