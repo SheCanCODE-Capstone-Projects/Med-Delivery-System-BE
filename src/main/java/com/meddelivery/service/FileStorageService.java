@@ -68,7 +68,7 @@ public class FileStorageService {
             }
 
             // Return URL path relative to uploads root (e.g., "prescriptions/abc.pdf" or "insurance/xyz.jpg")
-            String relativePath = targetDir.relativize(destination).toString().replace('\\', '/');
+            String relativePath = root.relativize(destination).toString().replace('\\', '/');
             log.debug("Stored file: {}", relativePath);
             return relativePath;
 
