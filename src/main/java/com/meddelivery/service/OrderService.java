@@ -109,7 +109,16 @@ public class OrderService {
                     })
                     .collect(Collectors.toList());
 
-                boolean isValid = aiPrescriptionService.validatePrescription(prescriptionText, requestedMedNames);
+                boolean isValid;
+                if (prescriptionText != null && !prescriptionText.isBlank()) {
+                    // Text-based validation (typed notes on the prescription)
+                    isValid = aiPrescriptionService.validatePrescription(prescriptionText, requestedMedNames);
+                } else {
+                    // Image-only prescription — use Claude vision API
+                    log.info("Prescription has no text notes; falling back to image validation for prescription {}", prescription.getId());
+                    isValid = aiPrescriptionService.validatePrescriptionFromImage(prescription.getFileUrl(), requestedMedNames);
+                }
+
                 if (!isValid) {
                     throw new BusinessException("AI Validation Failed: The requested medicines do not match the prescription details.");
                 }
