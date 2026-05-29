@@ -88,6 +88,10 @@ public class OrderService {
                 throw new AccessDeniedException("This prescription does not belong to you.");
             }
 
+            if (orderRepository.existsByPrescriptionId(prescription.getId())) {
+                throw new BusinessException("An order has already been placed for this prescription. Each prescription can only be used once.");
+            }
+
             // AI VALIDATION — only when the patient explicitly provides items (optional for prescription orders)
             if (request.getItems() != null && !request.getItems().isEmpty()) {
                 String prescriptionText = prescription.getNotes();
@@ -166,11 +170,11 @@ public class OrderService {
                 .updatedAt(LocalDateTime.now())
                 .build();
 
-        order = orderRepository.save(order);
-
         if (prescription != null) {
             order.setPrescription(prescription);
         }
+
+        order = orderRepository.save(order);
 
         // 6. Create Order Items first
         List<OrderItem> items = new ArrayList<>();

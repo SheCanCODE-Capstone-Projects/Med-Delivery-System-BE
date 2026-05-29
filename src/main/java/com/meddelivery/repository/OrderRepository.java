@@ -41,4 +41,6 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     
     @Query("SELECT COUNT(o) FROM Order o WHERE o.createdAt >= :startDate AND o.status IN :statuses")
     long countByCreatedAtAfterAndStatusIn(@Param("startDate") LocalDateTime startDate, @Param("statuses") List<OrderStatus> statuses);
+
+    boolean existsByPrescriptionId(Long prescriptionId);
 }

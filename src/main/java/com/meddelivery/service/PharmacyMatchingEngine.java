@@ -143,7 +143,10 @@ public class PharmacyMatchingEngine {
         return (normalizedCoverage * COVERAGE_WEIGHT) + (normalizedDistance * DISTANCE_WEIGHT);
     }
 
-    private double calculateDistance(double lat1, double lon1, double lat2, double lon2) {
+    private double calculateDistance(Double lat1, Double lon1, Double lat2, Double lon2) {
+        if (lat1 == null || lon1 == null || lat2 == null || lon2 == null) {
+            return Double.MAX_VALUE;
+        }
         // Haversine formula
         final int R = 6371; // Earth radius in km
 
