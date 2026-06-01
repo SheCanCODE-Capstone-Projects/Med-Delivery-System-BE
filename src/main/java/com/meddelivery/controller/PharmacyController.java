@@ -3,7 +3,6 @@ package com.meddelivery.controller;
 import com.meddelivery.dto.request.ManagerUpdateRequest;
 import com.meddelivery.dto.request.PharmacyRegistrationRequest;
 import com.meddelivery.dto.request.PharmacyUpdateRequest;
-import com.meddelivery.dto.response.ApiResponse;
 import com.meddelivery.dto.response.InsuranceProviderResponse;
 import com.meddelivery.dto.response.OrderResponse;
 import com.meddelivery.dto.response.PharmacyResponse;
@@ -123,7 +122,7 @@ public class PharmacyController {
 
      @GetMapping("/{id}/orders")
      @PreAuthorize("hasRole('MANAGER') or hasRole('SUPER_ADMIN')")
-     public ResponseEntity<ApiResponse<List<OrderResponse>>> getPharmacyOrders(@PathVariable Long id) {
-         return ResponseEntity.ok(ApiResponse.success(orderService.getOrdersByPharmacy(id)));
+     public ResponseEntity<List<OrderResponse>> getPharmacyOrders(@PathVariable Long id) {
+         return ResponseEntity.ok(orderService.getOrdersByPharmacy(id));
      }
  }
