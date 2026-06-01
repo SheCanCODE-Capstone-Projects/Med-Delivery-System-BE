@@ -324,6 +324,7 @@ public class OrderService {
             log.info("Insurance claim submitted for order {} - Amount: {}", order.getId(), order.getInsurancePayableAmount());
         } else {
             order.setPaymentStatus(PaymentStatus.PAID);
+            order.setStatus(OrderStatus.COMPLETED);
         }
 
         order = orderRepository.save(order);
@@ -369,6 +370,13 @@ public class OrderService {
                 .build();
 
         return ApiResponse.success(response);
+    }
+
+    @Transactional(readOnly = true)
+    public List<OrderResponse> getOrdersByPharmacy(Long pharmacyId) {
+        return orderRepository.findByAssignedPharmacyId(pharmacyId).stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
     }
 
     @Transactional

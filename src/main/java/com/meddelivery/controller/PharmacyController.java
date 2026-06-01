@@ -3,9 +3,12 @@ package com.meddelivery.controller;
 import com.meddelivery.dto.request.ManagerUpdateRequest;
 import com.meddelivery.dto.request.PharmacyRegistrationRequest;
 import com.meddelivery.dto.request.PharmacyUpdateRequest;
+import com.meddelivery.dto.response.ApiResponse;
 import com.meddelivery.dto.response.InsuranceProviderResponse;
+import com.meddelivery.dto.response.OrderResponse;
 import com.meddelivery.dto.response.PharmacyResponse;
 import com.meddelivery.model.enums.PharmacyStatus;
+import com.meddelivery.service.OrderService;
 import com.meddelivery.service.PharmacyService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -23,6 +26,7 @@ import java.util.List;
 public class PharmacyController {
 
     private final PharmacyService pharmacyService;
+    private final OrderService orderService;
 
     @PostMapping("/register")
     public ResponseEntity<PharmacyResponse> registerPharmacy(
@@ -115,5 +119,11 @@ public class PharmacyController {
      public ResponseEntity<Void> removeInsuranceProvider(@PathVariable Long id, @PathVariable Long providerId) {
          pharmacyService.removeInsuranceProvider(id, providerId);
          return ResponseEntity.noContent().build();
+     }
+
+     @GetMapping("/{id}/orders")
+     @PreAuthorize("hasRole('MANAGER') or hasRole('SUPER_ADMIN')")
+     public ResponseEntity<ApiResponse<List<OrderResponse>>> getPharmacyOrders(@PathVariable Long id) {
+         return ResponseEntity.ok(ApiResponse.success(orderService.getOrdersByPharmacy(id)));
      }
  }

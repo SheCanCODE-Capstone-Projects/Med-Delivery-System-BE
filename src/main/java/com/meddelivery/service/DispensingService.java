@@ -29,6 +29,7 @@ public class DispensingService {
     private final PharmacistActionLogRepository actionLogRepository;
     private final SubstitutionRequestRepository substitutionRequestRepository;
     private final PrescriptionRepository prescriptionRepository;
+    private final PharmacyInventoryRepository pharmacyInventoryRepository;
 
     @Transactional(readOnly = true)
     public List<DispensingOrderResponse> getAssignedOrders(String pharmacistEmail) {
@@ -189,7 +190,20 @@ public class DispensingService {
         logAction(order, pharmacist, PharmacistAction.MEDICINE_DISPENSED,
                 request.getNotes() != null ? request.getNotes() : "Medicine dispensed");
 
-        order.setStatus(OrderStatus.COMPLETED);
+        // Reduce inventory for each dispensed item
+        for (OrderItem item : order.getOrderItems()) {
+            if (item.getMedicine() != null) {
+                pharmacyInventoryRepository
+                    .findByPharmacyIdAndMedicineId(order.getAssignedPharmacy().getId(), item.getMedicine().getId())
+                    .ifPresent(inv -> {
+                        inv.setQuantity(Math.max(0, inv.getQuantity() - item.getQuantity()));
+                        pharmacyInventoryRepository.save(inv);
+                    });
+            }
+        }
+
+        // Move to READY_FOR_PICKUP so the patient can pay before order completes
+        order.setStatus(OrderStatus.READY_FOR_PICKUP);
         order = orderRepository.save(order);
 
         return mapToDispensingOrderResponse(order, pharmacist);
