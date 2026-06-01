@@ -471,14 +471,32 @@ public class AdminService {
     // --- G. Analytics & Reporting ---
 
     public ApiResponse<AnalyticsReportResponse> generateReport(String period) {
+        LocalDateTime startDate = switch (period.toUpperCase()) {
+            case "DAILY"   -> LocalDateTime.now().minusDays(1);
+            case "WEEKLY"  -> LocalDateTime.now().minusWeeks(1);
+            case "YEARLY"  -> LocalDateTime.now().minusYears(1);
+            default        -> LocalDateTime.now().minusMonths(1); // MONTHLY
+        };
+
+        long totalOrders     = orderRepository.countByCreatedAtAfter(startDate);
+        long completedOrders = orderRepository.countByCreatedAtAfterAndStatus(startDate, OrderStatus.COMPLETED);
+        long cancelledOrders = orderRepository.countByCreatedAtAfterAndStatus(startDate, OrderStatus.CANCELLED);
+        long newPatients     = userRepository.countByRoleAndCreatedAtAfter(UserRole.PATIENT, startDate);
+        long activePharmacies = pharmacyRepository.findAllByStatus(PharmacyStatus.ACTIVE).size();
+
         AnalyticsReportResponse report = AnalyticsReportResponse.builder()
                 .period(period)
-                .totalRevenue(15000.00)
-                .avgDeliveryTimeMinutes(45.0)
-                .orderCancellationRatePercent(2.5)
-                .newPatientRegistrations(120)
+                .totalOrders(totalOrders)
+                .completedOrders(completedOrders)
+                .cancelledOrders(cancelledOrders)
+                .newPatients(newPatients)
+                .activePharmacies(activePharmacies)
+                .totalRevenue(0.0)
+                .avgDeliveryTimeMinutes(0.0)
+                .orderCancellationRatePercent(totalOrders > 0 ? (cancelledOrders * 100.0 / totalOrders) : 0.0)
+                .newPatientRegistrations(newPatients)
                 .build();
-        
+
         return ApiResponse.success(report);
     }
 

@@ -17,4 +17,10 @@ public class AnalyticsReportResponse {
     private double orderCancellationRatePercent;
     private long newPatientRegistrations;
     private Map<String, Object> chartData;
+
+    private long totalOrders;
+    private long completedOrders;
+    private long cancelledOrders;
+    private long newPatients;
+    private long activePharmacies;
 }

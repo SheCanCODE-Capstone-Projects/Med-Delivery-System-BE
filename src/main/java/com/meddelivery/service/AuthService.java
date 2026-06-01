@@ -15,6 +15,7 @@ import com.meddelivery.model.PharmacistProfile;
 import com.meddelivery.model.User;
 import com.meddelivery.model.enums.UserRole;
 import com.meddelivery.repository.PharmacistRepository;
+import com.meddelivery.repository.PharmacyRepository;
 import com.meddelivery.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,6 +32,7 @@ public class AuthService {
 
     private final UserRepository userRepository;
     private final PharmacistRepository pharmacistRepository;
+    private final PharmacyRepository pharmacyRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final AuthenticationManager authenticationManager;
@@ -42,6 +44,11 @@ public class AuthService {
         if (user.getRole() == UserRole.PHARMACIST) {
             return pharmacistRepository.findByUserId(user.getId())
                     .map(p -> p.getPharmacy() != null ? p.getPharmacy().getId() : null)
+                    .orElse(null);
+        }
+        if (user.getRole() == UserRole.MANAGER) {
+            return pharmacyRepository.findByManagerProfile_UserId(user.getId())
+                    .map(p -> p.getId())
                     .orElse(null);
         }
         return null;

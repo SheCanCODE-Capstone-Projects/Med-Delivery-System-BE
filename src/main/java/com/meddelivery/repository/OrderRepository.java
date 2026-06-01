@@ -43,4 +43,6 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     long countByCreatedAtAfterAndStatusIn(@Param("startDate") LocalDateTime startDate, @Param("statuses") List<OrderStatus> statuses);
 
     boolean existsByPrescriptionId(Long prescriptionId);
+
+    long countByCreatedAtAfter(LocalDateTime startDate);
 }

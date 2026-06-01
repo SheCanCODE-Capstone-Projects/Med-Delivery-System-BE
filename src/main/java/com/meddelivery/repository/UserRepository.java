@@ -8,6 +8,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
+
 @Repository
 public interface UserRepository extends JpaRepository<User, Long> {
 
@@ -18,4 +20,5 @@ public interface UserRepository extends JpaRepository<User, Long> {
     java.util.Optional<User> findByPhoneNumber(String phoneNumber);
     Long countByIsActive(Boolean isActive);
     Page<User> findByRole(UserRole role, Pageable pageable);
+    long countByRoleAndCreatedAtAfter(UserRole role, LocalDateTime after);
 }
