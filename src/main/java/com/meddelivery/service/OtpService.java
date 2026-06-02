@@ -191,9 +191,10 @@ public class OtpService {
             log.info("🔐 Detected email address, sending OTP via email...");
             sendOtpEmail(username, otp);
         } else {
-            // It is a phone number
-            log.info("🔐 Detected phone number, SMS not yet implemented");
-            log.info("📱 Phone OTP for {}: {}", username, otp);
+            // Phone-only: SMS not yet implemented — fail clearly
+            log.warn("🔐 Phone-only OTP requested for {} — SMS not implemented", username);
+            throw new OtpException(
+                "SMS verification is not yet available. Please register with an email address to receive your verification code.");
         }
         
         log.info("🔐 sendOtp() completed for: {}", username);
