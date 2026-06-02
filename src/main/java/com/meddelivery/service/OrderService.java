@@ -49,6 +49,7 @@ public class OrderService {
     private final WebSocketNotificationService webSocketNotificationService;
     private final PharmacistProfileRepository pharmacistProfileRepository;
     private final PaymentRepository paymentRepository;
+    private final UserRepository userRepository;
 
     // ✅ Inject AI Service
     private final AiPrescriptionService aiPrescriptionService;
@@ -69,9 +70,15 @@ public class OrderService {
             throw new BusinessException("Delivery address is required for delivery orders");
         }
 
-        // 1. Get Patient Profile
+        // 1. Get or auto-create Patient Profile (handles users registered before profile creation was enforced)
         PatientProfile patient = patientProfileRepository.findByUserId(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Patient profile not found for user: " + userId));
+                .orElseGet(() -> {
+                    User user = userRepository.findById(userId)
+                            .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
+                    log.info("Auto-creating patient profile for existing user {}", userId);
+                    PatientProfile newProfile = PatientProfile.builder().user(user).build();
+                    return patientProfileRepository.save(newProfile);
+                });
 
         // 2. Handle Prescription Validation (If Prescription-Based)
         Prescription prescription = null;
@@ -223,8 +230,8 @@ public class OrderService {
         orderItemRepository.saveAll(items);
         order.setOrderItems(items);
 
-        // 7. Now match pharmacy with items
-        Pharmacy matchedPharmacy = pharmacyMatchingEngine.findBestMatch(order, patientLocation);
+        // 7. Now match pharmacy with items — pass the in-memory list explicitly to avoid Hibernate lazy-load
+        Pharmacy matchedPharmacy = pharmacyMatchingEngine.findBestMatch(order, items, patientLocation);
         if (matchedPharmacy == null) {
             List<String> medicineNames = items.stream()
                     .map(i -> i.getMedicine().getName())
@@ -236,13 +243,26 @@ public class OrderService {
         }
         order.setAssignedPharmacy(matchedPharmacy);
 
-        // 8. Calculate pricing based on matched pharmacy
+        // 8. Calculate pricing based on matched pharmacy (bulk-load inventory, match by ID then normalized name)
+        List<PharmacyInventory> pharmacyStock = pharmacyInventoryRepository.findByPharmacyId(matchedPharmacy.getId());
         BigDecimal totalAmount = BigDecimal.ZERO;
         for (OrderItem item : items) {
-            PharmacyInventory inventory = pharmacyInventoryRepository
-                .findByPharmacyIdAndMedicineId(matchedPharmacy.getId(), item.getMedicine().getId())
-                .orElseThrow(() -> new ResourceNotFoundException("Medicine " + item.getMedicine().getName() + " is not available at matched pharmacy"));
-            
+            final Long medId = item.getMedicine().getId();
+            final String medName = item.getMedicine().getName();
+            final String normalizedName = medName == null ? "" : medName.toLowerCase().replaceAll("\\s+", "");
+
+            PharmacyInventory inventory = pharmacyStock.stream()
+                    .filter(inv -> inv.getMedicine() != null)
+                    .filter(inv -> {
+                        if (medId != null && medId.equals(inv.getMedicine().getId())) return true;
+                        String invName = inv.getMedicine().getName();
+                        return !normalizedName.isEmpty() && invName != null
+                                && invName.toLowerCase().replaceAll("\\s+", "").equals(normalizedName);
+                    })
+                    .findFirst()
+                    .orElseThrow(() -> new ResourceNotFoundException(
+                            "Medicine " + medName + " is not available at matched pharmacy"));
+
             item.setUnitPrice(inventory.getPrice());
             totalAmount = totalAmount.add(inventory.getPrice().multiply(BigDecimal.valueOf(item.getQuantity())));
         }
@@ -291,8 +311,9 @@ public class OrderService {
     }
 
     public ApiResponse<PagedResponse<OrderResponse>> getMyOrders(Long userId, int page, int size) {
-        patientProfileRepository.findByUserId(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("Patient profile not found"));
+        if (!patientProfileRepository.existsByUserId(userId)) {
+            return ApiResponse.success(PagedResponse.of(List.of(), page, size, 0L));
+        }
 
         Pageable pageable = PageRequest.of(page, size);
         Page<Order> orders = orderRepository.findByPatientProfileUserId(userId, pageable);
@@ -330,7 +351,8 @@ public class OrderService {
             log.info("Insurance claim submitted for order {} - Amount: {}", order.getId(), order.getInsurancePayableAmount());
         } else {
             order.setPaymentStatus(PaymentStatus.PAID);
-            order.setStatus(OrderStatus.COMPLETED);
+            // Do NOT mark the order as COMPLETED here — the pharmacist must still process,
+            // confirm stock, and dispense before the order is complete.
         }
 
         order = orderRepository.save(order);

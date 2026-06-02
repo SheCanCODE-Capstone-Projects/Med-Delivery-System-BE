@@ -292,6 +292,28 @@ public class DispensingService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional
+    public DispensingOrderResponse completeOrder(Long orderId, String pharmacistEmail) {
+        PharmacistProfile pharmacist = findPharmacistByEmailOrThrow(pharmacistEmail);
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order with id " + orderId + " not found"));
+
+        if (order.getAssignedPharmacy() == null ||
+            !order.getAssignedPharmacy().getId().equals(pharmacist.getPharmacy().getId())) {
+            throw new ResourceNotFoundException("Order not assigned to your pharmacy");
+        }
+
+        if (order.getStatus() != OrderStatus.READY_FOR_PICKUP && order.getStatus() != OrderStatus.OUT_FOR_DELIVERY) {
+            throw new com.meddelivery.exception.BusinessException("Order must be dispensed before it can be marked as delivered");
+        }
+
+        logAction(order, pharmacist, PharmacistAction.MEDICINE_DISPENSED, "Order delivered and completed");
+        order.setStatus(OrderStatus.COMPLETED);
+        order = orderRepository.save(order);
+
+        return mapToDispensingOrderResponse(order, pharmacist);
+    }
+
     private void logAction(Order order, PharmacistProfile pharmacist, PharmacistAction action, String description) {
         PharmacistActionLog log = PharmacistActionLog.builder()
                 .action(action)
@@ -352,7 +374,8 @@ public class DispensingService {
         return switch (status) {
             case UPLOADED, MATCHING -> "PENDING";
             case ASSIGNED -> "CONFIRMED";
-            case STOCK_CONFIRMED, IN_PROGRESS, READY_FOR_PICKUP, OUT_FOR_DELIVERY -> "PROCESSING";
+            case STOCK_CONFIRMED, IN_PROGRESS, OUT_FOR_DELIVERY -> "PROCESSING";
+            case READY_FOR_PICKUP -> "DISPENSED";
             case COMPLETED -> "COMPLETED";
             case CANCELLED -> "CANCELLED";
         };

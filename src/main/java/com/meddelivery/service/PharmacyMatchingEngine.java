@@ -32,10 +32,14 @@ public class PharmacyMatchingEngine {
     private static final double MAX_DISTANCE_KM = 50.0;
 
     @Transactional
-    public Pharmacy findBestMatch(Order order, PatientLocation patientLocation) {
-        log.info("Starting pharmacy matching for order {}", order.getId());
+    public Pharmacy findBestMatch(Order order, List<OrderItem> explicitItems, PatientLocation patientLocation) {
+        log.info("Starting pharmacy matching for order {} with {} explicit items",
+                order.getId(), explicitItems != null ? explicitItems.size() : 0);
 
-        List<OrderItem> orderItems = order.getOrderItems();
+        List<OrderItem> orderItems = (explicitItems != null && !explicitItems.isEmpty())
+                ? explicitItems
+                : order.getOrderItems();
+
         if (orderItems == null || orderItems.isEmpty()) {
             // Prescription orders have no items yet — find nearest active pharmacy by distance
             log.info("Order {} has no items (prescription order), matching by proximity", order.getId());
@@ -59,10 +63,20 @@ public class PharmacyMatchingEngine {
             return null;
         }
 
+        // Log what we're trying to match
+        for (OrderItem oi : orderItems) {
+            if (oi.getMedicine() != null) {
+                log.info("Order {} — looking for medicine: '{}' (id={}) qty={}",
+                        order.getId(), oi.getMedicine().getName(), oi.getMedicine().getId(), oi.getQuantity());
+            }
+        }
+
         // Calculate matches for each pharmacy
         List<PharmacyMatchResponse> matches = new ArrayList<>();
         for (Pharmacy pharmacy : activePharmacies) {
             PharmacyMatchResponse match = calculateMatch(pharmacy, orderItems, patientLocation);
+            log.info("Pharmacy '{}' (id={}) coverage={}% score={}",
+                    pharmacy.getName(), pharmacy.getId(), match.getCoverage(), match.getScore());
             if (match.getCoverage() > 0) {
                 matches.add(match);
             }
@@ -103,20 +117,40 @@ public class PharmacyMatchingEngine {
         int totalItems = orderItems.size();
         int availableItems = 0;
 
+        // Load all inventory for this pharmacy in one query — avoids Spring Data derived-query issues
+        List<PharmacyInventory> pharmacyStock = inventoryRepository.findByPharmacyId(pharmacy.getId());
+        log.info("Pharmacy '{}' (id={}) has {} inventory records", pharmacy.getName(), pharmacy.getId(), pharmacyStock.size());
+
+        for (PharmacyInventory inv : pharmacyStock) {
+            // Hibernate knows the FK id without loading the proxied entity
+            log.info("  inventory id={} medicineId={} qty={}",
+                    inv.getId(), inv.getMedicine() != null ? inv.getMedicine().getId() : "null", inv.getQuantity());
+        }
+
         for (OrderItem item : orderItems) {
             if (item.getMedicine() == null) continue;
             Long medicineId = item.getMedicine().getId();
             String medicineName = item.getMedicine().getName();
 
-            // Try by medicine ID first; fall back to name match to handle any ID inconsistency
-            boolean available = inventoryRepository
-                    .findByPharmacyIdAndMedicineId(pharmacy.getId(), medicineId)
-                    .or(() -> inventoryRepository.findByPharmacyIdAndMedicine_NameIgnoreCase(pharmacy.getId(), medicineName))
-                    .map(inv -> inv.getQuantity() >= item.getQuantity())
-                    .orElse(false);
+            String normalizedOrderName = normalizeName(medicineName);
+            boolean available = pharmacyStock.stream()
+                    .filter(inv -> inv.getMedicine() != null)
+                    .anyMatch(inv -> {
+                        Long invMedId = inv.getMedicine().getId();
+                        String invMedName = inv.getMedicine().getName();
+                        boolean idMatch = medicineId != null && medicineId.equals(invMedId);
+                        boolean nameMatch = !normalizedOrderName.isEmpty()
+                                && normalizeName(invMedName).equals(normalizedOrderName);
+                        boolean matched = (idMatch || nameMatch) && inv.getQuantity() >= item.getQuantity();
+                        if (idMatch || nameMatch) {
+                            log.info("  medicine '{}' (id={}) vs inventory med '{}' (id={}) qty={} required={} → idMatch={} nameMatch={} sufficient={}",
+                                    medicineName, medicineId, invMedName, invMedId,
+                                    inv.getQuantity(), item.getQuantity(), idMatch, nameMatch, matched);
+                        }
+                        return matched;
+                    });
 
-            log.debug("Pharmacy {} | medicine '{}' (id={}) | available={}",
-                    pharmacy.getName(), medicineName, medicineId, available);
+            log.info("Pharmacy '{}' | medicine '{}' (id={}) | available={}", pharmacy.getName(), medicineName, medicineId, available);
 
             if (available) {
                 availableItems++;
@@ -170,6 +204,12 @@ public class PharmacyMatchingEngine {
         double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 
         return R * c;
+    }
+
+    /** Strips all whitespace and lowercases — so "500 mg" and "500mg" compare equal. */
+    private static String normalizeName(String name) {
+        if (name == null) return "";
+        return name.toLowerCase().replaceAll("\\s+", "");
     }
 
     @Transactional(readOnly = true)

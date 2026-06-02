@@ -158,7 +158,7 @@ class OrderServiceTest {
         request.setItems(List.of(itemRequest));
 
 // Add pharmacy mocking
-        when(pharmacyMatchingEngine.findBestMatch(any(Order.class), any(PatientLocation.class)))
+        when(pharmacyMatchingEngine.findBestMatch(any(Order.class), any(java.util.List.class), any(PatientLocation.class)))
                 .thenReturn(mockPharmacy);
         when(pharmacyInventoryRepository.findByPharmacyIdAndMedicineId(1L, 100L))
                 .thenReturn(Optional.of(mockInventory));
@@ -200,7 +200,7 @@ class OrderServiceTest {
         verify(prescriptionRepository).findById(200L);
         verify(medicineRepository, times(2)).findById(100L);
         verify(aiPrescriptionService).validatePrescription(anyString(), any());
-        verify(pharmacyMatchingEngine).findBestMatch(any(Order.class), any(PatientLocation.class));
+        verify(pharmacyMatchingEngine).findBestMatch(any(Order.class), any(java.util.List.class), any(PatientLocation.class));
         verify(pharmacyInventoryRepository).findByPharmacyIdAndMedicineId(1L, 100L);
         verify(orderRepository, times(3)).save(any(Order.class));
         verify(orderItemRepository, times(2)).saveAll(any());
@@ -220,7 +220,7 @@ class OrderServiceTest {
         request.setItems(List.of(itemRequest));
 
 // Add pharmacy mocking
-        when(pharmacyMatchingEngine.findBestMatch(any(Order.class), any(PatientLocation.class)))
+        when(pharmacyMatchingEngine.findBestMatch(any(Order.class), any(java.util.List.class), any(PatientLocation.class)))
                 .thenReturn(mockPharmacy);
         when(pharmacyInventoryRepository.findByPharmacyIdAndMedicineId(1L, 100L))
                 .thenReturn(Optional.of(mockInventory));
@@ -256,7 +256,7 @@ class OrderServiceTest {
         
         verify(patientProfileRepository).findByUserId(1L);
         verify(medicineRepository).findById(100L);
-        verify(pharmacyMatchingEngine).findBestMatch(any(Order.class), any(PatientLocation.class));
+        verify(pharmacyMatchingEngine).findBestMatch(any(Order.class), any(java.util.List.class), any(PatientLocation.class));
         verify(pharmacyInventoryRepository).findByPharmacyIdAndMedicineId(1L, 100L);
         verify(orderRepository, times(3)).save(any(Order.class));
         verify(paymentRepository).save(any(Payment.class));

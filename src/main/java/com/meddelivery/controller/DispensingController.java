@@ -123,6 +123,17 @@ public class DispensingController {
         ));
     }
 
+    @PostMapping("/orders/{orderId}/complete")
+    public ResponseEntity<ApiResponse<DispensingOrderResponse>> completeOrder(
+            @PathVariable Long orderId,
+            @AuthenticationPrincipal User user) {
+
+        return ResponseEntity.ok(ApiResponse.success(
+                "Order marked as delivered and completed",
+                dispensingService.completeOrder(orderId, user.getEmail() != null ? user.getEmail() : user.getPhoneNumber())
+        ));
+    }
+
     @GetMapping("/orders/{orderId}/logs")
     public ResponseEntity<ApiResponse<List<ActionLogResponse>>> getActionLogs(
             @PathVariable Long orderId,
