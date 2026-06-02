@@ -246,16 +246,26 @@ public class DispensingService {
         logAction(order, pharmacist, PharmacistAction.MEDICINE_DISPENSED,
                 request.getNotes() != null ? request.getNotes() : "Medicine dispensed");
 
-        // Reduce inventory for each dispensed item
+        // Reduce inventory for each dispensed item using bulk load + normalized name matching
+        List<PharmacyInventory> pharmacyStock = pharmacyInventoryRepository.findByPharmacyId(order.getAssignedPharmacy().getId());
         for (OrderItem item : order.getOrderItems()) {
-            if (item.getMedicine() != null) {
-                pharmacyInventoryRepository
-                    .findByPharmacyIdAndMedicineId(order.getAssignedPharmacy().getId(), item.getMedicine().getId())
+            if (item.getMedicine() == null) continue;
+            final Long medicineId = item.getMedicine().getId();
+            final String normalizedName = normalizeName(item.getMedicine().getName());
+            final int qty = item.getQuantity();
+            pharmacyStock.stream()
+                    .filter(inv -> inv.getMedicine() != null)
+                    .filter(inv -> {
+                        boolean idMatch = medicineId != null && medicineId.equals(inv.getMedicine().getId());
+                        boolean nameMatch = !normalizedName.isEmpty()
+                                && normalizeName(inv.getMedicine().getName()).equals(normalizedName);
+                        return idMatch || nameMatch;
+                    })
+                    .findFirst()
                     .ifPresent(inv -> {
-                        inv.setQuantity(Math.max(0, inv.getQuantity() - item.getQuantity()));
+                        inv.setQuantity(Math.max(0, inv.getQuantity() - qty));
                         pharmacyInventoryRepository.save(inv);
                     });
-            }
         }
 
         // Move to READY_FOR_PICKUP so the patient can pay before order completes
@@ -394,6 +404,11 @@ public class DispensingService {
             return logs.get(0).getAction();
         }
         return null;
+    }
+
+    private static String normalizeName(String name) {
+        if (name == null) return "";
+        return name.toLowerCase().replaceAll("\\s+", "");
     }
 
     private PharmacistProfile findPharmacistByEmailOrThrow(String email) {

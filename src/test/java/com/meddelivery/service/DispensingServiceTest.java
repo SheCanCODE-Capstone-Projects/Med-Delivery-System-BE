@@ -52,6 +52,9 @@ class DispensingServiceTest {
     @Mock
     private PrescriptionRepository prescriptionRepository;
 
+    @Mock
+    private PharmacyInventoryRepository pharmacyInventoryRepository;
+
     @InjectMocks
     private DispensingService dispensingService;
 
@@ -395,6 +398,8 @@ class DispensingServiceTest {
                 .thenAnswer(inv -> inv.getArgument(0));
         when(actionLogRepository.save(any(PharmacistActionLog.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
+        when(pharmacyInventoryRepository.findByPharmacyId(1L))
+                .thenReturn(List.of());
 
         DispenseMedicineRequest request = new DispenseMedicineRequest();
         request.setNotes("Dispensed successfully");
