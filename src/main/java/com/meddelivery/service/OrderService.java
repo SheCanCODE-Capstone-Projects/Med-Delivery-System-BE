@@ -226,7 +226,12 @@ public class OrderService {
         // 7. Now match pharmacy with items
         Pharmacy matchedPharmacy = pharmacyMatchingEngine.findBestMatch(order, patientLocation);
         if (matchedPharmacy == null) {
-            throw new BusinessException("No pharmacy available to fulfill this order. Please try again later or contact support.");
+            List<String> medicineNames = items.stream()
+                    .map(i -> i.getMedicine().getName())
+                    .collect(Collectors.toList());
+            throw new BusinessException(
+                    "No active pharmacy currently has " + String.join(", ", medicineNames) +
+                    " in stock. Ensure the pharmacy is approved and has this medicine in their inventory.");
         }
         order.setAssignedPharmacy(matchedPharmacy);
 

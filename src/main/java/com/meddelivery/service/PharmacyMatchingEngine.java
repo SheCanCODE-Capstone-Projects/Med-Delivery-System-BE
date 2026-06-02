@@ -53,8 +53,9 @@ public class PharmacyMatchingEngine {
 
         // Get all active pharmacies
         List<Pharmacy> activePharmacies = pharmacyRepository.findAllByStatus(PharmacyStatus.ACTIVE);
+        log.info("Found {} active pharmacies for order {}", activePharmacies.size(), order.getId());
         if (activePharmacies.isEmpty()) {
-            log.warn("No active pharmacies available");
+            log.warn("No active pharmacies in the system — pharmacy must be APPROVED by an admin before orders can be matched");
             return null;
         }
 
@@ -103,10 +104,17 @@ public class PharmacyMatchingEngine {
         int availableItems = 0;
 
         for (OrderItem item : orderItems) {
+            Long medicineId = item.getMedicine() != null ? item.getMedicine().getId() : null;
+            if (medicineId == null) continue;
+
             boolean available = inventoryRepository
-                    .findByPharmacyAndMedicine(pharmacy, item.getMedicine())
+                    .findByPharmacyIdAndMedicineId(pharmacy.getId(), medicineId)
                     .map(inv -> inv.getQuantity() >= item.getQuantity())
                     .orElse(false);
+
+            log.debug("Pharmacy {} | medicine {} (id={}) | available={}",
+                    pharmacy.getName(),
+                    item.getMedicine().getName(), medicineId, available);
 
             if (available) {
                 availableItems++;
