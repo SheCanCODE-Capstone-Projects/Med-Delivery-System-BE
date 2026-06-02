@@ -63,15 +63,30 @@ public class OAuth2SuccessHandler
         String token = jwtService.generateToken(user);
         String refreshToken = refreshTokenService.generateRefreshToken(user.getUsername());
 
-        // ── Redirect to frontend with token ─────
+        // ── Redirect with token (web or mobile) ─
         String encodedName = URLEncoder.encode(
                 user.getFullName() != null ? user.getFullName() : "",
                 StandardCharsets.UTF_8);
-        String redirectUrl = frontendUrl + "/auth/callback"
-                + "?token=" + token
-                + "&refreshToken=" + refreshToken
-                + "&role=" + user.getRole().name()
-                + "&name=" + encodedName;
+
+        jakarta.servlet.http.HttpSession session = request.getSession(false);
+        String redirectScheme = session != null
+                ? (String) session.getAttribute("oauth_redirect_scheme")
+                : null;
+
+        String redirectUrl;
+        if ("mobile".equals(redirectScheme)) {
+            redirectUrl = "meddelivery://google-callback"
+                    + "?token=" + token
+                    + "&refreshToken=" + refreshToken
+                    + "&role=" + user.getRole().name()
+                    + "&name=" + encodedName;
+        } else {
+            redirectUrl = frontendUrl + "/auth/callback"
+                    + "?token=" + token
+                    + "&refreshToken=" + refreshToken
+                    + "&role=" + user.getRole().name()
+                    + "&name=" + encodedName;
+        }
 
         response.sendRedirect(redirectUrl);
     }

@@ -9,6 +9,8 @@ import com.meddelivery.dto.request.SetPasswordRequest;
 import com.meddelivery.dto.response.ApiResponse;
 import com.meddelivery.dto.response.AuthResponse;
 import com.meddelivery.service.AuthService;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -131,6 +133,17 @@ public class AuthController {
         authService.logout(refreshToken);
         return ResponseEntity.ok(
                 ApiResponse.success("Logged out successfully"));
+    }
+
+    // ── Mobile OAuth2 Start ──────────────────────
+    // Marks the session as a mobile request before redirecting to Google OAuth.
+    // The OAuth2 success handler checks this flag to redirect to the deep-link URI.
+    @GetMapping("/oauth2/mobile-start")
+    public void mobileOAuthStart(
+            HttpServletRequest request,
+            HttpServletResponse response) throws java.io.IOException {
+        request.getSession(true).setAttribute("oauth_redirect_scheme", "mobile");
+        response.sendRedirect("/oauth2/authorization/google");
     }
 
     // ── Firebase Phone Login ─────────────────────
