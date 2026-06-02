@@ -104,17 +104,19 @@ public class PharmacyMatchingEngine {
         int availableItems = 0;
 
         for (OrderItem item : orderItems) {
-            Long medicineId = item.getMedicine() != null ? item.getMedicine().getId() : null;
-            if (medicineId == null) continue;
+            if (item.getMedicine() == null) continue;
+            Long medicineId = item.getMedicine().getId();
+            String medicineName = item.getMedicine().getName();
 
+            // Try by medicine ID first; fall back to name match to handle any ID inconsistency
             boolean available = inventoryRepository
                     .findByPharmacyIdAndMedicineId(pharmacy.getId(), medicineId)
+                    .or(() -> inventoryRepository.findByPharmacyIdAndMedicine_NameIgnoreCase(pharmacy.getId(), medicineName))
                     .map(inv -> inv.getQuantity() >= item.getQuantity())
                     .orElse(false);
 
-            log.debug("Pharmacy {} | medicine {} (id={}) | available={}",
-                    pharmacy.getName(),
-                    item.getMedicine().getName(), medicineId, available);
+            log.debug("Pharmacy {} | medicine '{}' (id={}) | available={}",
+                    pharmacy.getName(), medicineName, medicineId, available);
 
             if (available) {
                 availableItems++;

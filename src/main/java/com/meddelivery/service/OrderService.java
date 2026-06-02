@@ -229,9 +229,10 @@ public class OrderService {
             List<String> medicineNames = items.stream()
                     .map(i -> i.getMedicine().getName())
                     .collect(Collectors.toList());
+            log.warn("Order {}: no pharmacy could fulfill medicines: {}", order.getId(), medicineNames);
             throw new BusinessException(
-                    "No active pharmacy currently has " + String.join(", ", medicineNames) +
-                    " in stock. Ensure the pharmacy is approved and has this medicine in their inventory.");
+                    "Sorry, none of our pharmacies currently have " + String.join(", ", medicineNames) +
+                    " in stock. Please try again later or contact support.");
         }
         order.setAssignedPharmacy(matchedPharmacy);
 
