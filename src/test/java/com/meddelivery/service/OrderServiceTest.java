@@ -77,6 +77,9 @@ class OrderServiceTest {
     @Mock
     private PharmacistProfileRepository pharmacistProfileRepository;
 
+    @Mock
+    private UserRepository userRepository;
+
     @InjectMocks
     private OrderService orderService;
 
@@ -160,8 +163,8 @@ class OrderServiceTest {
 // Add pharmacy mocking
         when(pharmacyMatchingEngine.findBestMatch(any(Order.class), any(java.util.List.class), any(PatientLocation.class)))
                 .thenReturn(mockPharmacy);
-        when(pharmacyInventoryRepository.findByPharmacyIdAndMedicineId(1L, 100L))
-                .thenReturn(Optional.of(mockInventory));
+        when(pharmacyInventoryRepository.findByPharmacyId(1L))
+                .thenReturn(List.of(mockInventory));
 
         when(patientProfileRepository.findByUserId(1L))
                 .thenReturn(Optional.of(mockPatient));
@@ -195,13 +198,13 @@ class OrderServiceTest {
         assertNotNull(response.getData());
         assertEquals(OrderType.PRESCRIPTION_BASED, response.getData().getOrderType());
         assertEquals(1, response.getData().getItems().size());
-        
+
         verify(patientProfileRepository).findByUserId(1L);
         verify(prescriptionRepository).findById(200L);
         verify(medicineRepository, times(2)).findById(100L);
         verify(aiPrescriptionService).validatePrescription(anyString(), any());
         verify(pharmacyMatchingEngine).findBestMatch(any(Order.class), any(java.util.List.class), any(PatientLocation.class));
-        verify(pharmacyInventoryRepository).findByPharmacyIdAndMedicineId(1L, 100L);
+        verify(pharmacyInventoryRepository).findByPharmacyId(1L);
         verify(orderRepository, times(3)).save(any(Order.class));
         verify(orderItemRepository, times(2)).saveAll(any());
         verify(paymentRepository).save(any(Payment.class));
@@ -222,8 +225,8 @@ class OrderServiceTest {
 // Add pharmacy mocking
         when(pharmacyMatchingEngine.findBestMatch(any(Order.class), any(java.util.List.class), any(PatientLocation.class)))
                 .thenReturn(mockPharmacy);
-        when(pharmacyInventoryRepository.findByPharmacyIdAndMedicineId(1L, 100L))
-                .thenReturn(Optional.of(mockInventory));
+        when(pharmacyInventoryRepository.findByPharmacyId(1L))
+                .thenReturn(List.of(mockInventory));
 
         when(patientProfileRepository.findByUserId(1L))
                 .thenReturn(Optional.of(mockPatient));
@@ -253,11 +256,11 @@ class OrderServiceTest {
         assertEquals(1, response.getData().getItems().size());
         assertEquals("Paracetamol", response.getData().getItems().get(0).getMedicineName());
         assertEquals(3, response.getData().getItems().get(0).getQuantity());
-        
+
         verify(patientProfileRepository).findByUserId(1L);
         verify(medicineRepository).findById(100L);
         verify(pharmacyMatchingEngine).findBestMatch(any(Order.class), any(java.util.List.class), any(PatientLocation.class));
-        verify(pharmacyInventoryRepository).findByPharmacyIdAndMedicineId(1L, 100L);
+        verify(pharmacyInventoryRepository).findByPharmacyId(1L);
         verify(orderRepository, times(3)).save(any(Order.class));
         verify(paymentRepository).save(any(Payment.class));
         verifyNoInteractions(aiPrescriptionService);
@@ -276,6 +279,8 @@ class OrderServiceTest {
         request.setItems(List.of(itemRequest));
 
         when(patientProfileRepository.findByUserId(1L))
+                .thenReturn(Optional.empty());
+        when(userRepository.findById(1L))
                 .thenReturn(Optional.empty());
 
         // Act & Assert
@@ -406,17 +411,22 @@ class OrderServiceTest {
     }
 
     @Test
-    @DisplayName("GetMyOrders → Fails when patient profile not found")
-    void getMyOrders_PatientNotFound_ThrowsException() {
+    @DisplayName("GetMyOrders → Returns empty list when patient profile not found")
+    void getMyOrders_PatientNotFound_ReturnsEmpty() {
         // Arrange
         when(patientProfileRepository.findByUserId(1L))
                 .thenReturn(Optional.empty());
 
-        // Act & Assert
-        ResourceNotFoundException ex = assertThrows(ResourceNotFoundException.class,
-                () -> orderService.getMyOrders(1L, 0, 10));
+        // Act
+        var response = orderService.getMyOrders(1L, 0, 10);
 
-        assertTrue(ex.getMessage().contains("Patient profile not found"));
+        // Assert
+        assertNotNull(response);
+        assertTrue(response.isSuccess());
+        assertNotNull(response.getData());
+        assertEquals(0, response.getData().getContent().size());
+        verify(patientProfileRepository).findByUserId(1L);
+        verifyNoInteractions(orderRepository);
     }
 
     // ── Get Order Details Tests ──────────────────────────────

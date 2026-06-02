@@ -405,7 +405,7 @@ class DispensingServiceTest {
         // Assert
         assertNotNull(result);
         assertEquals(300L, result.getId().longValue());
-        assertEquals("PROCESSING", result.getStatus());
+        assertEquals("DISPENSED", result.getStatus());
         verify(orderRepository).save(any(Order.class));
         verify(actionLogRepository).save(any(PharmacistActionLog.class));
     }

@@ -74,7 +74,7 @@ public class OrderService {
         PatientProfile patient = patientProfileRepository.findByUserId(userId)
                 .orElseGet(() -> {
                     User user = userRepository.findById(userId)
-                            .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
+                            .orElseThrow(() -> new ResourceNotFoundException("Patient profile not found for user: " + userId));
                     log.info("Auto-creating patient profile for existing user {}", userId);
                     PatientProfile newProfile = PatientProfile.builder().user(user).build();
                     return patientProfileRepository.save(newProfile);
@@ -311,7 +311,7 @@ public class OrderService {
     }
 
     public ApiResponse<PagedResponse<OrderResponse>> getMyOrders(Long userId, int page, int size) {
-        if (!patientProfileRepository.existsByUserId(userId)) {
+        if (patientProfileRepository.findByUserId(userId).isEmpty()) {
             return ApiResponse.success(PagedResponse.of(List.of(), page, size, 0L));
         }
 
