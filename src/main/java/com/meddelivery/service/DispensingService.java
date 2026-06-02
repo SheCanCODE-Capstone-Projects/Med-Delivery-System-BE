@@ -1,6 +1,7 @@
 package com.meddelivery.service;
 
 import com.meddelivery.dto.request.DispenseMedicineRequest;
+import com.meddelivery.dto.request.FillFromPrescriptionRequest;
 import com.meddelivery.dto.request.SuggestSubstitutionRequest;
 import com.meddelivery.dto.request.ValidatePrescriptionRequest;
 import com.meddelivery.dto.response.ActionLogResponse;
@@ -9,6 +10,7 @@ import com.meddelivery.dto.response.SubstitutionResponse;
 import com.meddelivery.exception.BusinessException;
 import com.meddelivery.exception.ResourceNotFoundException;
 import com.meddelivery.model.*;
+import com.meddelivery.model.enums.OrderItemStatus;
 import com.meddelivery.model.enums.OrderStatus;
 import com.meddelivery.model.enums.PharmacistAction;
 import com.meddelivery.model.enums.SubstitutionStatus;
@@ -169,6 +171,60 @@ public class DispensingService {
         response.setRequestedAt(substitution.getRequestedAt());
 
         return response;
+    }
+
+    @Transactional
+    public DispensingOrderResponse fillFromPrescription(
+            Long orderId,
+            FillFromPrescriptionRequest request,
+            String pharmacistEmail) {
+
+        PharmacistProfile pharmacist = findPharmacistByEmailOrThrow(pharmacistEmail);
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order with id " + orderId + " not found"));
+
+        if (order.getAssignedPharmacy() == null ||
+                !order.getAssignedPharmacy().getId().equals(pharmacist.getPharmacy().getId())) {
+            throw new ResourceNotFoundException("Order not assigned to your pharmacy");
+        }
+
+        if (request.getItems() == null || request.getItems().isEmpty()) {
+            throw new BusinessException("At least one medicine item is required");
+        }
+
+        // Replace existing items with the filled ones
+        order.getOrderItems().clear();
+
+        for (FillFromPrescriptionRequest.FillItem item : request.getItems()) {
+            if (item.getMedicineName() == null || item.getQuantity() == null || item.getQuantity() < 1) continue;
+
+            PharmacyInventory inventory = pharmacyInventoryRepository
+                    .findByPharmacyIdAndMedicine_NameIgnoreCase(
+                            pharmacist.getPharmacy().getId(), item.getMedicineName().trim())
+                    .orElseThrow(() -> new BusinessException(
+                            "Medicine not found in your pharmacy's inventory: " + item.getMedicineName()));
+
+            OrderItem orderItem = OrderItem.builder()
+                    .order(order)
+                    .medicine(inventory.getMedicine())
+                    .quantity(item.getQuantity())
+                    .unitPrice(inventory.getPrice())
+                    .status(OrderItemStatus.AVAILABLE)
+                    .build();
+            order.getOrderItems().add(orderItem);
+        }
+
+        java.math.BigDecimal total = order.getOrderItems().stream()
+                .map(i -> i.getUnitPrice().multiply(java.math.BigDecimal.valueOf(i.getQuantity())))
+                .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+        order.setTotalAmount(total);
+        order.setPatientPayableAmount(total);
+
+        logAction(order, pharmacist, PharmacistAction.PRESCRIPTION_VALIDATED,
+                "Filled " + order.getOrderItems().size() + " medicine(s) from prescription");
+
+        order = orderRepository.save(order);
+        return mapToDispensingOrderResponse(order, pharmacist);
     }
 
     @Transactional

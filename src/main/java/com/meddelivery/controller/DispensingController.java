@@ -1,6 +1,7 @@
 package com.meddelivery.controller;
 
 import com.meddelivery.dto.request.DispenseMedicineRequest;
+import com.meddelivery.dto.request.FillFromPrescriptionRequest;
 import com.meddelivery.dto.request.SuggestSubstitutionRequest;
 import com.meddelivery.dto.request.ValidatePrescriptionRequest;
 import com.meddelivery.dto.response.ActionLogResponse;
@@ -57,6 +58,18 @@ public class DispensingController {
         ));
     }
 
+
+    @PostMapping("/orders/{orderId}/fill")
+    public ResponseEntity<ApiResponse<DispensingOrderResponse>> fillFromPrescription(
+            @PathVariable Long orderId,
+            @RequestBody FillFromPrescriptionRequest request,
+            @AuthenticationPrincipal User user) {
+
+        return ResponseEntity.ok(ApiResponse.success(
+                "Order filled from prescription",
+                dispensingService.fillFromPrescription(orderId, request, user.getEmail() != null ? user.getEmail() : user.getPhoneNumber())
+        ));
+    }
 
     @PostMapping("/orders/{orderId}/validate")
     public ResponseEntity<ApiResponse<DispensingOrderResponse>> validatePrescription(

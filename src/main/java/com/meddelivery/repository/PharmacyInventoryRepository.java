@@ -20,4 +20,6 @@
       List<PharmacyInventory> findByQuantityLessThan(int threshold);
 
       Optional<PharmacyInventory> findByPharmacyIdAndMedicineId(Long pharmacyId, Long medicineId);
+
+      Optional<PharmacyInventory> findByPharmacyIdAndMedicine_NameIgnoreCase(Long pharmacyId, String medicineName);
   }
