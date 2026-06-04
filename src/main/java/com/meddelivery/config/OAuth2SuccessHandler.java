@@ -72,10 +72,16 @@ public class OAuth2SuccessHandler
         String redirectScheme = session != null
                 ? (String) session.getAttribute("oauth_redirect_scheme")
                 : null;
+        String mobileRedirectUri = session != null
+                ? (String) session.getAttribute("oauth_mobile_redirect_uri")
+                : null;
 
         String redirectUrl;
         if ("mobile".equals(redirectScheme)) {
-            redirectUrl = "meddelivery://google-callback"
+            String baseUri = (mobileRedirectUri != null && !mobileRedirectUri.isBlank())
+                    ? mobileRedirectUri
+                    : "meddelivery://google-callback";
+            redirectUrl = baseUri
                     + "?token=" + token
                     + "&refreshToken=" + refreshToken
                     + "&role=" + user.getRole().name()

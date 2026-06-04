@@ -140,9 +140,14 @@ public class AuthController {
     // The OAuth2 success handler checks this flag to redirect to the deep-link URI.
     @GetMapping("/oauth2/mobile-start")
     public void mobileOAuthStart(
+            @org.springframework.web.bind.annotation.RequestParam(value = "redirect_uri", required = false) String redirectUri,
             HttpServletRequest request,
             HttpServletResponse response) throws java.io.IOException {
-        request.getSession(true).setAttribute("oauth_redirect_scheme", "mobile");
+        jakarta.servlet.http.HttpSession session = request.getSession(true);
+        session.setAttribute("oauth_redirect_scheme", "mobile");
+        if (redirectUri != null && !redirectUri.isBlank()) {
+            session.setAttribute("oauth_mobile_redirect_uri", redirectUri);
+        }
         response.sendRedirect("/oauth2/authorization/google");
     }
 
