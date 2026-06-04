@@ -104,7 +104,19 @@ public class AdminService {
         Pageable pageable = PageRequest.of(request.getPage(), request.getSize());
         Page<User> users;
 
-        if (request.getRole() != null && !request.getRole().isEmpty()) {
+        boolean hasQuery = request.getQuery() != null && !request.getQuery().trim().isEmpty();
+        boolean hasRole  = request.getRole()  != null && !request.getRole().trim().isEmpty();
+
+        if (hasQuery && hasRole) {
+            try {
+                UserRole role = UserRole.valueOf(request.getRole().toUpperCase());
+                users = userRepository.searchByQueryAndRole(request.getQuery().trim(), role, pageable);
+            } catch (IllegalArgumentException e) {
+                throw new BusinessException("Invalid role: " + request.getRole());
+            }
+        } else if (hasQuery) {
+            users = userRepository.searchByQuery(request.getQuery().trim(), pageable);
+        } else if (hasRole) {
             try {
                 users = userRepository.findByRole(UserRole.valueOf(request.getRole().toUpperCase()), pageable);
             } catch (IllegalArgumentException e) {

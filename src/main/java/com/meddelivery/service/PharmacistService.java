@@ -86,9 +86,10 @@ public class PharmacistService {
 
         PharmacistProfile saved = pharmacistRepository.save(pharmacist);
 
+        String encodedEmail = URLEncoder.encode(request.getEmail(), StandardCharsets.UTF_8);
+        String setupLink = frontendUrl + "/auth/verify-otp?username=" + encodedEmail + "&after=pharmacist-setup";
+        log.warn("🔗 [PHARMACIST SETUP LINK] Name: {} | Email: {} | Link: {}", request.getFullName(), request.getEmail(), setupLink);
         try {
-            String encodedEmail = URLEncoder.encode(request.getEmail(), StandardCharsets.UTF_8);
-            String setupLink = frontendUrl + "/auth/verify-otp?username=" + encodedEmail + "&after=pharmacist-setup";
             String html = buildSetupEmailHtml(request.getFullName(), pharmacy.getName(), setupLink);
             emailService.sendEmail(request.getEmail(), "You've been added to " + pharmacy.getName() + " — Set up your account", html);
         } catch (Exception e) {
@@ -159,33 +160,35 @@ public class PharmacistService {
     }
 
     private String buildSetupEmailHtml(String fullName, String pharmacyName, String setupLink) {
-        return "<!DOCTYPE html><html><head><meta charset='UTF-8'/>" +
-               "<meta name='viewport' content='width=device-width,initial-scale=1'/></head>" +
-               "<body style='margin:0;padding:0;background:#f0f4f8;font-family:Inter,Arial,sans-serif;'>" +
-               "<table width='100%' cellpadding='0' cellspacing='0' style='padding:40px 16px;'><tr><td align='center'>" +
-               "<table width='100%' style='max-width:520px;background:#ffffff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(11,19,39,0.10);'>" +
-               "<tr><td style='background:linear-gradient(135deg,#0f766e,#0d9488);padding:32px 36px;'>" +
-               "<div style='font-size:22px;font-weight:800;color:#ffffff;letter-spacing:-0.5px;'>MedDelivery</div>" +
-               "<div style='font-size:13px;color:rgba(255,255,255,0.75);margin-top:4px;'>Pharmacy Management Platform</div>" +
-               "</td></tr>" +
-               "<tr><td style='padding:36px 36px 28px;'>" +
-               "<p style='margin:0 0 8px;font-size:13px;font-weight:700;color:#0d9488;text-transform:uppercase;letter-spacing:0.1em;'>Account Invitation</p>" +
-               "<h1 style='margin:0 0 16px;font-size:26px;font-weight:700;color:#0f172a;line-height:1.2;'>You've been added to<br/><span style='color:#0d9488;'>" + pharmacyName + "</span></h1>" +
-               "<p style='margin:0 0 24px;font-size:15px;color:#475569;line-height:1.6;'>Hi <strong style='color:#0f172a;'>" + fullName + "</strong>,<br/>" +
-               "A pharmacy manager has added you as a pharmacist on MedDelivery. " +
-               "Click the button below to set your password and activate your account.</p>" +
-               "<div style='text-align:center;margin:28px 0;'>" +
-               "<a href='" + setupLink + "' style='display:inline-block;background:linear-gradient(135deg,#0f766e,#0d9488);color:#ffffff;font-size:15px;font-weight:700;text-decoration:none;padding:14px 36px;border-radius:12px;box-shadow:0 8px 20px rgba(13,148,136,0.30);'>Set up my account</a>" +
+        return "<!DOCTYPE html>" +
+               "<html lang='en'><head><meta charset='UTF-8'>" +
+               "<meta name='viewport' content='width=device-width, initial-scale=1.0'>" +
+               "<title>MedDelivery - Account Setup</title></head>" +
+               "<body style='margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,\"Helvetica Neue\",Arial,sans-serif;background-color:#f5f5f5;'>" +
+               "<table role='presentation' style='width:100%;border-collapse:collapse;'>" +
+               "<tr><td style='padding:40px 0;text-align:center;'>" +
+               "<table role='presentation' style='max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1);'>" +
+               "<tr><td style='padding:40px 30px;text-align:center;'>" +
+               "<h1 style='margin:0 0 10px 0;color:#1a73e8;font-size:24px;font-weight:600;'>MedDelivery</h1>" +
+               "<p style='margin:0 0 30px 0;color:#5f6368;font-size:16px;'>Account Setup Invitation</p>" +
+               "<p style='margin:0 0 20px 0;color:#202124;font-size:15px;line-height:1.5;text-align:left;'>" +
+               "Hello <strong>" + fullName + "</strong>,<br><br>" +
+               "You have been added as a pharmacist at <strong>" + pharmacyName + "</strong> on MedDelivery.<br><br>" +
+               "To activate your account, copy and open the link below in your browser:" +
+               "</p>" +
+               "<div style='background-color:#f8f9fa;border:2px solid #e8eaed;border-radius:8px;padding:20px;margin:20px 0;word-break:break-all;text-align:left;'>" +
+               "<p style='margin:0 0 8px 0;font-size:13px;color:#5f6368;'>Your setup link:</p>" +
+               "<a href='" + setupLink + "' style='font-size:13px;color:#1a73e8;'>" + setupLink + "</a>" +
                "</div>" +
-               "<p style='margin:0 0 8px;font-size:13px;color:#94a3b8;'>If the button doesn't work, copy and paste this link:</p>" +
-               "<p style='margin:0;font-size:12px;color:#64748b;word-break:break-all;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:10px 14px;'>" + setupLink + "</p>" +
-               "</td></tr>" +
-               "<tr><td style='padding:20px 36px 32px;border-top:1px solid #f1f5f9;'>" +
-               "<p style='margin:0;font-size:12px;color:#94a3b8;line-height:1.6;'>" +
-               "If you didn't expect this invitation, you can safely ignore this email.<br/>" +
-               "&copy; " + java.time.Year.now().getValue() + " MedDelivery. Safe delivery, verified every step." +
-               "</p></td></tr>" +
-               "</table></td></tr></table></body></html>";
+               "<p style='margin:20px 0 0 0;color:#5f6368;font-size:14px;line-height:1.5;text-align:left;'>" +
+               "This link will take you to a verification page where you will receive a 6-digit code by email to confirm your identity and set your password.<br><br>" +
+               "If you did not expect this invitation, you can safely ignore this email." +
+               "</p>" +
+               "<p style='margin:30px 0 0 0;padding-top:20px;border-top:1px solid #e8eaed;color:#5f6368;font-size:12px;'>" +
+               "&copy; " + java.time.Year.now().getValue() + " MedDelivery. All rights reserved." +
+               "</p>" +
+               "</td></tr></table>" +
+               "</td></tr></table></body></html>";
     }
 
     private String generatePharmacistUniqueId(Pharmacy pharmacy) {

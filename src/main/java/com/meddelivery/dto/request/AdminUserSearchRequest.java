@@ -12,6 +12,6 @@ import lombok.NoArgsConstructor;
 public class AdminUserSearchRequest {
     private int page = 0;
     private int size = 10;
-    private String role;      // Optional filter: PATIENT, PHARMACIST, etc.
-    private String searchQuery; // Optional filter: Name, Email, Phone
+    private String role;  // Optional filter: PATIENT, PHARMACIST, etc.
+    private String query; // Optional filter: Name, Email, Phone
 }

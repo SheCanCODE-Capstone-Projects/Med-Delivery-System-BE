@@ -19,6 +19,8 @@ import com.meddelivery.repository.PharmacyRepository;
 import com.meddelivery.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -227,6 +229,10 @@ public class AuthService {
 
     // ── FLOW 5: Set Password ─────────────────────
     @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "pharmacists", allEntries = true),
+            @CacheEvict(value = "pharmacist",  allEntries = true)
+    })
     public AuthResponse setPassword(
             SetPasswordRequest request) {
 
