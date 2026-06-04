@@ -179,16 +179,20 @@ public class AdminService {
         if ("APPROVE".equalsIgnoreCase(request.getAction())) {
             pharmacy.setStatus(PharmacyStatus.ACTIVE);
 
-            // ── Send OTP to pharmacy manager ─────────────────────────────────
+            // ── Activate the manager account immediately on admin approval ────
             ManagerProfile managerProfile = pharmacy.getManagerProfile();
             if (managerProfile != null && managerProfile.getUser() != null) {
                 User manager = managerProfile.getUser();
+                manager.setActive(true);
+                manager.setVerified(true);
+                userRepository.save(manager);
+                log.info("Manager account activated for pharmacy {} (user: {})", pharmacyId, manager.getEmail());
                 try {
                     otpService.sendOtp(manager.getEmail());
-                    log.info("OTP sent to pharmacy manager: {} (pharmacyId: {})",
+                    log.info("Welcome OTP sent to pharmacy manager: {} (pharmacyId: {})",
                             manager.getEmail(), pharmacyId);
                 } catch (Exception e) {
-                    log.error("Failed to send OTP to manager {}: {}",
+                    log.error("Failed to send welcome OTP to manager {}: {}",
                             manager.getEmail(), e.getMessage());
                 }
             } else {
