@@ -45,4 +45,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     boolean existsByPrescriptionId(Long prescriptionId);
 
     long countByCreatedAtAfter(LocalDateTime startDate);
+
+    @Query("SELECT SUM(o.totalAmount) FROM Order o WHERE o.createdAt >= :startDate AND o.status = :status")
+    java.math.BigDecimal sumTotalAmountByCreatedAtAfterAndStatus(@Param("startDate") LocalDateTime startDate, @Param("status") OrderStatus status);
 }

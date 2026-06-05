@@ -507,7 +507,9 @@ public class AdminService {
                 .cancelledOrders(cancelledOrders)
                 .newPatients(newPatients)
                 .activePharmacies(activePharmacies)
-                .totalRevenue(0.0)
+                .totalRevenue(java.util.Optional.ofNullable(
+                        orderRepository.sumTotalAmountByCreatedAtAfterAndStatus(startDate, OrderStatus.COMPLETED))
+                        .map(java.math.BigDecimal::doubleValue).orElse(0.0))
                 .avgDeliveryTimeMinutes(0.0)
                 .orderCancellationRatePercent(totalOrders > 0 ? (cancelledOrders * 100.0 / totalOrders) : 0.0)
                 .newPatientRegistrations(newPatients)
