@@ -24,7 +24,10 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     Optional<Order> findByIdAndAssignedPharmacistUserEmail(@Param("orderId") Long orderId, @Param("email") String email);
 
     Page<Order> findByPatientProfileUserId(Long userId, Pageable pageable);
+    @EntityGraph(attributePaths = {"orderItems", "orderItems.medicine", "patientProfile.user", "prescription"})
     List<Order> findByAssignedPharmacyId(Long pharmacyId);
+
+    @EntityGraph(attributePaths = {"orderItems", "orderItems.medicine", "patientProfile.user", "prescription"})
     List<Order> findAllByAssignedPharmacyId(Long pharmacyId);
     
     @EntityGraph(attributePaths = {"patientProfile.user", "assignedPharmacy"})
