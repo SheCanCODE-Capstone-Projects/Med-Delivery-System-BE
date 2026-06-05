@@ -11,4 +11,5 @@ import java.util.List;
 public interface SubstitutionRequestRepository extends JpaRepository<SubstitutionRequest, Long> {
     List<SubstitutionRequest> findByOrderId(Long orderId);
     List<SubstitutionRequest> findByOrderPatientProfileIdAndStatus(Long patientProfileId, SubstitutionStatus status);
+    boolean existsByOrderIdAndOriginalMedicineIdAndStatus(Long orderId, Long originalMedicineId, SubstitutionStatus status);
 }

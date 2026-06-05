@@ -14,6 +14,7 @@ import com.meddelivery.model.enums.OrderItemStatus;
 import com.meddelivery.model.enums.OrderStatus;
 import com.meddelivery.model.enums.PharmacistAction;
 import com.meddelivery.model.enums.SubstitutionStatus;
+import com.meddelivery.model.Payment;
 import com.meddelivery.repository.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -34,6 +35,7 @@ public class DispensingService {
     private final PharmacyInventoryRepository pharmacyInventoryRepository;
     private final MedicineRepository medicineRepository;
     private final NotificationService notificationService;
+    private final PaymentRepository paymentRepository;
 
     @Transactional(readOnly = true)
     public List<DispensingOrderResponse> getAssignedOrders(String pharmacistEmail) {
@@ -159,6 +161,13 @@ public class DispensingService {
                 .orElseThrow(() -> new ResourceNotFoundException(
                         "Medicine '" + request.getOriginalMedicineName() + "' not found in this order"));
 
+        // Prevent duplicate PENDING substitution for same order + medicine
+        if (substitutionRequestRepository.existsByOrderIdAndOriginalMedicineIdAndStatus(
+                orderId, originalItem.getMedicine().getId(), SubstitutionStatus.PENDING)) {
+            throw new BusinessException("A substitution request for '" + request.getOriginalMedicineName()
+                    + "' is already pending patient approval.");
+        }
+
         // Look up the suggested medicine by name
         Medicine suggestedMedicine = medicineRepository.findByNameIgnoreCase(request.getSuggestedMedicineName())
                 .orElseThrow(() -> new ResourceNotFoundException(
@@ -248,8 +257,29 @@ public class DispensingService {
         java.math.BigDecimal total = order.getOrderItems().stream()
                 .map(i -> i.getUnitPrice().multiply(java.math.BigDecimal.valueOf(i.getQuantity())))
                 .reduce(java.math.BigDecimal.ZERO, java.math.BigDecimal::add);
+
+        java.math.BigDecimal coveragePct = order.getCoveragePercentage() != null
+                ? order.getCoveragePercentage() : java.math.BigDecimal.ZERO;
+        java.math.BigDecimal insuranceAmount = java.math.BigDecimal.ZERO;
+        java.math.BigDecimal patientAmount = total;
+        if (coveragePct.compareTo(java.math.BigDecimal.ZERO) > 0) {
+            insuranceAmount = total.multiply(coveragePct.divide(java.math.BigDecimal.valueOf(100)));
+            patientAmount = total.subtract(insuranceAmount);
+        }
+
         order.setTotalAmount(total);
-        order.setPatientPayableAmount(total);
+        order.setInsurancePayableAmount(insuranceAmount);
+        order.setPatientPayableAmount(patientAmount);
+
+        // Keep Payment record in sync with newly calculated amounts
+        final java.math.BigDecimal finalInsuranceAmount = insuranceAmount;
+        final java.math.BigDecimal finalPatientAmount = patientAmount;
+        paymentRepository.findByOrderId(order.getId()).ifPresent(payment -> {
+            payment.setTotalAmount(total);
+            payment.setInsuranceAmount(finalInsuranceAmount);
+            payment.setPatientAmount(finalPatientAmount);
+            paymentRepository.save(payment);
+        });
 
         logAction(order, pharmacist, PharmacistAction.PRESCRIPTION_VALIDATED,
                 "Filled " + order.getOrderItems().size() + " medicine(s) from prescription");
