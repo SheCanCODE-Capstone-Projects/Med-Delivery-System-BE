@@ -48,7 +48,7 @@ class PrescriptionControllerTest {
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(prescriptionController).build();
-        when(aiPrescriptionService.validatePrescriptionStructure(any(String.class))).thenReturn(null);
+        lenient().when(aiPrescriptionService.validatePrescriptionStructure(any(String.class))).thenReturn(null);
     }
 
     @Test
