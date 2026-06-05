@@ -3,6 +3,8 @@ package com.meddelivery.controller;
 import com.meddelivery.dto.request.PrescriptionRequest;
 import com.meddelivery.dto.response.ApiResponse;
 import com.meddelivery.dto.response.PrescriptionResponse;
+import com.meddelivery.exception.BusinessException;
+import com.meddelivery.service.AiPrescriptionService;
 import com.meddelivery.service.FileStorageService;
 import com.meddelivery.service.PrescriptionService;
 import jakarta.validation.Valid;
@@ -26,6 +28,7 @@ public class PrescriptionController {
 
     private final PrescriptionService prescriptionService;
     private final FileStorageService fileStorageService;
+    private final AiPrescriptionService aiPrescriptionService;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<ApiResponse<PrescriptionResponse>> upload(
@@ -58,6 +61,13 @@ public class PrescriptionController {
         }
         request.setHasStamp(hasStamp != null && hasStamp);
         request.setHasSignature(hasSignature != null && hasSignature);
+
+        // Validate prescription structure via AI before saving
+        String validationError = aiPrescriptionService.validatePrescriptionStructure(fileUrl);
+        if (validationError != null) {
+            fileStorageService.deleteFile(storedPath);
+            throw new BusinessException(validationError);
+        }
 
         PrescriptionResponse response = prescriptionService.upload(request);
         return ResponseEntity

@@ -4,6 +4,7 @@ import com.meddelivery.dto.response.SubstitutionResponse;
 import com.meddelivery.exception.BusinessException;
 import com.meddelivery.exception.ResourceNotFoundException;
 import com.meddelivery.model.*;
+import com.meddelivery.model.enums.OrderStatus;
 import com.meddelivery.model.enums.SubstitutionStatus;
 import com.meddelivery.repository.MedicineRepository;
 import com.meddelivery.repository.OrderItemRepository;
@@ -31,6 +32,8 @@ public class MedicineSubstitutionService {
     private final OrderRepository orderRepository;
     private final MedicineRepository medicineRepository;
     private final WebSocketNotificationService webSocketNotificationService;
+    private final NotificationService notificationService;
+    private final PharmacyMatchingEngine pharmacyMatchingEngine;
 
     @Transactional
     @CacheEvict(value = "substitutions", allEntries = true)
@@ -125,11 +128,68 @@ public class MedicineSubstitutionService {
         substitution.setStatus(SubstitutionStatus.REJECTED);
         substitution.setReason(reason);
         substitution.setRespondedAt(LocalDateTime.now());
-
-        com.meddelivery.model.SubstitutionRequest saved = substitutionRepository.save(substitution);
         log.info("Substitution {} rejected by patient {}", substitutionId, patientId);
 
-        return mapToResponse(saved);
+        Order order = substitution.getOrder();
+        Long previousPharmacyId = order.getAssignedPharmacy() != null ? order.getAssignedPharmacy().getId() : null;
+        Long patientUserId = order.getPatientProfile().getUser().getId();
+
+        // Notify the pharmacist that the patient declined
+        if (order.getAssignedPharmacist() != null && order.getAssignedPharmacist().getUser() != null) {
+            notificationService.send(
+                order.getAssignedPharmacist().getUser().getId(),
+                "Substitution Declined — Order #" + order.getId(),
+                "The patient declined your substitution offer for Order #" + order.getId() + ". The order will be reassigned to another pharmacy.",
+                "ORDER");
+        }
+
+        // Try to find an alternative pharmacy (excluding the current one)
+        Pharmacy alternative = findAlternativePharmacy(order, previousPharmacyId);
+
+        if (alternative != null) {
+            order.setAssignedPharmacy(alternative);
+            order.setAssignedPharmacist(null);
+            order.setStatus(OrderStatus.ASSIGNED);
+            order.setAssignedAt(LocalDateTime.now());
+            orderRepository.save(order);
+            log.info("Order {} reassigned to pharmacy '{}' after substitution rejection", order.getId(), alternative.getName());
+
+            notificationService.send(patientUserId,
+                "Order #" + order.getId() + " Reassigned",
+                "Your original medicine was unavailable at the previous pharmacy. Your order has been reassigned to " +
+                    alternative.getName() + " which can fulfill it.",
+                "ORDER");
+        } else {
+            order.setStatus(OrderStatus.CANCELLED);
+            order.setAssignedPharmacy(null);
+            order.setAssignedPharmacist(null);
+            orderRepository.save(order);
+            log.info("Order {} cancelled — no alternative pharmacy found after substitution rejection", order.getId());
+
+            notificationService.send(patientUserId,
+                "Order #" + order.getId() + " Cancelled",
+                "Your order was cancelled because the original medicine is unavailable and no other pharmacy currently has it in stock.",
+                "ORDER");
+        }
+
+        return mapToResponse(substitutionRepository.save(substitution));
+    }
+
+    private Pharmacy findAlternativePharmacy(Order order, Long excludePharmacyId) {
+        try {
+            PatientLocation location = order.getPatientProfile().getLocations().stream()
+                    .filter(PatientLocation::isDefault)
+                    .findFirst()
+                    .orElse(null);
+            if (location == null) {
+                log.warn("Patient has no default location — cannot rematch order {}", order.getId());
+                return null;
+            }
+            return pharmacyMatchingEngine.findBestMatchExcluding(order, null, location, excludePharmacyId);
+        } catch (Exception e) {
+            log.error("Error finding alternative pharmacy for order {}: {}", order.getId(), e.getMessage());
+            return null;
+        }
     }
 
     @Transactional(readOnly = true)

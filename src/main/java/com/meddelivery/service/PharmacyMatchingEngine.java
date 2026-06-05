@@ -212,6 +212,57 @@ public class PharmacyMatchingEngine {
         return name.toLowerCase().replaceAll("\\s+", "");
     }
 
+    /**
+     * Same as findBestMatch but excludes a specific pharmacy (used when re-matching after substitution rejection).
+     * Does NOT auto-assign — the caller handles the order state transition.
+     */
+    @Transactional(readOnly = true)
+    public Pharmacy findBestMatchExcluding(Order order, List<OrderItem> explicitItems,
+                                           PatientLocation patientLocation, Long excludePharmacyId) {
+        log.info("Re-matching order {} excluding pharmacy id={}", order.getId(), excludePharmacyId);
+
+        List<OrderItem> orderItems = (explicitItems != null && !explicitItems.isEmpty())
+                ? explicitItems
+                : order.getOrderItems();
+
+        List<Pharmacy> candidates = pharmacyRepository.findAllByStatus(PharmacyStatus.ACTIVE).stream()
+                .filter(p -> excludePharmacyId == null || !excludePharmacyId.equals(p.getId()))
+                .collect(Collectors.toList());
+
+        if (candidates.isEmpty()) {
+            log.warn("No alternative pharmacies for order {}", order.getId());
+            return null;
+        }
+
+        // Prescription order with no items — nearest pharmacy by distance
+        if (orderItems == null || orderItems.isEmpty()) {
+            return candidates.stream()
+                    .min(Comparator.comparingDouble(p -> calculateDistance(
+                            patientLocation.getLatitude(), patientLocation.getLongitude(),
+                            p.getLatitude(), p.getLongitude())))
+                    .orElse(null);
+        }
+
+        // OTC / private order — match by stock coverage
+        List<PharmacyMatchResponse> matches = new ArrayList<>();
+        for (Pharmacy pharmacy : candidates) {
+            PharmacyMatchResponse match = calculateMatch(pharmacy, orderItems, patientLocation);
+            if (match.getCoverage() > 0) {
+                matches.add(match);
+            }
+        }
+
+        if (matches.isEmpty()) {
+            log.warn("No alternative pharmacy can fulfill items in order {}", order.getId());
+            return null;
+        }
+
+        matches.sort(Comparator.comparingDouble(PharmacyMatchResponse::getScore).reversed());
+        PharmacyMatchResponse best = matches.get(0);
+        log.info("Alternative for order {}: pharmacy '{}' coverage={}%", order.getId(), best.getPharmacyName(), best.getCoverage());
+        return pharmacyRepository.findById(best.getPharmacyId()).orElse(null);
+    }
+
     @Transactional(readOnly = true)
     public List<PharmacyMatchResponse> getAllMatches(Order order, PatientLocation patientLocation) {
         List<OrderItem> orderItems = order.getOrderItems();

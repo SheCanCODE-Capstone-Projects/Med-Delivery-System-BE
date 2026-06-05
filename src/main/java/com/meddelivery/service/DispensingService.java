@@ -32,6 +32,8 @@ public class DispensingService {
     private final SubstitutionRequestRepository substitutionRequestRepository;
     private final PrescriptionRepository prescriptionRepository;
     private final PharmacyInventoryRepository pharmacyInventoryRepository;
+    private final MedicineRepository medicineRepository;
+    private final NotificationService notificationService;
 
     @Transactional(readOnly = true)
     public List<DispensingOrderResponse> getAssignedOrders(String pharmacistEmail) {
@@ -95,6 +97,22 @@ public class DispensingService {
         order.setStatus(approved ? OrderStatus.ASSIGNED : OrderStatus.CANCELLED);
         order = orderRepository.save(order);
 
+        // Notify patient
+        Long patientUserId = order.getPatientProfile().getUser().getId();
+        if (approved) {
+            notificationService.send(patientUserId,
+                    "Prescription Validated — Order #" + order.getId(),
+                    "Your prescription has been reviewed and approved. Your order is now being processed.",
+                    "ORDER");
+        } else {
+            String declineReason = request.getNotes() != null && !request.getNotes().isBlank()
+                    ? request.getNotes() : "No reason provided";
+            notificationService.send(patientUserId,
+                    "Prescription Declined — Order #" + order.getId(),
+                    "Your prescription was declined by the pharmacist. Reason: " + declineReason,
+                    "ORDER");
+        }
+
         return mapToDispensingOrderResponse(order, pharmacist);
     }
 
@@ -134,14 +152,17 @@ public class DispensingService {
             throw new ResourceNotFoundException("Order not assigned to your pharmacy");
         }
 
-        // Find the order item with the original medicine
+        // Find the order item with the original medicine by name
         OrderItem originalItem = order.getOrderItems().stream()
-                .filter(item -> item.getMedicine().getId().equals(request.getOriginalMedicineId()))
+                .filter(item -> item.getMedicine().getName().equalsIgnoreCase(request.getOriginalMedicineName()))
                 .findFirst()
-                .orElseThrow(() -> new ResourceNotFoundException("Original medicine not found in order"));
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Medicine '" + request.getOriginalMedicineName() + "' not found in this order"));
 
-        Medicine suggestedMedicine = new Medicine();
-        suggestedMedicine.setId(request.getSuggestedMedicineId());
+        // Look up the suggested medicine by name
+        Medicine suggestedMedicine = medicineRepository.findByNameIgnoreCase(request.getSuggestedMedicineName())
+                .orElseThrow(() -> new ResourceNotFoundException(
+                        "Suggested medicine '" + request.getSuggestedMedicineName() + "' not found in the system"));
 
         SubstitutionRequest substitution = SubstitutionRequest.builder()
                 .order(order)
@@ -157,15 +178,25 @@ public class DispensingService {
 
         // Log the action
         logAction(order, pharmacist, PharmacistAction.SUBSTITUTION_SUGGESTED,
-                "Substitution suggested for medicine: " + request.getOriginalMedicineId());
+                "Substitution suggested: " + request.getOriginalMedicineName() + " → " + request.getSuggestedMedicineName());
+
+        // Notify patient
+        notificationService.send(
+                order.getPatientProfile().getUser().getId(),
+                "Medicine Substitution Requested — Order #" + orderId,
+                request.getOriginalMedicineName() + " is unavailable. The pharmacist suggests " +
+                        request.getSuggestedMedicineName() + ". Reason: " + request.getReason() +
+                        ". Please approve or reject in your order details.",
+                "SUBSTITUTION");
 
         SubstitutionResponse response = new SubstitutionResponse();
         response.setId(substitution.getId());
         response.setOrderId(orderId);
         response.setOrderItemId(originalItem.getId());
-        response.setOriginalMedicineId(request.getOriginalMedicineId());
+        response.setOriginalMedicineId(originalItem.getMedicine().getId());
         response.setOriginalMedicineName(originalItem.getMedicine().getName());
-        response.setSubstituteMedicineId(request.getSuggestedMedicineId());
+        response.setSubstituteMedicineId(suggestedMedicine.getId());
+        response.setSubstituteMedicineName(suggestedMedicine.getName());
         response.setPharmacistReason(request.getReason());
         response.setStatus(SubstitutionStatus.PENDING);
         response.setRequestedAt(substitution.getRequestedAt());

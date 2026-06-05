@@ -346,25 +346,20 @@ public class OrderService {
             throw new BusinessException("Payment already processed. Current status: " + order.getPaymentStatus());
         }
 
-        if (order.getPaymentMethod() == PaymentMethod.INSURANCE) {
-            order.setPaymentStatus(PaymentStatus.INSURANCE_PENDING);
-            log.info("Insurance claim submitted for order {} - Amount: {}", order.getId(), order.getInsurancePayableAmount());
-        } else {
-            order.setPaymentStatus(PaymentStatus.PAID);
-            // Do NOT mark the order as COMPLETED here — the pharmacist must still process,
-            // confirm stock, and dispense before the order is complete.
-        }
+        // Insurance coverage is pre-verified and patientPayableAmount already calculated at order creation,
+        // so patient pays their share directly — no manual insurance review needed.
+        order.setPaymentStatus(PaymentStatus.PAID);
+        log.info("Payment confirmed for order {} — patient pays: {}, insurance covers: {}",
+                order.getId(), order.getPatientPayableAmount(), order.getInsurancePayableAmount());
 
         order = orderRepository.save(order);
 
         Payment payment = paymentRepository.findByOrderId(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Payment record not found"));
 
-        payment.setStatus(order.getPaymentStatus());
-        if (order.getPaymentStatus() == PaymentStatus.PAID) {
-            payment.setPaidAt(LocalDateTime.now());
-            payment.setTransactionId("TXN-" + order.getId() + "-" + System.currentTimeMillis());
-        }
+        payment.setStatus(PaymentStatus.PAID);
+        payment.setPaidAt(LocalDateTime.now());
+        payment.setTransactionId("TXN-" + order.getId() + "-" + System.currentTimeMillis());
         paymentRepository.save(payment);
 
         webSocketNotificationService.notifyOrderStatusChange(userId, mapToResponse(order));

@@ -55,6 +55,12 @@ class DispensingServiceTest {
     @Mock
     private PharmacyInventoryRepository pharmacyInventoryRepository;
 
+    @Mock
+    private MedicineRepository medicineRepository;
+
+    @Mock
+    private NotificationService notificationService;
+
     @InjectMocks
     private DispensingService dispensingService;
 
@@ -346,10 +352,12 @@ class DispensingServiceTest {
                 });
         when(actionLogRepository.save(any(PharmacistActionLog.class)))
                 .thenAnswer(inv -> inv.getArgument(0));
+        when(medicineRepository.findByNameIgnoreCase("Ibuprofen"))
+                .thenReturn(Optional.of(Medicine.builder().id(200L).name("Ibuprofen").build()));
 
         SuggestSubstitutionRequest request = new SuggestSubstitutionRequest();
-        request.setOriginalMedicineId(100L);
-        request.setSuggestedMedicineId(200L);
+        request.setOriginalMedicineName("Paracetamol");
+        request.setSuggestedMedicineName("Ibuprofen");
         request.setReason("Patient allergic to original medicine");
 
         // Act
@@ -376,14 +384,14 @@ class DispensingServiceTest {
                 .thenReturn(Optional.of(mockOrder));
 
         SuggestSubstitutionRequest request = new SuggestSubstitutionRequest();
-        request.setOriginalMedicineId(999L);
-        request.setSuggestedMedicineId(200L);
+        request.setOriginalMedicineName("NonExistentMedicine");
+        request.setSuggestedMedicineName("Ibuprofen");
         request.setReason("Reason");
 
         // Act & Assert
         ResourceNotFoundException ex = assertThrows(ResourceNotFoundException.class,
                 () -> dispensingService.suggestSubstitution(300L, request, "pharmacist@meddelivery.com"));
-        assertTrue(ex.getMessage().contains("Original medicine not found"));
+        assertTrue(ex.getMessage().contains("not found in this order"));
     }
 
     @Test
