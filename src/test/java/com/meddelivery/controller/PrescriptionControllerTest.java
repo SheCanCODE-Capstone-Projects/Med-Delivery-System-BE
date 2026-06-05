@@ -5,6 +5,7 @@ import com.meddelivery.dto.request.PrescriptionRequest;
 import com.meddelivery.dto.response.ApiResponse;
 import com.meddelivery.dto.response.PrescriptionResponse;
 import com.meddelivery.model.enums.FileType;
+import com.meddelivery.service.AiPrescriptionService;
 import com.meddelivery.service.FileStorageService;
 import com.meddelivery.service.PrescriptionService;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,6 +37,9 @@ class PrescriptionControllerTest {
     @Mock
     private FileStorageService fileStorageService;
 
+    @Mock
+    private AiPrescriptionService aiPrescriptionService;
+
     @InjectMocks
     private PrescriptionController prescriptionController;
 
@@ -44,6 +48,7 @@ class PrescriptionControllerTest {
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(prescriptionController).build();
+        when(aiPrescriptionService.validatePrescriptionStructure(any(String.class))).thenReturn(null);
     }
 
     @Test
