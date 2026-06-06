@@ -49,6 +49,9 @@ class AuthServiceTest {
     @Mock
     private RefreshTokenService refreshTokenService;
 
+    @Mock
+    private SecurityMonitoringService securityMonitoringService;
+
     @InjectMocks
     private AuthService authService;
 
@@ -65,6 +68,9 @@ class AuthServiceTest {
                 .isActive(true)
                 .isVerified(true)
                 .build();
+
+        doNothing().when(securityMonitoringService).recordLoginAttempt(
+                anyString(), any(), any(), anyBoolean(), any(), any());
     }
 
     // ── Login Tests ──────────────────────────────

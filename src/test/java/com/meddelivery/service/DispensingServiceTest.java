@@ -242,7 +242,7 @@ class DispensingServiceTest {
         // Act & Assert
         ResourceNotFoundException ex = assertThrows(ResourceNotFoundException.class,
                 () -> dispensingService.getOrderDetail(999L, "pharmacist@meddelivery.com"));
-        assertTrue(ex.getMessage().contains("not assigned to your pharmacy"));
+        assertTrue(ex.getMessage().contains("not assigned to your branch"));
     }
 
     @Test
@@ -496,6 +496,6 @@ class DispensingServiceTest {
         // Act & Assert
         ResourceNotFoundException ex = assertThrows(ResourceNotFoundException.class,
                 () -> dispensingService.validatePrescription(999L, request, "pharmacist@meddelivery.com"));
-        assertTrue(ex.getMessage().contains("not assigned to your pharmacy"));
+        assertTrue(ex.getMessage().contains("not assigned to your branch"));
     }
 }
