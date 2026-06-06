@@ -1,11 +1,11 @@
 -- V31: Add Branch Manager role, Branch entity, invitation tokens, login events
 
 CREATE TABLE IF NOT EXISTS branches (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
     address TEXT,
-    latitude DOUBLE,
-    longitude DOUBLE,
+    latitude DOUBLE PRECISION,
+    longitude DOUBLE PRECISION,
     contact_info VARCHAR(255),
     status VARCHAR(50) NOT NULL DEFAULT 'ACTIVE',
     pharmacy_id BIGINT NOT NULL,
@@ -14,7 +14,7 @@ CREATE TABLE IF NOT EXISTS branches (
 );
 
 CREATE TABLE IF NOT EXISTS branch_manager_profiles (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     user_id BIGINT UNIQUE NOT NULL,
     branch_id BIGINT NOT NULL,
     activated_at TIMESTAMP,
@@ -31,7 +31,7 @@ ALTER TABLE pharmacy_inventory
     ADD CONSTRAINT IF NOT EXISTS fk_inventory_branch FOREIGN KEY (branch_id) REFERENCES branches(id);
 
 CREATE TABLE IF NOT EXISTS invitation_tokens (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     token VARCHAR(255) UNIQUE NOT NULL,
     email VARCHAR(255) NOT NULL,
     type VARCHAR(50) NOT NULL,
@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS invitation_tokens (
 );
 
 CREATE TABLE IF NOT EXISTS login_events (
-    id BIGINT AUTO_INCREMENT PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
     user_id BIGINT,
     email VARCHAR(255),
     ip_address VARCHAR(100),
