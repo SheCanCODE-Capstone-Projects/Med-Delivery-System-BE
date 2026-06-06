@@ -22,13 +22,23 @@ CREATE TABLE IF NOT EXISTS branch_manager_profiles (
     CONSTRAINT fk_bmp_branch FOREIGN KEY (branch_id) REFERENCES branches(id)
 );
 
-ALTER TABLE pharmacist_profiles
-    ADD COLUMN IF NOT EXISTS branch_id BIGINT,
-    ADD CONSTRAINT IF NOT EXISTS fk_pharmacist_branch FOREIGN KEY (branch_id) REFERENCES branches(id);
+DO $$
+BEGIN
+    ALTER TABLE pharmacist_profiles
+        ADD COLUMN IF NOT EXISTS branch_id BIGINT;
+    ALTER TABLE pharmacist_profiles
+        ADD CONSTRAINT fk_pharmacist_branch FOREIGN KEY (branch_id) REFERENCES branches(id);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
-ALTER TABLE pharmacy_inventory
-    ADD COLUMN IF NOT EXISTS branch_id BIGINT,
-    ADD CONSTRAINT IF NOT EXISTS fk_inventory_branch FOREIGN KEY (branch_id) REFERENCES branches(id);
+DO $$
+BEGIN
+    ALTER TABLE pharmacy_inventory
+        ADD COLUMN IF NOT EXISTS branch_id BIGINT;
+    ALTER TABLE pharmacy_inventory
+        ADD CONSTRAINT fk_inventory_branch FOREIGN KEY (branch_id) REFERENCES branches(id);
+EXCEPTION WHEN duplicate_object THEN NULL;
+END $$;
 
 CREATE TABLE IF NOT EXISTS invitation_tokens (
     id BIGSERIAL PRIMARY KEY,
