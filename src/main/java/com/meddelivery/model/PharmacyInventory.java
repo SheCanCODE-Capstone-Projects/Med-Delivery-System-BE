@@ -47,6 +47,10 @@ public class PharmacyInventory {
     private Pharmacy pharmacy;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "branch_id")
+    private Branch branch;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "medicine_id", nullable = false)
     private Medicine medicine;
 }

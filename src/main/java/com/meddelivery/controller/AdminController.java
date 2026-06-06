@@ -4,6 +4,7 @@ import com.meddelivery.dto.response.*;
 import com.meddelivery.dto.request.AdminProfileUpdateRequest;
 import com.meddelivery.dto.request.AdminUserSearchRequest;
 import com.meddelivery.dto.request.InsuranceProviderRequest;
+import com.meddelivery.dto.request.InvitePharmacyAdminRequest;
 import com.meddelivery.dto.request.ManagerUpdateRequest;
 import com.meddelivery.dto.request.OrderInterventionRequest;
 import com.meddelivery.dto.request.PharmacyApprovalRequest;
@@ -16,7 +17,13 @@ import com.meddelivery.dto.response.AuditLogResponse;
 import com.meddelivery.dto.response.DashboardStatsResponse;
 import com.meddelivery.dto.response.PharmacyApprovalDetailResponse;
 import com.meddelivery.model.*;
+import com.meddelivery.dto.response.report.SuperAdminReportResponse;
 import com.meddelivery.service.AdminService;
+import com.meddelivery.service.InvitationService;
+import com.meddelivery.service.ReportService;
+import com.meddelivery.service.SecurityMonitoringService;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 import io.swagger.v3.oas.annotations.Operation;
@@ -39,6 +46,9 @@ import java.util.List;
 public class AdminController {
 
     private final AdminService adminService;
+    private final InvitationService invitationService;
+    private final SecurityMonitoringService securityMonitoringService;
+    private final ReportService reportService;
 
     @GetMapping("/me")
     @Operation(summary = "Get Admin Profile")
@@ -224,5 +234,59 @@ public class AdminController {
             @PathVariable Long id,
             @RequestParam(required = false) String notes) {
         return ResponseEntity.ok(adminService.rejectInsuranceCard(id, notes));
+    }
+
+    // ── Pharmacy Admin Invitation ────────────────────────────────────────────
+
+    @PostMapping("/pharmacy-admin/invite")
+    @Operation(summary = "Invite a pharmacy admin by email")
+    public ResponseEntity<ApiResponse<Void>> invitePharmacyAdmin(
+            @Valid @RequestBody InvitePharmacyAdminRequest request) {
+        invitationService.createPharmacyAdminInvitation(request.getEmail());
+        return ResponseEntity.ok(ApiResponse.success(
+                "Invitation sent to " + request.getEmail(), null));
+    }
+
+    // ── Security Monitoring ──────────────────────────────────────────────────
+
+    @GetMapping("/security/login-history")
+    @Operation(summary = "All login events (paged)")
+    public ResponseEntity<ApiResponse<org.springframework.data.domain.Page<com.meddelivery.model.LoginEvent>>> getLoginHistory(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(ApiResponse.success(
+                securityMonitoringService.getLoginHistory(
+                        PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "timestamp")))));
+    }
+
+    @GetMapping("/security/suspicious")
+    @Operation(summary = "IPs with >5 failed logins in last 10 minutes")
+    public ResponseEntity<ApiResponse<java.util.List<java.util.Map<String, Object>>>> getSuspicious() {
+        return ResponseEntity.ok(ApiResponse.success(
+                securityMonitoringService.getSuspiciousActivity()));
+    }
+
+    @GetMapping("/security/stats")
+    @Operation(summary = "Login statistics for the last 24 hours")
+    public ResponseEntity<ApiResponse<java.util.Map<String, Object>>> getSecurityStats() {
+        return ResponseEntity.ok(ApiResponse.success(
+                securityMonitoringService.getSecurityStats()));
+    }
+
+    @PostMapping("/security/force-logout/{userId}")
+    @Operation(summary = "Force logout a user by invalidating their refresh tokens")
+    public ResponseEntity<ApiResponse<Void>> forceLogout(@PathVariable Long userId) {
+        securityMonitoringService.forceLogout(userId);
+        return ResponseEntity.ok(ApiResponse.success("User logged out", null));
+    }
+
+    // ── Comprehensive Report ──────────────────────────────────────────────────
+
+    @GetMapping("/reports/comprehensive")
+    @Operation(summary = "Generate comprehensive platform report")
+    public ResponseEntity<ApiResponse<SuperAdminReportResponse>> getComprehensiveReport(
+            @AuthenticationPrincipal User user) {
+        return ResponseEntity.ok(ApiResponse.success(
+                reportService.generateSuperAdminReport(user.getFullName())));
     }
 }

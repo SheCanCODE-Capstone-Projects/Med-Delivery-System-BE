@@ -41,8 +41,10 @@ public class DispensingService {
     public List<DispensingOrderResponse> getAssignedOrders(String pharmacistEmail) {
         PharmacistProfile pharmacist = findPharmacistByEmailOrThrow(pharmacistEmail);
 
-        // Get all orders assigned to the pharmacist's pharmacy
-        List<Order> orders = orderRepository.findByAssignedPharmacyId(pharmacist.getPharmacy().getId());
+        // Orders assigned to this pharmacist's branch (branch-level matching)
+        List<Order> orders = pharmacist.getBranch() != null
+                ? orderRepository.findByAssignedBranchId(pharmacist.getBranch().getId())
+                : orderRepository.findByAssignedPharmacyId(pharmacist.getPharmacy().getId());
 
         return orders.stream()
                 .map(order -> mapToDispensingOrderResponse(order, pharmacist))
@@ -56,10 +58,8 @@ public class DispensingService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order with id " + orderId + " not found"));
 
-        // Verify order belongs to pharmacist's pharmacy
-        if (order.getAssignedPharmacy() == null || 
-            !order.getAssignedPharmacy().getId().equals(pharmacist.getPharmacy().getId())) {
-            throw new ResourceNotFoundException("Order not assigned to your pharmacy");
+        if (!pharmacistOwnsOrder(pharmacist, order)) {
+            throw new ResourceNotFoundException("Order not assigned to your branch");
         }
 
         return mapToDispensingOrderResponse(order, pharmacist);
@@ -75,9 +75,8 @@ public class DispensingService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order with id " + orderId + " not found"));
 
-        if (order.getAssignedPharmacy() == null || 
-            !order.getAssignedPharmacy().getId().equals(pharmacist.getPharmacy().getId())) {
-            throw new ResourceNotFoundException("Order not assigned to your pharmacy");
+        if (!pharmacistOwnsOrder(pharmacist, order)) {
+            throw new ResourceNotFoundException("Order not assigned to your branch");
         }
 
         boolean approved = request.getValid() == null || Boolean.TRUE.equals(request.getValid());
@@ -124,9 +123,8 @@ public class DispensingService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order with id " + orderId + " not found"));
 
-        if (order.getAssignedPharmacy() == null || 
-            !order.getAssignedPharmacy().getId().equals(pharmacist.getPharmacy().getId())) {
-            throw new ResourceNotFoundException("Order not assigned to your pharmacy");
+        if (!pharmacistOwnsOrder(pharmacist, order)) {
+            throw new ResourceNotFoundException("Order not assigned to your branch");
         }
 
         // Log the action
@@ -149,9 +147,8 @@ public class DispensingService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order with id " + orderId + " not found"));
 
-        if (order.getAssignedPharmacy() == null || 
-            !order.getAssignedPharmacy().getId().equals(pharmacist.getPharmacy().getId())) {
-            throw new ResourceNotFoundException("Order not assigned to your pharmacy");
+        if (!pharmacistOwnsOrder(pharmacist, order)) {
+            throw new ResourceNotFoundException("Order not assigned to your branch");
         }
 
         // Find the order item with the original medicine by name
@@ -223,9 +220,8 @@ public class DispensingService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order with id " + orderId + " not found"));
 
-        if (order.getAssignedPharmacy() == null ||
-                !order.getAssignedPharmacy().getId().equals(pharmacist.getPharmacy().getId())) {
-            throw new ResourceNotFoundException("Order not assigned to your pharmacy");
+        if (!pharmacistOwnsOrder(pharmacist, order)) {
+            throw new ResourceNotFoundException("Order not assigned to your branch");
         }
 
         if (request.getItems() == null || request.getItems().isEmpty()) {
@@ -238,8 +234,13 @@ public class DispensingService {
         for (FillFromPrescriptionRequest.FillItem item : request.getItems()) {
             if (item.getMedicineName() == null || item.getQuantity() == null || item.getQuantity() < 1) continue;
 
-            PharmacyInventory inventory = pharmacyInventoryRepository
-                    .findByPharmacyIdAndMedicine_NameIgnoreCase(
+            Long scopeId = pharmacist.getBranch() != null ? pharmacist.getBranch().getId() : null;
+            PharmacyInventory inventory = scopeId != null
+                    ? pharmacyInventoryRepository.findByBranchIdAndMedicine_NameIgnoreCase(
+                            scopeId, item.getMedicineName().trim())
+                    .orElseThrow(() -> new BusinessException(
+                            "Medicine not found in your branch's inventory: " + item.getMedicineName()))
+                    : pharmacyInventoryRepository.findByPharmacyIdAndMedicine_NameIgnoreCase(
                             pharmacist.getPharmacy().getId(), item.getMedicineName().trim())
                     .orElseThrow(() -> new BusinessException(
                             "Medicine not found in your pharmacy's inventory: " + item.getMedicineName()));
@@ -298,17 +299,18 @@ public class DispensingService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order with id " + orderId + " not found"));
 
-        if (order.getAssignedPharmacy() == null || 
-            !order.getAssignedPharmacy().getId().equals(pharmacist.getPharmacy().getId())) {
-            throw new ResourceNotFoundException("Order not assigned to your pharmacy");
+        if (!pharmacistOwnsOrder(pharmacist, order)) {
+            throw new ResourceNotFoundException("Order not assigned to your branch");
         }
 
         // Log the action
         logAction(order, pharmacist, PharmacistAction.MEDICINE_DISPENSED,
                 request.getNotes() != null ? request.getNotes() : "Medicine dispensed");
 
-        // Reduce inventory for each dispensed item using bulk load + normalized name matching
-        List<PharmacyInventory> pharmacyStock = pharmacyInventoryRepository.findByPharmacyId(order.getAssignedPharmacy().getId());
+        // Deduct inventory from the assigned branch (preferred) or pharmacy-wide (legacy fallback)
+        List<PharmacyInventory> pharmacyStock = order.getAssignedBranch() != null
+                ? pharmacyInventoryRepository.findByBranchId(order.getAssignedBranch().getId())
+                : pharmacyInventoryRepository.findByPharmacyId(order.getAssignedPharmacy().getId());
         for (OrderItem item : order.getOrderItems()) {
             if (item.getMedicine() == null) continue;
             final Long medicineId = item.getMedicine().getId();
@@ -329,6 +331,11 @@ public class DispensingService {
                     });
         }
 
+        // Save medication notes if provided
+        if (request.getMedicationNotes() != null && !request.getMedicationNotes().isBlank()) {
+            order.setMedicationNotes(request.getMedicationNotes());
+        }
+
         // Move to READY_FOR_PICKUP so the patient can pay before order completes
         order.setStatus(OrderStatus.READY_FOR_PICKUP);
         order = orderRepository.save(order);
@@ -343,9 +350,8 @@ public class DispensingService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order with id " + orderId + " not found"));
 
-        if (order.getAssignedPharmacy() == null || 
-            !order.getAssignedPharmacy().getId().equals(pharmacist.getPharmacy().getId())) {
-            throw new ResourceNotFoundException("Order not assigned to your pharmacy");
+        if (!pharmacistOwnsOrder(pharmacist, order)) {
+            throw new ResourceNotFoundException("Order not assigned to your branch");
         }
 
         List<PharmacistActionLog> logs = actionLogRepository.findByOrderId(orderId);
@@ -369,9 +375,8 @@ public class DispensingService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order with id " + orderId + " not found"));
 
-        if (order.getAssignedPharmacy() == null ||
-            !order.getAssignedPharmacy().getId().equals(pharmacist.getPharmacy().getId())) {
-            throw new ResourceNotFoundException("Order not assigned to your pharmacy");
+        if (!pharmacistOwnsOrder(pharmacist, order)) {
+            throw new ResourceNotFoundException("Order not assigned to your branch");
         }
 
         if (order.getStatus() != OrderStatus.READY_FOR_PICKUP && order.getStatus() != OrderStatus.OUT_FOR_DELIVERY) {
@@ -395,6 +400,20 @@ public class DispensingService {
         actionLogRepository.save(log);
     }
 
+    @Transactional
+    public void saveMedicationNotes(Long orderId, String notes, String pharmacistEmail) {
+        PharmacistProfile pharmacist = findPharmacistByEmailOrThrow(pharmacistEmail);
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(() -> new ResourceNotFoundException("Order with id " + orderId + " not found"));
+
+        if (!pharmacistOwnsOrder(pharmacist, order)) {
+            throw new ResourceNotFoundException("Order not assigned to your branch");
+        }
+
+        order.setMedicationNotes(notes);
+        orderRepository.save(order);
+    }
+
     private DispensingOrderResponse mapToDispensingOrderResponse(Order order, PharmacistProfile pharmacist) {
         String frontendStatus = mapOrderStatus(order.getStatus());
         boolean stockConfirmed = isStockConfirmed(order.getStatus());
@@ -402,31 +421,63 @@ public class DispensingService {
         String prescriptionUrl = null;
         String prescriptionNotes = null;
         String validationStatus = null;
+        java.time.LocalDate prescriptionDate = null;
+        Boolean hasStamp = null;
+        Boolean hasSignature = null;
         if (order.getPrescription() != null) {
             prescriptionUrl = order.getPrescription().getFileUrl();
             prescriptionNotes = order.getPrescription().getNotes();
             String vs = order.getPrescription().getValidationStatus();
             validationStatus = "VALIDATED".equals(vs) ? "VALID" : (vs != null ? vs : "PENDING");
+            prescriptionDate = order.getPrescription().getPrescriptionDate();
+            hasStamp = order.getPrescription().isHasStamp();
+            hasSignature = order.getPrescription().isHasSignature();
         }
+
+        Long branchId = order.getAssignedBranch() != null ? order.getAssignedBranch().getId() : null;
+        Long pharmacyId = order.getAssignedPharmacy() != null ? order.getAssignedPharmacy().getId() : null;
 
         List<com.meddelivery.dto.response.OrderItemResponse> medicines = null;
         if (order.getOrderItems() != null && !order.getOrderItems().isEmpty()) {
             medicines = order.getOrderItems().stream()
-                    .map(item -> com.meddelivery.dto.response.OrderItemResponse.builder()
-                            .id(item.getId())
-                            .medicineId(item.getMedicine().getId())
-                            .medicineName(item.getMedicine().getName())
-                            .quantity(item.getQuantity())
-                            .unitPrice(item.getUnitPrice() != null ? item.getUnitPrice().doubleValue() : null)
-                            .status(item.getStatus())
-                            .build())
+                    .map(item -> {
+                        Boolean inStock = null;
+                        if (item.getMedicine() != null) {
+                            if (branchId != null) {
+                                inStock = pharmacyInventoryRepository.findByBranchId(branchId).stream()
+                                        .filter(inv -> inv.getMedicine() != null
+                                                && inv.getMedicine().getId().equals(item.getMedicine().getId()))
+                                        .findFirst()
+                                        .map(inv -> inv.getQuantity() != null && inv.getQuantity() > 0)
+                                        .orElse(false);
+                            } else if (pharmacyId != null) {
+                                inStock = pharmacyInventoryRepository
+                                        .findByPharmacyIdAndMedicineId(pharmacyId, item.getMedicine().getId())
+                                        .map(inv -> inv.getQuantity() != null && inv.getQuantity() > 0)
+                                        .orElse(false);
+                            }
+                        }
+                        return com.meddelivery.dto.response.OrderItemResponse.builder()
+                                .id(item.getId())
+                                .medicineId(item.getMedicine().getId())
+                                .medicineName(item.getMedicine().getName())
+                                .quantity(item.getQuantity())
+                                .unitPrice(item.getUnitPrice() != null ? item.getUnitPrice().doubleValue() : null)
+                                .status(item.getStatus())
+                                .inStock(inStock)
+                                .build();
+                    })
                     .collect(java.util.stream.Collectors.toList());
         }
 
+        PatientProfile patient = order.getPatientProfile();
+
         return DispensingOrderResponse.builder()
                 .id(order.getId())
-                .patientName(order.getPatientProfile().getUser().getFullName())
-                .patientEmail(order.getPatientProfile().getUser().getEmail())
+                .branchId(branchId)
+                .branchName(order.getAssignedBranch() != null ? order.getAssignedBranch().getName() : null)
+                .patientName(patient.getUser().getFullName())
+                .patientEmail(patient.getUser().getEmail())
                 .pharmacistUniqueId(pharmacist.getPharmacistUniqueId())
                 .pharmacistName(pharmacist.getUser().getFullName())
                 .status(frontendStatus)
@@ -438,6 +489,14 @@ public class DispensingService {
                 .lastAction(getLastAction(order))
                 .createdAt(order.getCreatedAt())
                 .updatedAt(order.getUpdatedAt())
+                .patientAllergies(patient.getAllergies())
+                .patientBloodType(patient.getBloodType())
+                .patientMedicalNotes(patient.getMedicalNotes())
+                .orderType(order.getOrderType() != null ? order.getOrderType().name() : null)
+                .prescriptionDate(prescriptionDate)
+                .hasStamp(hasStamp)
+                .hasSignature(hasSignature)
+                .medicationNotes(order.getMedicationNotes())
                 .build();
     }
 
@@ -477,5 +536,15 @@ public class DispensingService {
                 .orElseThrow(() -> new IllegalArgumentException(
                         "Pharmacist with email \"" + email + "\" not found."
                 ));
+    }
+
+    /** Returns true if the order belongs to this pharmacist's branch (preferred) or pharmacy (fallback). */
+    private boolean pharmacistOwnsOrder(PharmacistProfile pharmacist, Order order) {
+        if (pharmacist.getBranch() != null && order.getAssignedBranch() != null) {
+            return pharmacist.getBranch().getId().equals(order.getAssignedBranch().getId());
+        }
+        // Fallback: pharmacy-level ownership (covers legacy orders with no assignedBranch)
+        return order.getAssignedPharmacy() != null
+                && order.getAssignedPharmacy().getId().equals(pharmacist.getPharmacy().getId());
     }
 }

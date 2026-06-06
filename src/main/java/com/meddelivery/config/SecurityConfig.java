@@ -45,6 +45,7 @@ public class SecurityConfig {
             "/api/health",
             "/api/files/**",
             "/api/pharmacies/register",
+            "/api/invitations/**",
             "/swagger-ui/**",
             "/swagger-ui.html",
             "/api-docs/**",
@@ -76,6 +77,10 @@ public class SecurityConfig {
                     .hasRole("SUPER_ADMIN")
                 .requestMatchers("/api/manager/**")
                     .hasRole("MANAGER")
+                .requestMatchers("/api/pharmacy/branches/**")
+                    .hasRole("MANAGER")
+                .requestMatchers("/api/branch-manager/**")
+                    .hasRole("BRANCH_MANAGER")
                 .requestMatchers("/api/pharmacist/**")
                     .hasRole("PHARMACIST")
                 .requestMatchers("/api/patient/**")

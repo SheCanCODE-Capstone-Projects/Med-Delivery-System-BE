@@ -7,8 +7,12 @@
  import com.meddelivery.dto.response.InsuranceCardResponse;
  import com.meddelivery.dto.response.PatientLocationResponse;
  import com.meddelivery.dto.response.PatientProfileResponse;
+ import com.meddelivery.dto.response.report.PatientReportResponse;
+ import com.meddelivery.model.User;
  import com.meddelivery.service.FileStorageService;
  import com.meddelivery.service.PatientProfileService;
+import com.meddelivery.service.ReportService;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -37,6 +41,7 @@ public class PatientProfileController {
 
      private final PatientProfileService profileService;
      private final FileStorageService fileStorageService;
+     private final ReportService reportService;
 
 
      @Operation(summary = "Get my patient profile")
@@ -159,4 +164,12 @@ public class PatientProfileController {
           PatientProfileResponse response = profileService.updateProfileImage(imageUrl);
           return ResponseEntity.ok(ApiResponse.success("Profile image uploaded successfully", response));
       }
+
+     @Operation(summary = "Generate comprehensive patient medical report")
+     @GetMapping("/reports/comprehensive")
+     public ResponseEntity<ApiResponse<PatientReportResponse>> getComprehensiveReport(
+             @AuthenticationPrincipal User user) {
+         return ResponseEntity.ok(ApiResponse.success(
+                 reportService.generatePatientReportByUserId(user.getId())));
+     }
   }

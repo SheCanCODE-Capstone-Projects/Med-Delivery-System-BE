@@ -16,7 +16,7 @@ public class InsuranceController {
     private final InsuranceVerificationService insuranceService;
 
     @PutMapping("/{insuranceCardId}/verify")
-    @PreAuthorize("hasAnyRole('PHARMACIST', 'MANAGER')")
+    @PreAuthorize("hasRole('PHARMACIST')")
     public ResponseEntity<ApiResponse<Void>> verifyInsurance(
             @PathVariable Long insuranceCardId,
             @RequestParam Long pharmacyId,
@@ -27,7 +27,7 @@ public class InsuranceController {
     }
 
     @GetMapping("/{insuranceCardId}")
-    @PreAuthorize("hasAnyRole('PATIENT', 'PHARMACIST', 'MANAGER')")
+    @PreAuthorize("hasAnyRole('PATIENT', 'PHARMACIST')")
     public ResponseEntity<ApiResponse<InsuranceCard>> getInsuranceCard(
             @PathVariable Long insuranceCardId) {
         InsuranceCard card = insuranceService.getInsuranceCard(insuranceCardId);
@@ -35,7 +35,7 @@ public class InsuranceController {
     }
 
     @PutMapping("/{insuranceCardId}/pending")
-    @PreAuthorize("hasAnyRole('PHARMACIST', 'MANAGER')")
+    @PreAuthorize("hasRole('PHARMACIST')")
     public ResponseEntity<ApiResponse<Void>> markAsPending(
             @PathVariable Long insuranceCardId) {
         insuranceService.markAsPendingVerification(insuranceCardId);

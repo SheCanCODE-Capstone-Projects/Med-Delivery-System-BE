@@ -9,6 +9,7 @@ import com.meddelivery.dto.response.PaymentResponse;
 import com.meddelivery.exception.BusinessException;
 import com.meddelivery.exception.ResourceNotFoundException;
 import com.meddelivery.model.*;
+import com.meddelivery.model.Branch;
 import com.meddelivery.model.enums.FulfillmentType;
 import com.meddelivery.model.enums.OrderStatus;
 import com.meddelivery.model.enums.OrderType;
@@ -230,21 +231,22 @@ public class OrderService {
         orderItemRepository.saveAll(items);
         order.setOrderItems(items);
 
-        // 7. Now match pharmacy with items — pass the in-memory list explicitly to avoid Hibernate lazy-load
-        Pharmacy matchedPharmacy = pharmacyMatchingEngine.findBestMatch(order, items, patientLocation);
-        if (matchedPharmacy == null) {
+        // 7. Match to a specific branch — passes in-memory items to avoid Hibernate lazy-load
+        Branch matchedBranch = pharmacyMatchingEngine.findBestMatch(order, items, patientLocation);
+        if (matchedBranch == null) {
             List<String> medicineNames = items.stream()
                     .map(i -> i.getMedicine().getName())
                     .collect(Collectors.toList());
-            log.warn("Order {}: no pharmacy could fulfill medicines: {}", order.getId(), medicineNames);
+            log.warn("Order {}: no branch could fulfill medicines: {}", order.getId(), medicineNames);
             throw new BusinessException(
                     "Sorry, none of our pharmacies currently have " + String.join(", ", medicineNames) +
                     " in stock. Please try again later or contact support.");
         }
-        order.setAssignedPharmacy(matchedPharmacy);
+        order.setAssignedBranch(matchedBranch);
+        order.setAssignedPharmacy(matchedBranch.getPharmacy());
 
-        // 8. Calculate pricing based on matched pharmacy (bulk-load inventory, match by ID then normalized name)
-        List<PharmacyInventory> pharmacyStock = pharmacyInventoryRepository.findByPharmacyId(matchedPharmacy.getId());
+        // 8. Calculate pricing from the matched branch's inventory
+        List<PharmacyInventory> pharmacyStock = pharmacyInventoryRepository.findByBranchId(matchedBranch.getId());
         BigDecimal totalAmount = BigDecimal.ZERO;
         for (OrderItem item : items) {
             final Long medId = item.getMedicine().getId();
@@ -300,11 +302,11 @@ public class OrderService {
                 totalAmount, insuranceAmount, patientAmount, userId);
 
         // 11. Notify
-        if (matchedPharmacy != null) {
+        if (matchedBranch != null) {
             order.setStatus(OrderStatus.MATCHING);
             order = orderRepository.save(order);
             webSocketNotificationService.notifyOrderStatusChange(userId, mapToResponse(order));
-            webSocketNotificationService.notifyPharmacyNewOrder(matchedPharmacy.getId(), mapToResponse(order));
+            webSocketNotificationService.notifyPharmacyNewOrder(matchedBranch.getPharmacy().getId(), mapToResponse(order));
         }
 
         return ApiResponse.success("Order created successfully", mapToResponse(order));
@@ -410,9 +412,12 @@ public class OrderService {
         PharmacistProfile pharmacist = pharmacistProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Pharmacist not found"));
 
-        if (order.getAssignedPharmacy() == null ||
-            !order.getAssignedPharmacy().getId().equals(pharmacist.getPharmacy().getId())) {
-            throw new AccessDeniedException("This order is not assigned to your pharmacy");
+        boolean ownsBranch = pharmacist.getBranch() != null && order.getAssignedBranch() != null
+                && pharmacist.getBranch().getId().equals(order.getAssignedBranch().getId());
+        boolean ownsPharmacy = order.getAssignedPharmacy() != null
+                && order.getAssignedPharmacy().getId().equals(pharmacist.getPharmacy().getId());
+        if (!ownsBranch && !ownsPharmacy) {
+            throw new AccessDeniedException("This order is not assigned to your branch");
         }
 
         OrderStatus newStatus = OrderStatus.valueOf(status);
@@ -463,6 +468,8 @@ public class OrderService {
                 .createdAt(order.getCreatedAt())
                 .patientName(order.getPatientProfile().getUser().getFullName())
                 .pharmacyName(order.getAssignedPharmacy() != null ? order.getAssignedPharmacy().getName() : "Unassigned")
+                .branchId(order.getAssignedBranch() != null ? order.getAssignedBranch().getId() : null)
+                .branchName(order.getAssignedBranch() != null ? order.getAssignedBranch().getName() : null)
                 .items(itemDtos)
                 .totalAmount(order.getTotalAmount() != null ? order.getTotalAmount().doubleValue() : null)
                 .patientPayableAmount(order.getPatientPayableAmount() != null ? order.getPatientPayableAmount().doubleValue() : null)

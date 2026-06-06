@@ -16,6 +16,7 @@ package com.meddelivery.service;
  import com.meddelivery.model.*;
  import com.meddelivery.model.enums.PharmacyStatus;
  import com.meddelivery.model.enums.UserRole;
+ import com.meddelivery.model.Branch;
  import com.meddelivery.repository.*;
  import com.meddelivery.service.OtpService;
  import com.meddelivery.service.PatientContextService;
@@ -51,6 +52,7 @@ import org.springframework.stereotype.Service;
      private final OrderRepository orderRepository;
      private final PatientMapper patientMapper;
      private final InsuranceProviderRepository insuranceProviderRepository;
+    private final BranchRepository branchRepository;
 
     @Transactional
     public PharmacyResponse registerPharmacy(PharmacyRegistrationRequest request) {
@@ -229,6 +231,79 @@ import org.springframework.stereotype.Service;
                  .stream()
                  .map(this::mapToInventoryResponse)
                  .collect(Collectors.toList());
+     }
+
+     @Transactional(readOnly = true)
+     public List<PharmacyInventoryResponse> getInventoryByBranch(Long branchId) {
+         return inventoryRepository.findByBranchId(branchId)
+                 .stream()
+                 .map(this::mapToInventoryResponse)
+                 .collect(Collectors.toList());
+     }
+
+     @Transactional
+     public PharmacyInventoryResponse createBranchInventoryItem(Long pharmacyId, Long branchId, PharmacyInventoryRequest request) {
+         Pharmacy pharmacy = findByIdOrThrow(pharmacyId);
+         Branch branch = branchRepository.findById(branchId)
+                 .orElseThrow(() -> new ResourceNotFoundException("Branch not found: " + branchId));
+
+         Medicine medicine = medicineRepository.findByNameIgnoreCase(request.getMedicineName())
+                 .orElseGet(() -> {
+                     Medicine m = Medicine.builder()
+                             .name(request.getMedicineName())
+                             .genericName(request.getGenericName())
+                             .requiresPrescription(false)
+                             .build();
+                     return medicineRepository.save(m);
+                 });
+
+         PharmacyInventory inventory = inventoryRepository
+                 .findByPharmacyAndMedicineAndBranchId(pharmacy, medicine, branchId)
+                 .orElseGet(() -> PharmacyInventory.builder()
+                         .pharmacy(pharmacy)
+                         .medicine(medicine)
+                         .branch(branch)
+                         .build());
+
+         inventory.setQuantity(request.getQuantity());
+         inventory.setPrice(request.getPrice());
+         inventory.setDosageInstructions(request.getDosageInstructions());
+         if (request.getUnit() != null) inventory.setUnit(request.getUnit());
+         if (request.getExpiryDate() != null) inventory.setExpiryDate(request.getExpiryDate());
+         if (request.getLowStockThreshold() != null) inventory.setLowStockThreshold(request.getLowStockThreshold());
+
+         PharmacyInventory saved = inventoryRepository.save(inventory);
+         log.info("Branch inventory item {} saved for branchId={}", saved.getId(), branchId);
+         return mapToInventoryResponse(saved);
+     }
+
+     @Transactional
+     public PharmacyInventoryResponse updateBranchInventoryItem(Long branchId, Long itemId, PharmacyInventoryRequest request) {
+         PharmacyInventory item = inventoryRepository.findById(itemId)
+                 .orElseThrow(() -> new ResourceNotFoundException("Inventory item", itemId));
+         if (item.getBranch() == null || !item.getBranch().getId().equals(branchId)) {
+             throw new BusinessException("Inventory item does not belong to this branch");
+         }
+         item.setQuantity(request.getQuantity());
+         item.setPrice(request.getPrice());
+         if (request.getDosageInstructions() != null) item.setDosageInstructions(request.getDosageInstructions());
+         if (request.getUnit() != null) item.setUnit(request.getUnit());
+         if (request.getExpiryDate() != null) item.setExpiryDate(request.getExpiryDate());
+         if (request.getLowStockThreshold() != null) item.setLowStockThreshold(request.getLowStockThreshold());
+         PharmacyInventory saved = inventoryRepository.save(item);
+         log.info("Branch inventory item {} updated for branchId={}", saved.getId(), branchId);
+         return mapToInventoryResponse(saved);
+     }
+
+     @Transactional
+     public void deleteBranchInventoryItem(Long branchId, Long itemId) {
+         PharmacyInventory item = inventoryRepository.findById(itemId)
+                 .orElseThrow(() -> new ResourceNotFoundException("Inventory item", itemId));
+         if (item.getBranch() == null || !item.getBranch().getId().equals(branchId)) {
+             throw new BusinessException("Inventory item does not belong to this branch");
+         }
+         inventoryRepository.delete(item);
+         log.info("Branch inventory item {} deleted for branchId={}", itemId, branchId);
      }
 
      @Transactional

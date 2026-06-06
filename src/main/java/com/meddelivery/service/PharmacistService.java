@@ -11,6 +11,8 @@ import com.meddelivery.model.Prescription;
 import com.meddelivery.model.User;
 import com.meddelivery.model.enums.PharmacyStatus;
 import com.meddelivery.model.enums.UserRole;
+import com.meddelivery.model.Branch;
+import com.meddelivery.repository.BranchRepository;
 import com.meddelivery.repository.PharmacistRepository;
 import com.meddelivery.repository.PharmacistSequenceRepository;
 import com.meddelivery.repository.PharmacyRepository;
@@ -37,6 +39,7 @@ public class PharmacistService {
 
     private final PharmacistRepository pharmacistRepository;
     private final PharmacyRepository pharmacyRepository;
+    private final BranchRepository branchRepository;
     private final PharmacistSequenceRepository sequenceRepository;
     private final UserRepository userRepository;
     private final PrescriptionRepository prescriptionRepository;
@@ -206,6 +209,77 @@ public class PharmacistService {
                 String.format("%04d", sequence.getLastNumber());
     }
 
+    @Transactional
+    public PharmacistResponse addPharmacistToBranch(Long branchId, Long pharmacyId, AddPharmacistRequest request) {
+        Branch branch = branchRepository.findById(branchId)
+                .orElseThrow(() -> new IllegalArgumentException("Branch not found: " + branchId));
+        Pharmacy pharmacy = pharmacyRepository.findById(pharmacyId)
+                .orElseThrow(() -> new PharmacyNotFoundException(pharmacyId));
+
+        if (pharmacistRepository.existsByUserEmail(request.getEmail())) {
+            throw new IllegalArgumentException("A pharmacist with email \"" + request.getEmail() + "\" already exists.");
+        }
+
+        String pharmacistUniqueId = generatePharmacistUniqueId(pharmacy);
+
+        User user = User.builder()
+                .fullName(request.getFullName())
+                .email(request.getEmail())
+                .phoneNumber(request.getPhoneNumber())
+                .role(UserRole.PHARMACIST)
+                .isActive(false)
+                .isVerified(false)
+                .build();
+        User savedUser = userRepository.save(user);
+
+        PharmacistProfile pharmacist = PharmacistProfile.builder()
+                .pharmacistUniqueId(pharmacistUniqueId)
+                .user(savedUser)
+                .pharmacy(pharmacy)
+                .branch(branch)
+                .build();
+        PharmacistProfile saved = pharmacistRepository.save(pharmacist);
+
+        String encodedEmail = java.net.URLEncoder.encode(request.getEmail(), java.nio.charset.StandardCharsets.UTF_8);
+        String setupLink = frontendUrl + "/auth/verify-otp?username=" + encodedEmail + "&after=pharmacist-setup";
+        log.warn("🔗 [PHARMACIST SETUP LINK] Name: {} | Email: {} | Branch: {} | Link: {}",
+                request.getFullName(), request.getEmail(), branch.getName(), setupLink);
+        try {
+            String html = buildSetupEmailHtml(request.getFullName(), branch.getName() + " (" + pharmacy.getName() + ")", setupLink);
+            emailService.sendEmail(request.getEmail(), "You've been added to " + branch.getName() + " — Set up your account", html);
+        } catch (Exception e) {
+            log.warn("Failed to send pharmacist setup email to {}: {}", request.getEmail(), e.getMessage());
+        }
+
+        return mapToResponse(saved);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PharmacistResponse> getPharmacistsByBranch(Long branchId) {
+        return pharmacistRepository.findAllByBranchId(branchId).stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    @Transactional
+    public void removePharmacistFromBranch(Long branchId, Long pharmacistId) {
+        PharmacistProfile pharmacist = pharmacistRepository.findByIdAndBranchId(pharmacistId, branchId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Pharmacist " + pharmacistId + " not found in branch " + branchId));
+        pharmacistRepository.delete(pharmacist);
+    }
+
+    @Transactional
+    public void deactivatePharmacist(Long branchId, Long pharmacistId) {
+        PharmacistProfile pharmacist = pharmacistRepository.findByIdAndBranchId(pharmacistId, branchId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Pharmacist " + pharmacistId + " not found in branch " + branchId));
+        User user = pharmacist.getUser();
+        user.setActive(false);
+        userRepository.save(user);
+        log.info("Pharmacist {} deactivated by branch manager for branchId={}", pharmacistId, branchId);
+    }
+
     private PharmacistResponse mapToResponse(PharmacistProfile pharmacist) {
         User user = pharmacist.getUser();
 
@@ -217,6 +291,8 @@ public class PharmacistService {
                 .phoneNumber(user.getPhoneNumber())
                 .pharmacyId(pharmacist.getPharmacy().getId())
                 .pharmacyName(pharmacist.getPharmacy().getName())
+                .branchId(pharmacist.getBranch() != null ? pharmacist.getBranch().getId() : null)
+                .branchName(pharmacist.getBranch() != null ? pharmacist.getBranch().getName() : null)
                 .isActive(user.isActive())
                 .isVerified(user.isVerified())
                 .createdAt(pharmacist.getCreatedAt())

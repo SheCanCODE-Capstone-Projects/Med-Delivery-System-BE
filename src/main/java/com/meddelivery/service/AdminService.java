@@ -7,6 +7,7 @@ import com.meddelivery.dto.request.InsuranceProviderRequest;
 import com.meddelivery.dto.response.InsuranceProviderResponse;
 import com.meddelivery.exception.BusinessException;
 import com.meddelivery.exception.ResourceNotFoundException;
+import com.meddelivery.model.Branch;
 import com.meddelivery.model.InsuranceCard;
 import com.meddelivery.model.InsuranceProvider;
 import com.meddelivery.model.ManagerProfile;
@@ -16,6 +17,7 @@ import com.meddelivery.model.Pharmacy;
 import com.meddelivery.model.PharmacyInventory;
 import com.meddelivery.model.SubstitutionRequest;
 import com.meddelivery.model.User;
+import com.meddelivery.model.enums.BranchStatus;
 import com.meddelivery.model.enums.InsuranceStatus;
 import com.meddelivery.model.enums.OrderStatus;
 import com.meddelivery.model.enums.PaymentMethod;
@@ -57,6 +59,7 @@ public class AdminService {
     private final OtpService otpService;
     private final PaymentRepository paymentRepository;
     private final InsuranceCardRepository insuranceCardRepository;
+    private final BranchRepository branchRepository;
 
     // --- A. Executive Summary ---
 
@@ -190,6 +193,22 @@ public class AdminService {
 
         if ("APPROVE".equalsIgnoreCase(request.getAction())) {
             pharmacy.setStatus(PharmacyStatus.ACTIVE);
+            pharmacyRepository.save(pharmacy);
+
+            // ── Auto-create default branch if pharmacy has none ───────────────
+            if (branchRepository.findByPharmacyId(pharmacy.getId()).isEmpty()) {
+                Branch defaultBranch = Branch.builder()
+                        .name(pharmacy.getName() + " - Main Branch")
+                        .address(pharmacy.getAddress())
+                        .latitude(pharmacy.getLatitude())
+                        .longitude(pharmacy.getLongitude())
+                        .contactInfo(pharmacy.getContactInfo())
+                        .status(BranchStatus.ACTIVE)
+                        .pharmacy(pharmacy)
+                        .build();
+                branchRepository.save(defaultBranch);
+                log.info("Auto-created default branch for pharmacy {}", pharmacy.getId());
+            }
 
             // ── Activate the manager account immediately on admin approval ────
             ManagerProfile managerProfile = pharmacy.getManagerProfile();

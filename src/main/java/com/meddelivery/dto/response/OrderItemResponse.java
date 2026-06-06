@@ -17,4 +17,5 @@ public class OrderItemResponse {
     private Integer quantity;
     private Double unitPrice;
     private OrderItemStatus status;
+    private Boolean inStock;
 }

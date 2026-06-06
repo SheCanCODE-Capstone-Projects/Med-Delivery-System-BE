@@ -26,6 +26,8 @@ public class OrderResponse {
     private LocalDateTime createdAt;
     private String patientName;
     private String pharmacyName;
+    private Long branchId;
+    private String branchName;
     private List<OrderItemResponse> items;
     private Double totalAmount;
     private Double patientPayableAmount;

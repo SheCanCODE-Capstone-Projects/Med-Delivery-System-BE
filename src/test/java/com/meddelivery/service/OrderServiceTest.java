@@ -88,6 +88,7 @@ class OrderServiceTest {
     private Medicine mockMedicine;
     private Prescription mockPrescription;
     private Pharmacy mockPharmacy;
+    private Branch mockBranch;
     private PharmacyInventory mockInventory;
     private PatientLocation mockLocation;
 
@@ -135,6 +136,12 @@ class OrderServiceTest {
                 .name("Test Pharmacy")
                 .build();
 
+        mockBranch = Branch.builder()
+                .id(10L)
+                .name("Test Pharmacy - Main Branch")
+                .pharmacy(mockPharmacy)
+                .build();
+
         mockInventory = PharmacyInventory.builder()
                 .id(1L)
                 .pharmacy(mockPharmacy)
@@ -160,10 +167,10 @@ class OrderServiceTest {
         itemRequest.setQuantity(2);
         request.setItems(List.of(itemRequest));
 
-// Add pharmacy mocking
+// Add branch mocking
         when(pharmacyMatchingEngine.findBestMatch(any(Order.class), any(java.util.List.class), any(PatientLocation.class)))
-                .thenReturn(mockPharmacy);
-        when(pharmacyInventoryRepository.findByPharmacyId(1L))
+                .thenReturn(mockBranch);
+        when(pharmacyInventoryRepository.findByBranchId(10L))
                 .thenReturn(List.of(mockInventory));
 
         when(patientProfileRepository.findByUserId(1L))
@@ -204,7 +211,7 @@ class OrderServiceTest {
         verify(medicineRepository, times(2)).findById(100L);
         verify(aiPrescriptionService).validatePrescription(anyString(), any());
         verify(pharmacyMatchingEngine).findBestMatch(any(Order.class), any(java.util.List.class), any(PatientLocation.class));
-        verify(pharmacyInventoryRepository).findByPharmacyId(1L);
+        verify(pharmacyInventoryRepository).findByBranchId(10L);
         verify(orderRepository, times(3)).save(any(Order.class));
         verify(orderItemRepository, times(2)).saveAll(any());
         verify(paymentRepository).save(any(Payment.class));
@@ -222,10 +229,10 @@ class OrderServiceTest {
         itemRequest.setQuantity(3);
         request.setItems(List.of(itemRequest));
 
-// Add pharmacy mocking
+// Add branch mocking
         when(pharmacyMatchingEngine.findBestMatch(any(Order.class), any(java.util.List.class), any(PatientLocation.class)))
-                .thenReturn(mockPharmacy);
-        when(pharmacyInventoryRepository.findByPharmacyId(1L))
+                .thenReturn(mockBranch);
+        when(pharmacyInventoryRepository.findByBranchId(10L))
                 .thenReturn(List.of(mockInventory));
 
         when(patientProfileRepository.findByUserId(1L))
@@ -260,7 +267,7 @@ class OrderServiceTest {
         verify(patientProfileRepository).findByUserId(1L);
         verify(medicineRepository).findById(100L);
         verify(pharmacyMatchingEngine).findBestMatch(any(Order.class), any(java.util.List.class), any(PatientLocation.class));
-        verify(pharmacyInventoryRepository).findByPharmacyId(1L);
+        verify(pharmacyInventoryRepository).findByBranchId(10L);
         verify(orderRepository, times(3)).save(any(Order.class));
         verify(paymentRepository).save(any(Payment.class));
         verifyNoInteractions(aiPrescriptionService);

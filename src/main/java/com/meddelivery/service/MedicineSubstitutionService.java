@@ -131,7 +131,7 @@ public class MedicineSubstitutionService {
         log.info("Substitution {} rejected by patient {}", substitutionId, patientId);
 
         Order order = substitution.getOrder();
-        Long previousPharmacyId = order.getAssignedPharmacy() != null ? order.getAssignedPharmacy().getId() : null;
+        Long previousBranchId = order.getAssignedBranch() != null ? order.getAssignedBranch().getId() : null;
         Long patientUserId = order.getPatientProfile().getUser().getId();
 
         // Notify the pharmacist that the patient declined
@@ -139,32 +139,34 @@ public class MedicineSubstitutionService {
             notificationService.send(
                 order.getAssignedPharmacist().getUser().getId(),
                 "Substitution Declined — Order #" + order.getId(),
-                "The patient declined your substitution offer for Order #" + order.getId() + ". The order will be reassigned to another pharmacy.",
+                "The patient declined your substitution offer for Order #" + order.getId() + ". The order will be reassigned to another branch.",
                 "ORDER");
         }
 
-        // Try to find an alternative pharmacy (excluding the current one)
-        Pharmacy alternative = findAlternativePharmacy(order, previousPharmacyId);
+        // Try to find an alternative branch (excluding the current one)
+        Branch alternative = findAlternativeBranch(order, previousBranchId);
 
         if (alternative != null) {
-            order.setAssignedPharmacy(alternative);
+            order.setAssignedBranch(alternative);
+            order.setAssignedPharmacy(alternative.getPharmacy());
             order.setAssignedPharmacist(null);
             order.setStatus(OrderStatus.ASSIGNED);
             order.setAssignedAt(LocalDateTime.now());
             orderRepository.save(order);
-            log.info("Order {} reassigned to pharmacy '{}' after substitution rejection", order.getId(), alternative.getName());
+            log.info("Order {} reassigned to branch '{}' after substitution rejection", order.getId(), alternative.getName());
 
             notificationService.send(patientUserId,
                 "Order #" + order.getId() + " Reassigned",
                 "Your original medicine was unavailable at the previous pharmacy. Your order has been reassigned to " +
-                    alternative.getName() + " which can fulfill it.",
+                    alternative.getPharmacy().getName() + " which can fulfill it.",
                 "ORDER");
         } else {
             order.setStatus(OrderStatus.CANCELLED);
+            order.setAssignedBranch(null);
             order.setAssignedPharmacy(null);
             order.setAssignedPharmacist(null);
             orderRepository.save(order);
-            log.info("Order {} cancelled — no alternative pharmacy found after substitution rejection", order.getId());
+            log.info("Order {} cancelled — no alternative branch found after substitution rejection", order.getId());
 
             notificationService.send(patientUserId,
                 "Order #" + order.getId() + " Cancelled",
@@ -175,7 +177,7 @@ public class MedicineSubstitutionService {
         return mapToResponse(substitutionRepository.save(substitution));
     }
 
-    private Pharmacy findAlternativePharmacy(Order order, Long excludePharmacyId) {
+    private Branch findAlternativeBranch(Order order, Long excludeBranchId) {
         try {
             PatientLocation location = order.getPatientProfile().getLocations().stream()
                     .filter(PatientLocation::isDefault)
@@ -185,9 +187,9 @@ public class MedicineSubstitutionService {
                 log.warn("Patient has no default location — cannot rematch order {}", order.getId());
                 return null;
             }
-            return pharmacyMatchingEngine.findBestMatchExcluding(order, null, location, excludePharmacyId);
+            return pharmacyMatchingEngine.findBestMatchExcluding(order, null, location, excludeBranchId);
         } catch (Exception e) {
-            log.error("Error finding alternative pharmacy for order {}: {}", order.getId(), e.getMessage());
+            log.error("Error finding alternative branch for order {}: {}", order.getId(), e.getMessage());
             return null;
         }
     }

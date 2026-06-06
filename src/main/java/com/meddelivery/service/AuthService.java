@@ -14,6 +14,7 @@ import com.meddelivery.model.PatientProfile;
 import com.meddelivery.model.PharmacistProfile;
 import com.meddelivery.model.User;
 import com.meddelivery.model.enums.UserRole;
+import com.meddelivery.repository.BranchManagerProfileRepository;
 import com.meddelivery.repository.PharmacistRepository;
 import com.meddelivery.repository.PharmacyRepository;
 import com.meddelivery.repository.UserRepository;
@@ -22,10 +23,14 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
+import jakarta.servlet.http.HttpServletRequest;
 
 @Slf4j
 @Service
@@ -41,6 +46,8 @@ public class AuthService {
     private final OtpService otpService;
     private final FirebaseOtpService firebaseOtpService;
     private final RefreshTokenService refreshTokenService;
+    private final SecurityMonitoringService securityMonitoringService;
+    private final BranchManagerProfileRepository branchManagerProfileRepository;
 
     private Long resolvePharmacyId(User user) {
         if (user.getRole() == UserRole.PHARMACIST) {
@@ -53,18 +60,31 @@ public class AuthService {
                     .map(p -> p.getId())
                     .orElse(null);
         }
+        if (user.getRole() == UserRole.BRANCH_MANAGER) {
+            return branchManagerProfileRepository.findByUserId(user.getId())
+                    .map(p -> p.getBranch().getId())
+                    .orElse(null);
+        }
         return null;
     }
 
     // ── FLOW 1: Login with Email/Password ────────
     public AuthResponse login(LoginRequest request) {
+        String ipAddress = extractIp();
+        String userAgent = extractUserAgent();
 
-        authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(
-                        request.getUsername(),
-                        request.getPassword()
-                )
-        );
+        try {
+            authenticationManager.authenticate(
+                    new UsernamePasswordAuthenticationToken(
+                            request.getUsername(),
+                            request.getPassword()
+                    )
+            );
+        } catch (BadCredentialsException ex) {
+            securityMonitoringService.recordLoginAttempt(
+                    request.getUsername(), ipAddress, userAgent, false, null, "Bad credentials");
+            throw ex;
+        }
 
         User user = userRepository
                 .findByEmail(request.getUsername())
@@ -74,13 +94,16 @@ public class AuthService {
                         new AuthException("User not found"));
 
         if (!user.isActive()) {
-            throw new AuthException(
-                    "Account is not activated yet");
+            securityMonitoringService.recordLoginAttempt(
+                    request.getUsername(), ipAddress, userAgent, false, user.getId(), "Account not activated");
+            throw new AuthException("Account is not activated yet");
         }
 
         String token = jwtService.generateToken(user);
         String refreshToken = refreshTokenService.generateRefreshToken(user.getUsername());
 
+        securityMonitoringService.recordLoginAttempt(
+                request.getUsername(), ipAddress, userAgent, true, user.getId(), null);
         log.info("User logged in: {}", user.getEmail());
 
         return AuthResponse.builder()
@@ -93,6 +116,24 @@ public class AuthService {
                 .userId(user.getId())
                 .pharmacyId(resolvePharmacyId(user))
                 .build();
+    }
+
+    private String extractIp() {
+        try {
+            ServletRequestAttributes attrs = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+            if (attrs == null) return "unknown";
+            HttpServletRequest req = attrs.getRequest();
+            String forwarded = req.getHeader("X-Forwarded-For");
+            return (forwarded != null && !forwarded.isBlank()) ? forwarded.split(",")[0].trim() : req.getRemoteAddr();
+        } catch (Exception e) { return "unknown"; }
+    }
+
+    private String extractUserAgent() {
+        try {
+            ServletRequestAttributes attrs = (ServletRequestAttributes) RequestContextHolder.getRequestAttributes();
+            if (attrs == null) return null;
+            return attrs.getRequest().getHeader("User-Agent");
+        } catch (Exception e) { return null; }
     }
 
     // ── FLOW 2: Patient Register + Send OTP ──────

@@ -28,6 +28,9 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findByAssignedPharmacyId(Long pharmacyId);
 
     @EntityGraph(attributePaths = {"orderItems", "orderItems.medicine", "patientProfile.user", "prescription"})
+    List<Order> findByAssignedBranchId(Long branchId);
+
+    @EntityGraph(attributePaths = {"orderItems", "orderItems.medicine", "patientProfile.user", "prescription"})
     List<Order> findAllByAssignedPharmacyId(Long pharmacyId);
     
     @EntityGraph(attributePaths = {"patientProfile.user", "assignedPharmacy"})
@@ -51,4 +54,33 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     @Query("SELECT SUM(o.totalAmount) FROM Order o WHERE o.createdAt >= :startDate AND o.status = :status")
     java.math.BigDecimal sumTotalAmountByCreatedAtAfterAndStatus(@Param("startDate") LocalDateTime startDate, @Param("status") OrderStatus status);
+
+    // ── Report queries ────────────────────────────────────────────────────────
+
+    List<Order> findByPatientProfileId(Long patientProfileId);
+
+    List<Order> findByAssignedPharmacistId(Long assignedPharmacistId);
+
+    long countByAssignedPharmacyIdAndStatus(Long assignedPharmacyId, OrderStatus status);
+
+    @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o WHERE o.assignedPharmacy.id = :pharmacyId AND o.status = :status")
+    java.math.BigDecimal sumRevenueByPharmacyIdAndStatus(@Param("pharmacyId") Long pharmacyId, @Param("status") OrderStatus status);
+
+    @Query("SELECT COUNT(DISTINCT o.patientProfile.id) FROM Order o WHERE o.assignedPharmacy.id = :pharmacyId")
+    long countDistinctPatientsByPharmacyId(@Param("pharmacyId") Long pharmacyId);
+
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.assignedPharmacist IS NOT NULL AND o.assignedPharmacist.branch.id = :branchId")
+    long countByAssignedPharmacistBranchId(@Param("branchId") Long branchId);
+
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.assignedPharmacist IS NOT NULL AND o.assignedPharmacist.branch.id = :branchId AND o.status = :status")
+    long countByAssignedPharmacistBranchIdAndStatus(@Param("branchId") Long branchId, @Param("status") OrderStatus status);
+
+    @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o WHERE o.assignedPharmacist IS NOT NULL AND o.assignedPharmacist.branch.id = :branchId AND o.status = :status")
+    java.math.BigDecimal sumRevenueByBranchIdAndStatus(@Param("branchId") Long branchId, @Param("status") OrderStatus status);
+
+    @Query("SELECT COUNT(DISTINCT o.patientProfile.id) FROM Order o WHERE o.assignedPharmacist IS NOT NULL AND o.assignedPharmacist.branch.id = :branchId")
+    long countDistinctPatientsByBranchId(@Param("branchId") Long branchId);
+
+    @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o WHERE o.status = :status")
+    java.math.BigDecimal sumTotalAmountByStatus(@Param("status") OrderStatus status);
 }

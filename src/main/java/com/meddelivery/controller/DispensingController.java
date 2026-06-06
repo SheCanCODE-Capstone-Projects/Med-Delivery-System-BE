@@ -7,12 +7,20 @@ import com.meddelivery.dto.request.ValidatePrescriptionRequest;
 import com.meddelivery.dto.response.ActionLogResponse;
 import com.meddelivery.dto.response.ApiResponse;
 import com.meddelivery.dto.response.DispensingOrderResponse;
+import com.meddelivery.dto.response.InsuranceCardResponse;
+import com.meddelivery.dto.response.MedicineResponse;
 import com.meddelivery.dto.response.PharmacistResponse;
 import com.meddelivery.dto.response.SubstitutionResponse;
 import com.meddelivery.model.User;
+import com.meddelivery.dto.response.report.PharmacistReportResponse;
+import com.meddelivery.service.AdminService;
 import com.meddelivery.service.DispensingService;
+import com.meddelivery.service.InventoryService;
 import com.meddelivery.service.PharmacistService;
+import com.meddelivery.service.ReportService;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -29,6 +37,9 @@ public class DispensingController {
 
     private final DispensingService dispensingService;
     private final PharmacistService pharmacistService;
+    private final AdminService adminService;
+    private final ReportService reportService;
+    private final InventoryService inventoryService;
 
 
     @GetMapping("/me")
@@ -142,5 +153,57 @@ public class DispensingController {
         return ResponseEntity.ok(ApiResponse.success(
                 dispensingService.getActionLogs(orderId, user.getEmail() != null ? user.getEmail() : user.getPhoneNumber())
         ));
+    }
+
+    @PutMapping("/orders/{orderId}/medication-notes")
+    public ResponseEntity<ApiResponse<Void>> saveMedicationNotes(
+            @PathVariable Long orderId,
+            @RequestParam String notes,
+            @AuthenticationPrincipal User user) {
+        dispensingService.saveMedicationNotes(orderId, notes,
+                user.getEmail() != null ? user.getEmail() : user.getPhoneNumber());
+        return ResponseEntity.ok(ApiResponse.success("Medication notes saved", null));
+    }
+
+    // ── Insurance Card Verification ──────────────────────────────────────────
+
+    @GetMapping("/insurance-cards/pending")
+    public ResponseEntity<ApiResponse<List<InsuranceCardResponse>>> getPendingInsuranceCards() {
+        return ResponseEntity.ok(adminService.getAllInsuranceCards("PENDING_VERIFICATION"));
+    }
+
+    @PostMapping("/insurance-cards/{id}/verify")
+    public ResponseEntity<ApiResponse<InsuranceCardResponse>> verifyInsuranceCard(
+            @PathVariable Long id,
+            @RequestParam @DecimalMin("0.0") @DecimalMax("100.0") Double coveragePercentage) {
+        return ResponseEntity.ok(adminService.verifyInsuranceCard(id, coveragePercentage));
+    }
+
+    @GetMapping("/reports/comprehensive")
+    public ResponseEntity<ApiResponse<PharmacistReportResponse>> getComprehensiveReport(
+            @AuthenticationPrincipal User user) {
+        PharmacistResponse profile = pharmacistService.getPharmacistByUserId(user.getId());
+        return ResponseEntity.ok(ApiResponse.success(
+                reportService.generatePharmacistReport(profile.getId(), user.getFullName())));
+    }
+
+    @PostMapping("/insurance-cards/{id}/reject")
+    public ResponseEntity<ApiResponse<InsuranceCardResponse>> rejectInsuranceCard(
+            @PathVariable Long id,
+            @RequestParam(required = false) String notes) {
+        return ResponseEntity.ok(adminService.rejectInsuranceCard(id, notes));
+    }
+
+    // ── Inventory (read-only) ─────────────────────────────────────────────────
+
+    @GetMapping("/inventory")
+    public ResponseEntity<ApiResponse<List<MedicineResponse>>> getInventory(
+            @AuthenticationPrincipal User user) {
+        PharmacistResponse profile = pharmacistService.getPharmacistByUserId(user.getId());
+        if (profile.getBranchId() == null) {
+            throw new IllegalStateException("Pharmacist is not assigned to a branch");
+        }
+        return ResponseEntity.ok(ApiResponse.success(
+                inventoryService.getMedicinesByBranch(profile.getBranchId())));
     }
 }

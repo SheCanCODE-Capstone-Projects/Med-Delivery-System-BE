@@ -83,6 +83,10 @@ public class Order {
     private Pharmacy assignedPharmacy;
 
     @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assigned_branch_id")
+    private Branch assignedBranch;
+
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "assigned_pharmacist_id")
     private PharmacistProfile assignedPharmacist;
 
@@ -105,4 +109,7 @@ public class Order {
     @OneToMany(mappedBy = "order", cascade = CascadeType.ALL)
     @Builder.Default
     private List<SubstitutionRequest> substitutionRequests = new ArrayList<>();
+
+    @Column(columnDefinition = "TEXT")
+    private String medicationNotes;
 }

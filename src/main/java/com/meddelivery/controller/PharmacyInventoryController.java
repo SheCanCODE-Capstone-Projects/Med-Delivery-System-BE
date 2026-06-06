@@ -16,12 +16,12 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/pharmacies/{pharmacyId}/inventory")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('MANAGER') or hasRole('PHARMACIST')")
 public class PharmacyInventoryController {
 
     private final PharmacyService pharmacyService;
 
     @PostMapping
+    @PreAuthorize("hasRole('BRANCH_MANAGER')")
     public ResponseEntity<ApiResponse<PharmacyInventoryResponse>> addInventoryItem(
             @PathVariable Long pharmacyId,
             @Valid @RequestBody PharmacyInventoryRequest request) {
@@ -33,6 +33,7 @@ public class PharmacyInventoryController {
     }
 
     @GetMapping
+    @PreAuthorize("hasRole('BRANCH_MANAGER') or hasRole('PHARMACIST')")
     public ResponseEntity<ApiResponse<List<PharmacyInventoryResponse>>> getInventory(
             @PathVariable Long pharmacyId) {
         List<PharmacyInventoryResponse> inventory = pharmacyService.getInventoryByPharmacy(pharmacyId);
@@ -40,6 +41,7 @@ public class PharmacyInventoryController {
     }
 
     @DeleteMapping("/{itemId}")
+    @PreAuthorize("hasRole('BRANCH_MANAGER')")
     public ResponseEntity<ApiResponse<String>> deleteInventoryItem(
             @PathVariable Long pharmacyId,
             @PathVariable Long itemId) {

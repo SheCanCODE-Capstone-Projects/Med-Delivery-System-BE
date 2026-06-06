@@ -19,9 +19,12 @@ public interface PharmacistRepository extends JpaRepository<PharmacistProfile, L
     Optional<PharmacistProfile> findByUserId(Long userId);
 
     List<PharmacistProfile> findAllByPharmacyId(Long pharmacyId);
+    List<PharmacistProfile> findAllByBranchId(Long branchId);
 
     Optional<PharmacistProfile> findByIdAndPharmacyId(Long id, Long pharmacyId);
+    Optional<PharmacistProfile> findByIdAndBranchId(Long id, Long branchId);
 
     long countByPharmacyId(Long pharmacyId);
+    long countByBranchId(Long branchId);
 
 }

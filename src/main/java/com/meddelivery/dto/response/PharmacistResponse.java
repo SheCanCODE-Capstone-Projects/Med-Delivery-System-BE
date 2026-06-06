@@ -19,9 +19,11 @@ public class PharmacistResponse {
     private String email;
     private String phoneNumber;
 
-    // Which pharmacy they belong to
+    // Which pharmacy / branch they belong to
     private Long pharmacyId;
     private String pharmacyName;
+    private Long branchId;
+    private String branchName;
 
     // Account status — false until pharmacist clicks activation link
     private boolean isActive;

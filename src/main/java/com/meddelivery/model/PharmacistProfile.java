@@ -41,6 +41,10 @@ public class PharmacistProfile {
     @JoinColumn(name = "pharmacy_id", nullable = false)
     private Pharmacy pharmacy;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "branch_id")
+    private Branch branch;
+
     @OneToMany(mappedBy = "pharmacistProfile", cascade = {CascadeType.PERSIST, CascadeType.MERGE})
     @Builder.Default
     private List<PharmacistActionLog> actionLogs = new ArrayList<>();

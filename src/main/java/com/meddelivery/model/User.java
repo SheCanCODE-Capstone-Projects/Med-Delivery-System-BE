@@ -89,6 +89,9 @@ public class User implements UserDetails, OAuth2User {
     @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private ManagerProfile managerProfile;
 
+    @OneToOne(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
+    private BranchManagerProfile branchManagerProfile;
+
     // ── Auth Providers ───────────────────────────
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     @Builder.Default
