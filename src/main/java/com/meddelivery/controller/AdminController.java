@@ -4,6 +4,7 @@ import com.meddelivery.dto.response.*;
 import com.meddelivery.dto.request.AdminProfileUpdateRequest;
 import com.meddelivery.dto.request.AdminUserSearchRequest;
 import com.meddelivery.dto.request.InsuranceProviderRequest;
+import com.meddelivery.dto.request.InviteBranchManagerRequest;
 import com.meddelivery.dto.request.InvitePharmacyAdminRequest;
 import com.meddelivery.dto.request.ManagerUpdateRequest;
 import com.meddelivery.dto.request.OrderInterventionRequest;
@@ -243,6 +244,16 @@ public class AdminController {
     public ResponseEntity<ApiResponse<Void>> invitePharmacyAdmin(
             @Valid @RequestBody InvitePharmacyAdminRequest request) {
         invitationService.createPharmacyAdminInvitation(request.getEmail());
+        return ResponseEntity.ok(ApiResponse.success(
+                "Invitation sent to " + request.getEmail(), null));
+    }
+
+    @PostMapping("/branch-manager/invite")
+    @Operation(summary = "Invite a branch manager by email")
+    public ResponseEntity<ApiResponse<Void>> inviteBranchManager(
+            @Valid @RequestBody InviteBranchManagerRequest request) {
+        invitationService.createBranchManagerInvitation(
+                request.getEmail(), request.getBranchName(), request.getPharmacyId());
         return ResponseEntity.ok(ApiResponse.success(
                 "Invitation sent to " + request.getEmail(), null));
     }

@@ -320,6 +320,10 @@ public class AuthService {
                 .or(() -> userRepository.findByPhoneNumber(username))
                 .orElseThrow(() -> new AuthException("User not found"));
 
+        if (user.getPassword() == null || user.getPassword().isBlank()) {
+            throw new AuthException("This account uses Google Sign-In. Please log in with Google — password reset is not available.");
+        }
+
         if (user.getEmail() == null) {
             throw new AuthException("User has no email registered for OTP");
         }
