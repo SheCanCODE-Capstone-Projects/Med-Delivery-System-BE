@@ -16,6 +16,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.util.StringUtils;
+
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -54,7 +56,7 @@ public class BranchService {
                 .address(request.getAddress())
                 .latitude(request.getLatitude())
                 .longitude(request.getLongitude())
-                .contactInfo(request.getContactInfo())
+                .contactInfo(StringUtils.hasText(request.getContactInfo()) ? request.getContactInfo().trim() : null)
                 .pharmacy(pharmacy)
                 .status(BranchStatus.ACTIVE)
                 .build();
