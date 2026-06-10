@@ -72,9 +72,8 @@ public class PharmacistService {
         String pharmacistUniqueId = generatePharmacistUniqueId(pharmacy);
 
         User user = User.builder()
-                .fullName(request.getFullName())
+                .fullName("Pending Setup")
                 .email(request.getEmail())
-                .phoneNumber(StringUtils.hasText(request.getPhoneNumber()) ? request.getPhoneNumber().trim() : null)
                 .role(UserRole.PHARMACIST)
                 .isActive(false)
                 .isVerified(false)
@@ -92,10 +91,10 @@ public class PharmacistService {
 
         String encodedEmail = URLEncoder.encode(request.getEmail(), StandardCharsets.UTF_8);
         String setupLink = frontendUrl + "/auth/verify-otp?username=" + encodedEmail + "&after=pharmacist-setup";
-        log.warn("🔗 [PHARMACIST SETUP LINK] Name: {} | Email: {} | Link: {}", request.getFullName(), request.getEmail(), setupLink);
+        log.info("🔗 [PHARMACIST SETUP LINK] Email: {} | Link: {}", request.getEmail(), setupLink);
         try {
-            String html = buildSetupEmailHtml(request.getFullName(), pharmacy.getName(), setupLink);
-            emailService.sendEmail(request.getEmail(), "You've been added to " + pharmacy.getName() + " — Set up your account", html);
+            String html = buildSetupEmailHtml(request.getEmail(), pharmacy.getName(), setupLink);
+            emailService.sendEmail(request.getEmail(), "You've been invited to " + pharmacy.getName() + " — Set up your account", html);
         } catch (Exception e) {
             log.warn("Failed to send pharmacist setup email to {}: {}", request.getEmail(), e.getMessage());
         }
@@ -168,7 +167,6 @@ public class PharmacistService {
         PharmacistProfile pharmacist = pharmacistRepository.findById(pharmacistProfileId)
                 .orElseThrow(() -> new IllegalArgumentException("Pharmacist not found: " + pharmacistProfileId));
         String email = pharmacist.getUser().getEmail();
-        String fullName = pharmacist.getUser().getFullName();
         String locationName = pharmacist.getBranch() != null
                 ? pharmacist.getBranch().getName()
                 : pharmacist.getPharmacy().getName();
@@ -176,7 +174,7 @@ public class PharmacistService {
         String setupLink = frontendUrl + "/auth/verify-otp?username=" + encodedEmail + "&after=pharmacist-setup";
         log.info("📧 [PHARMACIST RESEND] Resending setup email to {} for {}", email, locationName);
         try {
-            String html = buildSetupEmailHtml(fullName, locationName, setupLink);
+            String html = buildSetupEmailHtml(email, locationName, setupLink);
             emailService.sendEmail(email, "Reminder: Set up your MedDelivery pharmacist account", html);
         } catch (Exception e) {
             throw new RuntimeException("Failed to resend setup email: " + e.getMessage());
@@ -197,7 +195,7 @@ public class PharmacistService {
                "<p style='margin:0 0 30px 0;color:#5f6368;font-size:16px;'>Account Setup Invitation</p>" +
                "<p style='margin:0 0 20px 0;color:#202124;font-size:15px;line-height:1.5;text-align:left;'>" +
                "Hello <strong>" + fullName + "</strong>,<br><br>" +
-               "You have been added as a pharmacist at <strong>" + pharmacyName + "</strong> on MedDelivery.<br><br>" +
+               "You have been invited to join <strong>" + pharmacyName + "</strong> as a pharmacist on MedDelivery.<br><br>" +
                "To activate your account, copy and open the link below in your browser:" +
                "</p>" +
                "<div style='background-color:#f8f9fa;border:2px solid #e8eaed;border-radius:8px;padding:20px;margin:20px 0;word-break:break-all;text-align:left;'>" +
@@ -244,9 +242,8 @@ public class PharmacistService {
         String pharmacistUniqueId = generatePharmacistUniqueId(pharmacy);
 
         User user = User.builder()
-                .fullName(request.getFullName())
+                .fullName("Pending Setup")
                 .email(request.getEmail())
-                .phoneNumber(StringUtils.hasText(request.getPhoneNumber()) ? request.getPhoneNumber().trim() : null)
                 .role(UserRole.PHARMACIST)
                 .isActive(false)
                 .isVerified(false)
@@ -263,11 +260,11 @@ public class PharmacistService {
 
         String encodedEmail = java.net.URLEncoder.encode(request.getEmail(), java.nio.charset.StandardCharsets.UTF_8);
         String setupLink = frontendUrl + "/auth/verify-otp?username=" + encodedEmail + "&after=pharmacist-setup";
-        log.warn("🔗 [PHARMACIST SETUP LINK] Name: {} | Email: {} | Branch: {} | Link: {}",
-                request.getFullName(), request.getEmail(), branch.getName(), setupLink);
+        log.info("🔗 [PHARMACIST SETUP LINK] Email: {} | Branch: {} | Link: {}",
+                request.getEmail(), branch.getName(), setupLink);
         try {
-            String html = buildSetupEmailHtml(request.getFullName(), branch.getName() + " (" + pharmacy.getName() + ")", setupLink);
-            emailService.sendEmail(request.getEmail(), "You've been added to " + branch.getName() + " — Set up your account", html);
+            String html = buildSetupEmailHtml(request.getEmail(), branch.getName() + " (" + pharmacy.getName() + ")", setupLink);
+            emailService.sendEmail(request.getEmail(), "You've been invited to " + branch.getName() + " — Set up your account", html);
         } catch (Exception e) {
             log.warn("Failed to send pharmacist setup email to {}: {}", request.getEmail(), e.getMessage());
         }

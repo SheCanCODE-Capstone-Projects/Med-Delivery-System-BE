@@ -31,6 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.util.StringUtils;
 
 @Slf4j
 @Service
@@ -289,10 +290,15 @@ public class AuthService {
                 .orElseThrow(() ->
                         new AuthException("User not found"));
 
-        user.setPassword(
-                passwordEncoder.encode(request.getPassword()));
+        user.setPassword(passwordEncoder.encode(request.getPassword()));
         user.setActive(true);
         user.setVerified(true);
+        if (StringUtils.hasText(request.getFullName())) {
+            user.setFullName(request.getFullName().trim());
+        }
+        if (StringUtils.hasText(request.getPhoneNumber())) {
+            user.setPhoneNumber(request.getPhoneNumber().trim());
+        }
         userRepository.save(user);
 
         String token = jwtService.generateToken(user);

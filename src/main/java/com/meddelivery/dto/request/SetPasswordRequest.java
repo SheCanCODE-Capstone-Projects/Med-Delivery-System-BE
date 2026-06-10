@@ -16,4 +16,8 @@ public class SetPasswordRequest {
 
     @NotBlank(message = "OTP is required")
     private String otp;
+
+    // Optional — collected during pharmacist self-setup
+    private String fullName;
+    private String phoneNumber;
 }
