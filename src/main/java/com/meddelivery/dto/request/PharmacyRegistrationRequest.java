@@ -3,6 +3,7 @@ package com.meddelivery.dto.request;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotEmpty;
+import jakarta.validation.constraints.Size;
 import lombok.Data;
 
 import java.util.List;
@@ -34,6 +35,10 @@ public class PharmacyRegistrationRequest {
     private String managerEmail;
 
     private String managerPhone;
+
+    @NotBlank(message = "Manager password is required")
+    @Size(min = 8, message = "Password must be at least 8 characters")
+    private String managerPassword;
 
     @NotEmpty(message = "At least one insurance provider is required")
     private List<Long> insuranceProviderIds;

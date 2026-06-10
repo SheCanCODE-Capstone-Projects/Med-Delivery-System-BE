@@ -38,6 +38,13 @@ public class DispensingService {
     private final PaymentRepository paymentRepository;
 
     @Transactional(readOnly = true)
+    public List<DispensingOrderResponse> getOrdersByBranch(Long branchId) {
+        return orderRepository.findByAssignedBranchId(branchId).stream()
+                .map(order -> mapToDispensingOrderResponse(order, null))
+                .collect(Collectors.toList());
+    }
+
+    @Transactional(readOnly = true)
     public List<DispensingOrderResponse> getAssignedOrders(String pharmacistEmail) {
         PharmacistProfile pharmacist = findPharmacistByEmailOrThrow(pharmacistEmail);
 
@@ -478,8 +485,8 @@ public class DispensingService {
                 .branchName(order.getAssignedBranch() != null ? order.getAssignedBranch().getName() : null)
                 .patientName(patient.getUser().getFullName())
                 .patientEmail(patient.getUser().getEmail())
-                .pharmacistUniqueId(pharmacist.getPharmacistUniqueId())
-                .pharmacistName(pharmacist.getUser().getFullName())
+                .pharmacistUniqueId(pharmacist != null ? pharmacist.getPharmacistUniqueId() : null)
+                .pharmacistName(pharmacist != null ? pharmacist.getUser().getFullName() : null)
                 .status(frontendStatus)
                 .stockConfirmed(stockConfirmed)
                 .prescriptionUrl(prescriptionUrl)

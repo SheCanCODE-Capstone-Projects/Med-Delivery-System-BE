@@ -9,6 +9,7 @@ import com.meddelivery.dto.response.report.BranchManagerReportResponse;
 import com.meddelivery.model.BranchManagerProfile;
 import com.meddelivery.model.User;
 import com.meddelivery.service.BranchService;
+import com.meddelivery.service.DispensingService;
 import com.meddelivery.service.InventoryService;
 import com.meddelivery.service.PharmacistService;
 import com.meddelivery.service.PharmacyService;
@@ -36,6 +37,7 @@ public class BranchManagerController {
     private final PharmacyService pharmacyService;
     private final ReportService reportService;
     private final InventoryService inventoryService;
+    private final DispensingService dispensingService;
 
     @GetMapping("/dashboard")
     @Operation(summary = "Branch dashboard stats")
@@ -183,6 +185,15 @@ public class BranchManagerController {
         BranchManagerProfile profile = branchService.getBranchManagerProfile(user.getId());
         return ResponseEntity.ok(ApiResponse.success("Inventory retrieved",
                 inventoryService.getMedicinesByBranch(profile.getBranch().getId())));
+    }
+
+    @GetMapping("/orders")
+    @Operation(summary = "List all dispensing orders for this branch")
+    public ResponseEntity<ApiResponse<List<DispensingOrderResponse>>> getBranchOrders(
+            @AuthenticationPrincipal User user) {
+        BranchManagerProfile profile = branchService.getBranchManagerProfile(user.getId());
+        return ResponseEntity.ok(ApiResponse.success(
+                dispensingService.getOrdersByBranch(profile.getBranch().getId())));
     }
 
     @GetMapping("/reports")

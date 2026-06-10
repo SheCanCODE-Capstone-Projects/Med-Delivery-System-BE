@@ -3,6 +3,7 @@ package com.meddelivery.service;
  import com.meddelivery.dto.request.ManagerUpdateRequest;
  import com.meddelivery.dto.request.PharmacyInventoryRequest;
  import com.meddelivery.dto.request.PharmacyRegistrationRequest;
+import org.springframework.security.crypto.password.PasswordEncoder;
  import com.meddelivery.dto.response.InsuranceProviderResponse;
  import com.meddelivery.dto.response.PharmacyInventoryResponse;
  import com.meddelivery.dto.response.PharmacyResponse;
@@ -53,6 +54,7 @@ import org.springframework.stereotype.Service;
      private final PatientMapper patientMapper;
      private final InsuranceProviderRepository insuranceProviderRepository;
     private final BranchRepository branchRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Transactional
     public PharmacyResponse registerPharmacy(PharmacyRegistrationRequest request) {
@@ -68,6 +70,7 @@ import org.springframework.stereotype.Service;
                 .fullName(request.getManagerName())
                 .email(request.getManagerEmail())
                 .phoneNumber(request.getManagerPhone())
+                .password(passwordEncoder.encode(request.getManagerPassword()))
                 .role(UserRole.MANAGER)
                 .isActive(false)
                 .isVerified(false)
