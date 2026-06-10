@@ -23,6 +23,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.util.StringUtils;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
@@ -73,7 +74,7 @@ public class PharmacistService {
         User user = User.builder()
                 .fullName(request.getFullName())
                 .email(request.getEmail())
-                .phoneNumber(request.getPhoneNumber())
+                .phoneNumber(StringUtils.hasText(request.getPhoneNumber()) ? request.getPhoneNumber().trim() : null)
                 .role(UserRole.PHARMACIST)
                 .isActive(false)
                 .isVerified(false)
@@ -245,7 +246,7 @@ public class PharmacistService {
         User user = User.builder()
                 .fullName(request.getFullName())
                 .email(request.getEmail())
-                .phoneNumber(request.getPhoneNumber())
+                .phoneNumber(StringUtils.hasText(request.getPhoneNumber()) ? request.getPhoneNumber().trim() : null)
                 .role(UserRole.PHARMACIST)
                 .isActive(false)
                 .isVerified(false)

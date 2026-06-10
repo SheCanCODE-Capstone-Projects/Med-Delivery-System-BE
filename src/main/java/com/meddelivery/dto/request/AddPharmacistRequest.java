@@ -14,6 +14,5 @@ public class AddPharmacistRequest {
     @Email(message = "Must be a valid email address")
     private String email;
 
-    @NotBlank(message = "Phone number is required")
     private String phoneNumber;
 }
