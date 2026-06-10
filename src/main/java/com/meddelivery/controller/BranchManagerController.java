@@ -79,6 +79,14 @@ public class BranchManagerController {
         return ResponseEntity.ok(ApiResponse.success(pharmacists));
     }
 
+    @PostMapping("/pharmacists/{id}/resend-setup")
+    @Operation(summary = "Resend account setup email to a pharmacist who hasn't activated yet")
+    public ResponseEntity<ApiResponse<Void>> resendPharmacistSetup(
+            @PathVariable Long id) {
+        pharmacistService.resendSetupEmail(id);
+        return ResponseEntity.ok(ApiResponse.success("Setup email resent successfully", null));
+    }
+
     @PutMapping("/pharmacists/{id}/deactivate")
     @Operation(summary = "Deactivate a pharmacist account (does not delete)")
     public ResponseEntity<ApiResponse<Void>> deactivatePharmacist(

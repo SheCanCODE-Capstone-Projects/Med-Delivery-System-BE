@@ -1,5 +1,6 @@
 package com.meddelivery.service;
 
+import com.meddelivery.dto.response.PendingInvitationResponse;
 import com.meddelivery.exception.BusinessException;
 import com.meddelivery.model.InvitationToken;
 import com.meddelivery.repository.InvitationTokenRepository;
@@ -10,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Slf4j
@@ -93,6 +95,47 @@ public class InvitationService {
         return invitationTokenRepository.findByToken(token)
                 .map(InvitationToken::getType)
                 .orElseThrow(() -> new BusinessException("Invalid invitation link."));
+    }
+
+    @Transactional(readOnly = true)
+    public List<PendingInvitationResponse> getPendingPharmacyAdminInvitations() {
+        return invitationTokenRepository.findAllByTypeAndUsedFalse(TYPE_PHARMACY_ADMIN)
+                .stream()
+                .map(t -> PendingInvitationResponse.builder()
+                        .email(t.getEmail())
+                        .branchName(null)
+                        .sentAt(t.getCreatedAt())
+                        .expiresAt(t.getExpiresAt())
+                        .expired(t.getExpiresAt().isBefore(LocalDateTime.now()))
+                        .build())
+                .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<PendingInvitationResponse> getPendingBranchManagerInvitations(Long pharmacyId) {
+        String fragment = "%\"pharmacyId\":" + pharmacyId + "}";
+        return invitationTokenRepository.findPendingBranchManagersByPharmacy(fragment)
+                .stream()
+                .map(t -> PendingInvitationResponse.builder()
+                        .email(t.getEmail())
+                        .branchName(extractBranchName(t.getPayload()))
+                        .sentAt(t.getCreatedAt())
+                        .expiresAt(t.getExpiresAt())
+                        .expired(t.getExpiresAt().isBefore(LocalDateTime.now()))
+                        .build())
+                .toList();
+    }
+
+    private String extractBranchName(String payload) {
+        if (payload == null) return null;
+        try {
+            int start = payload.indexOf("\"branchName\":\"") + 14;
+            if (start < 14) return null;
+            int end = payload.indexOf("\"", start);
+            return end > start ? payload.substring(start, end) : null;
+        } catch (Exception e) {
+            return null;
+        }
     }
 
     @Transactional

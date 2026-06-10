@@ -239,6 +239,13 @@ public class AdminController {
 
     // ── Pharmacy Admin Invitation ────────────────────────────────────────────
 
+    @GetMapping("/pharmacy-admin/invitations/pending")
+    @Operation(summary = "List pending pharmacy admin invitations")
+    public ResponseEntity<ApiResponse<List<PendingInvitationResponse>>> getPendingPharmacyAdminInvitations() {
+        return ResponseEntity.ok(ApiResponse.success(
+                invitationService.getPendingPharmacyAdminInvitations()));
+    }
+
     @PostMapping("/pharmacy-admin/invite")
     @Operation(summary = "Invite a pharmacy admin by email")
     public ResponseEntity<ApiResponse<Void>> invitePharmacyAdmin(

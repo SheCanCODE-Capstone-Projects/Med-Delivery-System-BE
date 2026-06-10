@@ -4,6 +4,7 @@ import com.meddelivery.dto.request.InviteBranchManagerRequest;
 import com.meddelivery.dto.response.ApiResponse;
 import com.meddelivery.dto.response.BranchResponse;
 import com.meddelivery.dto.response.BranchStatsResponse;
+import com.meddelivery.dto.response.PendingInvitationResponse;
 import com.meddelivery.model.ManagerProfile;
 import com.meddelivery.model.User;
 import com.meddelivery.dto.response.report.PharmacyAdminReportResponse;
@@ -42,6 +43,15 @@ public class PharmacyBranchController {
                 request.getEmail(), request.getBranchName(), pharmacyId);
         return ResponseEntity.ok(ApiResponse.success(
                 "Invitation sent to " + request.getEmail(), null));
+    }
+
+    @GetMapping("/invitations/pending")
+    @Operation(summary = "List pending branch manager invitations for this pharmacy")
+    public ResponseEntity<ApiResponse<List<PendingInvitationResponse>>> getPendingInvitations(
+            @AuthenticationPrincipal User user) {
+        Long pharmacyId = resolvePharmacyId(user);
+        return ResponseEntity.ok(ApiResponse.success(
+                invitationService.getPendingBranchManagerInvitations(pharmacyId)));
     }
 
     @GetMapping

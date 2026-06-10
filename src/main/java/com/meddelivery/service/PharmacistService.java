@@ -162,6 +162,26 @@ public class PharmacistService {
         pharmacistRepository.delete(pharmacist);
     }
 
+    @Transactional(readOnly = true)
+    public void resendSetupEmail(Long pharmacistProfileId) {
+        PharmacistProfile pharmacist = pharmacistRepository.findById(pharmacistProfileId)
+                .orElseThrow(() -> new IllegalArgumentException("Pharmacist not found: " + pharmacistProfileId));
+        String email = pharmacist.getUser().getEmail();
+        String fullName = pharmacist.getUser().getFullName();
+        String locationName = pharmacist.getBranch() != null
+                ? pharmacist.getBranch().getName()
+                : pharmacist.getPharmacy().getName();
+        String encodedEmail = URLEncoder.encode(email, StandardCharsets.UTF_8);
+        String setupLink = frontendUrl + "/auth/verify-otp?username=" + encodedEmail + "&after=pharmacist-setup";
+        log.info("📧 [PHARMACIST RESEND] Resending setup email to {} for {}", email, locationName);
+        try {
+            String html = buildSetupEmailHtml(fullName, locationName, setupLink);
+            emailService.sendEmail(email, "Reminder: Set up your MedDelivery pharmacist account", html);
+        } catch (Exception e) {
+            throw new RuntimeException("Failed to resend setup email: " + e.getMessage());
+        }
+    }
+
     private String buildSetupEmailHtml(String fullName, String pharmacyName, String setupLink) {
         return "<!DOCTYPE html>" +
                "<html lang='en'><head><meta charset='UTF-8'>" +
