@@ -50,16 +50,29 @@ public class BranchService {
             throw new BusinessException("An account with this email already exists.");
         }
 
-        // Create the branch
-        Branch branch = Branch.builder()
-                .name(request.getBranchName())
-                .address(request.getAddress())
-                .latitude(request.getLatitude())
-                .longitude(request.getLongitude())
-                .contactInfo(StringUtils.hasText(request.getContactInfo()) ? request.getContactInfo().trim() : null)
-                .pharmacy(pharmacy)
-                .status(BranchStatus.ACTIVE)
-                .build();
+        // Reuse existing unmanaged branch (e.g. created by migration) or create a new one
+        Branch branch = branchRepository.findByNameAndPharmacyId(request.getBranchName(), pharmacyId)
+                .filter(b -> b.getBranchManagerProfile() == null)
+                .orElse(null);
+
+        if (branch == null) {
+            branch = Branch.builder()
+                    .name(request.getBranchName())
+                    .address(request.getAddress())
+                    .latitude(request.getLatitude())
+                    .longitude(request.getLongitude())
+                    .contactInfo(StringUtils.hasText(request.getContactInfo()) ? request.getContactInfo().trim() : null)
+                    .pharmacy(pharmacy)
+                    .status(BranchStatus.ACTIVE)
+                    .build();
+        } else {
+            // Update the placeholder branch with the manager's provided details
+            if (StringUtils.hasText(request.getAddress())) branch.setAddress(request.getAddress());
+            if (request.getLatitude() != null) branch.setLatitude(request.getLatitude());
+            if (request.getLongitude() != null) branch.setLongitude(request.getLongitude());
+            if (StringUtils.hasText(request.getContactInfo())) branch.setContactInfo(request.getContactInfo().trim());
+            branch.setStatus(BranchStatus.ACTIVE);
+        }
         branch = branchRepository.save(branch);
 
         // Create the branch manager user

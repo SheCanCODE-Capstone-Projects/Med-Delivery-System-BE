@@ -85,7 +85,7 @@ public class GlobalExceptionHandler {
         } else if (detail != null && detail.contains("contact_info")) {
             msg = "This contact information is already in use.";
         } else {
-            msg = "A data constraint was violated. Please check your input.";
+            msg = "Setup failed: " + (detail != null ? detail : "A data constraint was violated.");
         }
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ApiResponse.error(msg));
