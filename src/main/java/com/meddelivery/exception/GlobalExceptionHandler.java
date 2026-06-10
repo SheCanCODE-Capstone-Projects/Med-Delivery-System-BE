@@ -74,10 +74,19 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ApiResponse<Void>> handleDataIntegrity(DataIntegrityViolationException ex) {
-        log.warn("Data Integrity Violation: {}", ex.getMessage());
-        String msg = ex.getMessage() != null && ex.getMessage().contains("phone")
-                ? "This phone number is already in use by another account."
-                : "A data constraint was violated. Please check your input.";
+        Throwable root = ex.getMostSpecificCause();
+        String detail = root != null ? root.getMessage() : ex.getMessage();
+        log.warn("Data Integrity Violation — root cause: {}", detail);
+        String msg;
+        if (detail != null && detail.contains("phone_number")) {
+            msg = "This phone number is already in use by another account.";
+        } else if (detail != null && detail.contains("email")) {
+            msg = "This email address is already registered.";
+        } else if (detail != null && detail.contains("contact_info")) {
+            msg = "This contact information is already in use.";
+        } else {
+            msg = "A data constraint was violated. Please check your input.";
+        }
         return ResponseEntity.status(HttpStatus.CONFLICT)
                 .body(ApiResponse.error(msg));
     }
