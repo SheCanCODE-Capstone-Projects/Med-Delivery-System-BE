@@ -6,11 +6,17 @@ import com.meddelivery.dto.response.BranchResponse;
 import com.meddelivery.dto.response.BranchStatsResponse;
 import com.meddelivery.dto.response.PendingInvitationResponse;
 import com.meddelivery.model.ManagerProfile;
+import com.meddelivery.model.PharmacyInventory;
 import com.meddelivery.model.User;
 import com.meddelivery.dto.response.report.PharmacyAdminReportResponse;
+import com.meddelivery.repository.PharmacyInventoryRepository;
 import com.meddelivery.service.BranchService;
 import com.meddelivery.service.InvitationService;
+import com.meddelivery.service.PharmacistService;
 import com.meddelivery.service.ReportService;
+
+import java.math.BigDecimal;
+import java.util.Map;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -32,6 +38,8 @@ public class PharmacyBranchController {
     private final BranchService branchService;
     private final InvitationService invitationService;
     private final ReportService reportService;
+    private final PharmacistService pharmacistService;
+    private final PharmacyInventoryRepository inventoryRepository;
 
     @PostMapping("/invite")
     @Operation(summary = "Invite a branch manager (creates branch + sends email invite)")
@@ -90,6 +98,41 @@ public class PharmacyBranchController {
                 .map(b -> branchService.getBranchStats(b.getId()))
                 .toList();
         return ResponseEntity.ok(ApiResponse.success("Branch reports retrieved", stats));
+    }
+
+    @PutMapping("/pharmacists/{pharmacistId}/status")
+    @Operation(summary = "Activate or deactivate a pharmacist in this pharmacy")
+    public ResponseEntity<ApiResponse<Void>> setPharmacistStatus(
+            @AuthenticationPrincipal User user,
+            @PathVariable Long pharmacistId,
+            @RequestParam boolean active) {
+        Long pharmacyId = resolvePharmacyId(user);
+        pharmacistService.setPharmacistActiveStatus(pharmacyId, pharmacistId, active);
+        String msg = active ? "Pharmacist account activated" : "Pharmacist account deactivated";
+        return ResponseEntity.ok(ApiResponse.success(msg, null));
+    }
+
+    @GetMapping("/inventory")
+    @Operation(summary = "Inventory across all branches of this pharmacy")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getAllBranchesInventory(
+            @AuthenticationPrincipal User user) {
+        Long pharmacyId = resolvePharmacyId(user);
+        List<PharmacyInventory> items = inventoryRepository.findByPharmacyId(pharmacyId);
+        List<Map<String, Object>> rows = items.stream().map(inv -> {
+            int qty = inv.getQuantity() != null ? inv.getQuantity() : 0;
+            int threshold = inv.getLowStockThreshold() != null ? inv.getLowStockThreshold() : 10;
+            String status = qty == 0 ? "OUT_OF_STOCK" : qty <= threshold ? "LOW_STOCK" : "IN_STOCK";
+            BigDecimal price = inv.getPrice() != null ? inv.getPrice() : BigDecimal.ZERO;
+            return Map.<String, Object>of(
+                "medicineName", inv.getMedicine() != null ? inv.getMedicine().getName() : "—",
+                "branchName", inv.getBranch() != null ? inv.getBranch().getName() : "All Branches",
+                "quantity", qty,
+                "unit", inv.getUnit() != null ? inv.getUnit() : "",
+                "price", price,
+                "status", status
+            );
+        }).toList();
+        return ResponseEntity.ok(ApiResponse.success("Inventory retrieved", rows));
     }
 
     @GetMapping("/reports/comprehensive")

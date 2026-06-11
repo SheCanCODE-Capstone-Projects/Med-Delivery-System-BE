@@ -298,6 +298,30 @@ public class PharmacistService {
         log.info("Pharmacist {} deactivated by branch manager for branchId={}", pharmacistId, branchId);
     }
 
+    @Transactional
+    public void activatePharmacist(Long branchId, Long pharmacistId) {
+        PharmacistProfile pharmacist = pharmacistRepository.findByIdAndBranchId(pharmacistId, branchId)
+                .orElseThrow(() -> new IllegalArgumentException(
+                        "Pharmacist " + pharmacistId + " not found in branch " + branchId));
+        User user = pharmacist.getUser();
+        user.setActive(true);
+        userRepository.save(user);
+        log.info("Pharmacist {} activated by branch manager for branchId={}", pharmacistId, branchId);
+    }
+
+    @Transactional
+    public void setPharmacistActiveStatus(Long pharmacyId, Long pharmacistId, boolean active) {
+        PharmacistProfile pharmacist = pharmacistRepository.findById(pharmacistId)
+                .orElseThrow(() -> new IllegalArgumentException("Pharmacist " + pharmacistId + " not found"));
+        if (!pharmacist.getPharmacy().getId().equals(pharmacyId)) {
+            throw new IllegalArgumentException("Pharmacist does not belong to this pharmacy");
+        }
+        User user = pharmacist.getUser();
+        user.setActive(active);
+        userRepository.save(user);
+        log.info("Pharmacist {} active={} set by pharmacy manager pharmacyId={}", pharmacistId, active, pharmacyId);
+    }
+
     private PharmacistResponse mapToResponse(PharmacistProfile pharmacist) {
         User user = pharmacist.getUser();
 

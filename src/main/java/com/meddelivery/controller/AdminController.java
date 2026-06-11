@@ -102,11 +102,17 @@ public class AdminController {
     }
 
     @PostMapping("/pharmacies/{id}/suspend")
-    @Operation(summary = "Suspend Pharmacy")
+    @Operation(summary = "Suspend Pharmacy and deactivate all its users")
     public ResponseEntity<ApiResponse<Void>> suspendPharmacy(
             @PathVariable Long id,
             @RequestParam String reason) {
         return ResponseEntity.ok(adminService.suspendPharmacy(id, reason));
+    }
+
+    @PostMapping("/pharmacies/{id}/reactivate")
+    @Operation(summary = "Reactivate a suspended pharmacy and restore verified user accounts")
+    public ResponseEntity<ApiResponse<Void>> reactivatePharmacy(@PathVariable Long id) {
+        return ResponseEntity.ok(adminService.reactivatePharmacy(id));
     }
 
     @PutMapping("/pharmacies/{id}/manager")

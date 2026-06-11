@@ -97,6 +97,16 @@ public class BranchManagerController {
         return ResponseEntity.ok(ApiResponse.success("Pharmacist account deactivated", null));
     }
 
+    @PutMapping("/pharmacists/{id}/activate")
+    @Operation(summary = "Activate a pharmacist account")
+    public ResponseEntity<ApiResponse<Void>> activatePharmacist(
+            @AuthenticationPrincipal User user,
+            @PathVariable Long id) {
+        BranchManagerProfile profile = branchService.getBranchManagerProfile(user.getId());
+        pharmacistService.activatePharmacist(profile.getBranch().getId(), id);
+        return ResponseEntity.ok(ApiResponse.success("Pharmacist account activated", null));
+    }
+
     // ── Inventory Dashboard ───────────────────────────────────────────────────
 
     @GetMapping("/inventory/stats")

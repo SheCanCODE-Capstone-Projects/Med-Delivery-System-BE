@@ -59,6 +59,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
                 // ── Validate token ───────────────
                 if (jwtService.isTokenValid(jwt, userDetails)) {
 
+                    if (!userDetails.isEnabled()) {
+                        response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+                        response.setContentType("application/json");
+                        response.getWriter().write("{\"message\":\"Account is disabled\"}");
+                        return;
+                    }
+
                     UsernamePasswordAuthenticationToken authToken =
                             new UsernamePasswordAuthenticationToken(
                                     userDetails,

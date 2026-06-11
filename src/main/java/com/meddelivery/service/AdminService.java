@@ -60,6 +60,8 @@ public class AdminService {
     private final PaymentRepository paymentRepository;
     private final InsuranceCardRepository insuranceCardRepository;
     private final BranchRepository branchRepository;
+    private final PharmacistRepository pharmacistRepository;
+    private final BranchManagerProfileRepository branchManagerProfileRepository;
 
     // --- A. Executive Summary ---
 
@@ -304,12 +306,67 @@ public class AdminService {
     public ApiResponse<Void> suspendPharmacy(Long pharmacyId, String reason) {
         Pharmacy pharmacy = pharmacyRepository.findById(pharmacyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Pharmacy not found with id: " + pharmacyId));
-        
+
         pharmacy.setStatus(PharmacyStatus.SUSPENDED);
         pharmacyRepository.save(pharmacy);
-         
+        deactivatePharmacyUsers(pharmacy);
+
         logAudit("SUSPEND_PHARMACY", "Pharmacy ID: " + pharmacyId, "Reason: " + reason);
         return ApiResponse.success("Pharmacy suspended", (Void) null);
+    }
+
+    @Transactional
+    @Caching(evict = {
+            @CacheEvict(value = "pharmacies", key = "#pharmacyId"),
+            @CacheEvict(value = "activePharmacies", allEntries = true)
+    })
+    public ApiResponse<Void> reactivatePharmacy(Long pharmacyId) {
+        Pharmacy pharmacy = pharmacyRepository.findById(pharmacyId)
+                .orElseThrow(() -> new ResourceNotFoundException("Pharmacy not found with id: " + pharmacyId));
+
+        pharmacy.setStatus(PharmacyStatus.ACTIVE);
+        pharmacyRepository.save(pharmacy);
+        reactivatePharmacyUsers(pharmacy);
+
+        logAudit("REACTIVATE_PHARMACY", "Pharmacy ID: " + pharmacyId, "Pharmacy reactivated");
+        return ApiResponse.success("Pharmacy reactivated", (Void) null);
+    }
+
+    private void deactivatePharmacyUsers(Pharmacy pharmacy) {
+        if (pharmacy.getManagerProfile() != null) {
+            User m = pharmacy.getManagerProfile().getUser();
+            m.setActive(false);
+            userRepository.save(m);
+        }
+        pharmacistRepository.findAllByPharmacyId(pharmacy.getId()).forEach(p -> {
+            p.getUser().setActive(false);
+            userRepository.save(p.getUser());
+        });
+        branchRepository.findByPharmacyId(pharmacy.getId()).forEach(branch ->
+            branchManagerProfileRepository.findByBranchId(branch.getId()).ifPresent(bmp -> {
+                bmp.getUser().setActive(false);
+                userRepository.save(bmp.getUser());
+            })
+        );
+        log.info("Deactivated all users for suspended pharmacyId={}", pharmacy.getId());
+    }
+
+    private void reactivatePharmacyUsers(Pharmacy pharmacy) {
+        if (pharmacy.getManagerProfile() != null) {
+            User m = pharmacy.getManagerProfile().getUser();
+            if (m.isVerified()) { m.setActive(true); userRepository.save(m); }
+        }
+        pharmacistRepository.findAllByPharmacyId(pharmacy.getId()).forEach(p -> {
+            User u = p.getUser();
+            if (u.isVerified()) { u.setActive(true); userRepository.save(u); }
+        });
+        branchRepository.findByPharmacyId(pharmacy.getId()).forEach(branch ->
+            branchManagerProfileRepository.findByBranchId(branch.getId()).ifPresent(bmp -> {
+                User u = bmp.getUser();
+                if (u.isVerified()) { u.setActive(true); userRepository.save(u); }
+            })
+        );
+        log.info("Reactivated verified users for pharmacyId={}", pharmacy.getId());
     }
 
     @Cacheable("insuranceProviders")

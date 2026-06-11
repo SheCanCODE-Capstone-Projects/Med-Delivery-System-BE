@@ -173,7 +173,8 @@ import org.springframework.stereotype.Service;
      @Transactional(readOnly = true)
      @Cacheable(value = "activePharmacies")
      public List<PharmacyResponse> getActivePharmacies() {
-         return pharmacyRepository.findAllByStatus(PharmacyStatus.ACTIVE)
+         return pharmacyRepository.findAllByStatusIn(
+                         java.util.List.of(PharmacyStatus.ACTIVE, PharmacyStatus.PENDING_APPROVAL))
                  .stream()
                  .map(this::mapToResponse)
                  .collect(Collectors.toList());

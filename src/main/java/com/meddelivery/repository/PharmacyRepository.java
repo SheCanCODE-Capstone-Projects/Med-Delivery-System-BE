@@ -15,5 +15,7 @@ public interface PharmacyRepository extends JpaRepository<Pharmacy, Long> {
 
     List<Pharmacy> findAllByStatus(PharmacyStatus status);
 
+    List<Pharmacy> findAllByStatusIn(java.util.Collection<PharmacyStatus> statuses);
+
     Optional<Pharmacy> findByManagerProfile_UserId(Long userId);
 }
