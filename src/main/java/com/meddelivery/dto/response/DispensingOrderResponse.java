@@ -34,6 +34,7 @@ public class DispensingOrderResponse {
     private String patientBloodType;
     private String patientMedicalNotes;
     private String orderType;
+    private LocalDate patientDateOfBirth;
 
     // Prescription auto-check data
     private LocalDate prescriptionDate;

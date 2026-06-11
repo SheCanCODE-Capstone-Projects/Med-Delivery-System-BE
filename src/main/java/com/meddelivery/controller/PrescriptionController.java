@@ -7,7 +7,6 @@ import com.meddelivery.exception.BusinessException;
 import com.meddelivery.service.AiPrescriptionService;
 import com.meddelivery.service.FileStorageService;
 import com.meddelivery.service.PrescriptionService;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -18,7 +17,6 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.time.LocalDate;
 import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/patient/prescriptions")
@@ -59,15 +57,16 @@ public class PrescriptionController {
         if (prescriptionDateStr != null && !prescriptionDateStr.isBlank()) {
             request.setPrescriptionDate(LocalDate.parse(prescriptionDateStr));
         }
-        request.setHasStamp(hasStamp != null && hasStamp);
-        request.setHasSignature(hasSignature != null && hasSignature);
-
-        // Validate prescription structure via AI before saving
-        String validationError = aiPrescriptionService.validatePrescriptionStructure(fileUrl);
-        if (validationError != null) {
+        // Let AI detect stamp/signature from the actual image — never trust client-sent values
+        AiPrescriptionService.PrescriptionAnalysisResult analysis =
+                aiPrescriptionService.analyzeUploadedPrescription(fileUrl);
+        if (analysis.error != null) {
             fileStorageService.deleteFile(storedPath);
-            throw new BusinessException(validationError);
+            throw new BusinessException(analysis.error);
         }
+        // If AI ran, use its findings; if AI was unavailable fall back to client-provided values
+        request.setHasStamp(analysis.aiChecked ? analysis.hasStamp : (hasStamp != null && hasStamp));
+        request.setHasSignature(analysis.aiChecked ? analysis.hasSignature : (hasSignature != null && hasSignature));
 
         PrescriptionResponse response = prescriptionService.upload(request);
         return ResponseEntity

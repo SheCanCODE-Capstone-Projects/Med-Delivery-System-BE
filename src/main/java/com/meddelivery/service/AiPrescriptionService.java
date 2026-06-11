@@ -10,7 +10,6 @@ import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -114,19 +113,23 @@ public class AiPrescriptionService {
     }
 
     /**
-     * Checks prescription structure at upload time: is it a real prescription? Does it have a stamp, date, and medicines?
-     * Returns null if valid (or AI unavailable). Returns a user-facing error message if invalid.
+     * Analyses a prescription image at upload time.
+     * Returns a result containing:
+     *  - error: non-null user-facing message if the image is not a valid prescription
+     *  - hasStamp / hasSignature: what the AI actually detected (never trust client-sent values)
+     * When AI is disabled or the format is unsupported, returns a permissive result with no error
+     * and hasStamp/hasSignature both false so the pharmacist can verify manually.
      */
-    public String validatePrescriptionStructure(String fileUrl) {
+    public PrescriptionAnalysisResult analyzeUploadedPrescription(String fileUrl) {
         if (!aiEnabled) {
             log.warn("AI Validation is DISABLED. Skipping structure check.");
-            return null;
+            return PrescriptionAnalysisResult.aiUnavailable();
         }
         if (anthropicApiKey == null || anthropicApiKey.isBlank()) {
             log.warn("Anthropic API key not configured. Skipping structure validation.");
-            return null;
+            return PrescriptionAnalysisResult.aiUnavailable();
         }
-        if (fileUrl == null || fileUrl.isBlank()) return null;
+        if (fileUrl == null || fileUrl.isBlank()) return PrescriptionAnalysisResult.aiUnavailable();
 
         String storagePath = fileUrl.startsWith("/api/files/")
                 ? fileUrl.substring("/api/files/".length())
@@ -134,7 +137,7 @@ public class AiPrescriptionService {
 
         if (storagePath.startsWith("http")) {
             log.info("Remote URL prescription — skipping local structure validation.");
-            return null;
+            return PrescriptionAnalysisResult.aiUnavailable();
         }
 
         String lower = storagePath.toLowerCase();
@@ -145,7 +148,7 @@ public class AiPrescriptionService {
         else if (lower.endsWith(".webp")) mediaType = "image/webp";
         else {
             log.info("File format not supported for vision structure check — skipping.");
-            return null;
+            return PrescriptionAnalysisResult.aiUnavailable();
         }
 
         try {
@@ -155,16 +158,13 @@ public class AiPrescriptionService {
 
             String prompt =
                 "You are a medical prescription validator. Examine this image carefully.\n\n" +
-                "Check these 4 requirements:\n" +
-                "1. Is this a real medical prescription document (not a selfie, photo, ID card, or unrelated image)?\n" +
-                "2. Does it have a doctor's official stamp or seal?\n" +
-                "3. Does it have a date written on it?\n" +
-                "4. Does it list at least one medicine or drug name?\n\n" +
-                "Reply with ONLY 'OK' if all 4 checks pass.\n" +
-                "If any checks fail, reply with a comma-separated list of what is missing from:\n" +
-                "NOT_A_PRESCRIPTION, STAMP, DATE, MEDICINES\n" +
-                "Examples: 'STAMP,DATE' or 'NOT_A_PRESCRIPTION' or 'DATE,MEDICINES'\n" +
-                "Do not include any other text.";
+                "Answer each question with YES or NO on its own line in exactly this format:\n" +
+                "PRESCRIPTION: YES or NO  (is this a real medical prescription document, not a selfie/photo/ID/random image?)\n" +
+                "MEDICINES: YES or NO  (does it list at least one medicine or drug name?)\n" +
+                "STAMP: YES or NO  (does it have a doctor's official stamp or seal?)\n" +
+                "SIGNATURE: YES or NO  (does it have a doctor's handwritten signature?)\n" +
+                "DATE: YES or NO  (does it have a date written on it?)\n\n" +
+                "Respond with ONLY those 5 lines. No other text.";
 
             Map<String, Object> imageBlock = new LinkedHashMap<>();
             imageBlock.put("type", "image");
@@ -176,7 +176,7 @@ public class AiPrescriptionService {
 
             Map<String, Object> requestBody = new LinkedHashMap<>();
             requestBody.put("model", model);
-            requestBody.put("max_tokens", 50);
+            requestBody.put("max_tokens", 80);
             requestBody.put("messages", List.of(Map.of("role", "user", "content", List.of(imageBlock, textBlock))));
 
             Map<?, ?> response = webClientBuilder.build()
@@ -190,46 +190,81 @@ public class AiPrescriptionService {
                 .bodyToMono(Map.class)
                 .block();
 
-            if (response == null) { log.error("Claude returned null for structure validation"); return null; }
+            if (response == null) {
+                log.error("Claude returned null for structure validation");
+                return PrescriptionAnalysisResult.aiUnavailable();
+            }
 
             @SuppressWarnings("unchecked")
             List<Map<String, Object>> content = (List<Map<String, Object>>) response.get("content");
-            if (content == null || content.isEmpty()) return null;
+            if (content == null || content.isEmpty()) return PrescriptionAnalysisResult.aiUnavailable();
 
             String text = (String) content.get(0).get("text");
-            log.info("AI Prescription Structure Validation Result: {}", text);
-            if (text == null) return null;
+            log.info("AI Prescription Structure Analysis Result: {}", text);
+            if (text == null) return PrescriptionAnalysisResult.aiUnavailable();
 
-            String normalized = text.trim().toUpperCase().replaceAll("[^A-Z_,]", "");
-            if (normalized.equals("OK")) return null;
-
-            return buildStructureErrorMessage(normalized);
+            return parsePrescriptionAnalysis(text);
 
         } catch (IOException e) {
             log.error("Could not load prescription image for structure validation: {}", e.getMessage());
-            return null;
+            return PrescriptionAnalysisResult.aiUnavailable();
         } catch (WebClientResponseException e) {
             log.error("Claude API error during structure validation — status: {}, body: {}",
                     e.getStatusCode(), e.getResponseBodyAsString());
-            return null;
+            return PrescriptionAnalysisResult.aiUnavailable();
         } catch (Exception e) {
             log.error("AI prescription structure validation failed: {}", e.getMessage(), e);
-            return null;
+            return PrescriptionAnalysisResult.aiUnavailable();
         }
     }
 
-    private String buildStructureErrorMessage(String normalized) {
-        if (normalized.contains("NOT_A_PRESCRIPTION")) {
-            return "The uploaded image does not appear to be a medical prescription. Please upload a valid prescription document.";
+    private PrescriptionAnalysisResult parsePrescriptionAnalysis(String text) {
+        boolean isPrescription = extractYesNo(text, "PRESCRIPTION");
+        boolean hasMedicines   = extractYesNo(text, "MEDICINES");
+        boolean hasStamp       = extractYesNo(text, "STAMP");
+        boolean hasSignature   = extractYesNo(text, "SIGNATURE");
+
+        if (!isPrescription) {
+            return new PrescriptionAnalysisResult(
+                "The uploaded image does not appear to be a medical prescription. Please upload a valid prescription document.",
+                false, false);
         }
-        List<String> missing = new ArrayList<>();
-        if (normalized.contains("STAMP"))     missing.add("a doctor's stamp or seal");
-        if (normalized.contains("DATE"))      missing.add("a date");
-        if (normalized.contains("MEDICINES")) missing.add("written medicine names");
-        if (missing.isEmpty()) return null;
-        if (missing.size() == 1) return "Your prescription is missing " + missing.get(0) + ". Please upload a valid prescription.";
-        String last = missing.remove(missing.size() - 1);
-        return "Your prescription is missing: " + String.join(", ", missing) + " and " + last + ". Please upload a valid prescription.";
+        if (!hasMedicines) {
+            return new PrescriptionAnalysisResult(
+                "Your prescription does not appear to list any medicine names. Please upload a clear, complete prescription.",
+                hasStamp, hasSignature);
+        }
+        return new PrescriptionAnalysisResult(null, hasStamp, hasSignature);
+    }
+
+    private boolean extractYesNo(String text, String key) {
+        for (String line : text.split("\\n")) {
+            String upper = line.toUpperCase();
+            if (upper.startsWith(key + ":")) {
+                return upper.contains("YES");
+            }
+        }
+        return false;
+    }
+
+    public static class PrescriptionAnalysisResult {
+        public final String error;
+        public final boolean hasStamp;
+        public final boolean hasSignature;
+        public final boolean aiChecked;
+
+        public PrescriptionAnalysisResult(String error, boolean hasStamp, boolean hasSignature) {
+            this.error = error;
+            this.hasStamp = hasStamp;
+            this.hasSignature = hasSignature;
+            this.aiChecked = true;
+        }
+
+        static PrescriptionAnalysisResult aiUnavailable() {
+            return new PrescriptionAnalysisResult(null, false, false) {
+                @Override public String toString() { return "AI_UNAVAILABLE"; }
+            };
+        }
     }
 
     /**

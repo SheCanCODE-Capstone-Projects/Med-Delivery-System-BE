@@ -499,6 +499,7 @@ public class DispensingService {
                 .patientAllergies(patient.getAllergies())
                 .patientBloodType(patient.getBloodType())
                 .patientMedicalNotes(patient.getMedicalNotes())
+                .patientDateOfBirth(patient.getDateOfBirth())
                 .orderType(order.getOrderType() != null ? order.getOrderType().name() : null)
                 .prescriptionDate(prescriptionDate)
                 .hasStamp(hasStamp)
