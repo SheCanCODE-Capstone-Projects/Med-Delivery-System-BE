@@ -2,7 +2,6 @@ package com.meddelivery.controller;
 
 import com.meddelivery.config.TestRedisConfig;
 import com.meddelivery.dto.request.PrescriptionRequest;
-import com.meddelivery.dto.response.ApiResponse;
 import com.meddelivery.dto.response.PrescriptionResponse;
 import com.meddelivery.model.enums.FileType;
 import com.meddelivery.service.AiPrescriptionService;
@@ -48,7 +47,8 @@ class PrescriptionControllerTest {
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(prescriptionController).build();
-        lenient().when(aiPrescriptionService.validatePrescriptionStructure(any(String.class))).thenReturn(null);
+        lenient().when(aiPrescriptionService.analyzeUploadedPrescription(any(String.class)))
+                .thenReturn(new AiPrescriptionService.PrescriptionAnalysisResult(null, false, false));
     }
 
     @Test
