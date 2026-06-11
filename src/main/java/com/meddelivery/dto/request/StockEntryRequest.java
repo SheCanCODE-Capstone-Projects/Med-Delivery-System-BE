@@ -10,7 +10,6 @@ import java.time.LocalDate;
 @Data
 public class StockEntryRequest {
 
-    @NotNull(message = "Medicine ID is required")
     private Long medicineId;
 
     private String batchNumber;
