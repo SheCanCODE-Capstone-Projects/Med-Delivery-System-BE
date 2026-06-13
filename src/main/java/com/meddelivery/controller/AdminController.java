@@ -87,6 +87,12 @@ public class AdminController {
         return ResponseEntity.ok(adminService.updateUserStatus(id, request));
     }
 
+    @PatchMapping("/users/activate-by-email")
+    @Operation(summary = "Force-activate a user by email (sets isActive=true, isVerified=true)")
+    public ResponseEntity<ApiResponse<Void>> activateUserByEmail(@RequestParam String email) {
+        return ResponseEntity.ok(adminService.forceActivateUserByEmail(email));
+    }
+
     @GetMapping("/pharmacies/pending/{id}")
     @Operation(summary = "Get Pharmacy Details for Approval")
     public ResponseEntity<ApiResponse<PharmacyApprovalDetailResponse>> getApprovalDetails(@PathVariable Long id) {

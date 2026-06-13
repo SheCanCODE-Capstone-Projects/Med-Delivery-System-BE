@@ -493,6 +493,17 @@ public class AdminService {
     }
 
     @Transactional
+    public ApiResponse<Void> forceActivateUserByEmail(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + email));
+        user.setActive(true);
+        user.setVerified(true);
+        userRepository.save(user);
+        logAudit("FORCE_ACTIVATE_USER", "Email: " + email, "isActive=true, isVerified=true");
+        return ApiResponse.success("User activated", (Void) null);
+    }
+
+    @Transactional
     public ApiResponse<Void> forceCancelOrder(Long orderId, OrderInterventionRequest request) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new ResourceNotFoundException("Order not found with id: " + orderId));
