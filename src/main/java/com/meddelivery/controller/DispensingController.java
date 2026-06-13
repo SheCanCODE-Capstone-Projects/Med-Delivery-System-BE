@@ -181,10 +181,11 @@ public class DispensingController {
 
     @GetMapping("/reports/comprehensive")
     public ResponseEntity<ApiResponse<PharmacistReportResponse>> getComprehensiveReport(
-            @AuthenticationPrincipal User user) {
+            @AuthenticationPrincipal User user,
+            @RequestParam(defaultValue = "ALL_TIME") String period) {
         PharmacistResponse profile = pharmacistService.getPharmacistByUserId(user.getId());
         return ResponseEntity.ok(ApiResponse.success(
-                reportService.generatePharmacistReport(profile.getId(), user.getFullName())));
+                reportService.generatePharmacistReport(profile.getId(), user.getFullName(), period)));
     }
 
     @PostMapping("/insurance-cards/{id}/reject")

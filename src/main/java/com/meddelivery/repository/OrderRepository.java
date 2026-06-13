@@ -55,7 +55,7 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @Query("SELECT SUM(o.totalAmount) FROM Order o WHERE o.createdAt >= :startDate AND o.status = :status")
     java.math.BigDecimal sumTotalAmountByCreatedAtAfterAndStatus(@Param("startDate") LocalDateTime startDate, @Param("status") OrderStatus status);
 
-    // ── Report queries ────────────────────────────────────────────────────────
+    // ── Report queries (all-time) ─────────────────────────────────────────────
 
     List<Order> findByPatientProfileId(Long patientProfileId);
 
@@ -83,4 +83,36 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
 
     @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o WHERE o.status = :status")
     java.math.BigDecimal sumTotalAmountByStatus(@Param("status") OrderStatus status);
+
+    // ── Report queries (date-filtered) ────────────────────────────────────────
+
+    @Query("SELECT o FROM Order o WHERE o.patientProfile.id = :patientProfileId AND o.createdAt >= :start")
+    List<Order> findByPatientProfileIdAndCreatedAtAfter(@Param("patientProfileId") Long patientProfileId, @Param("start") LocalDateTime start);
+
+    @Query("SELECT o FROM Order o WHERE o.assignedPharmacist.id = :pharmacistId AND o.createdAt >= :start")
+    List<Order> findByAssignedPharmacistIdAndCreatedAtAfter(@Param("pharmacistId") Long pharmacistId, @Param("start") LocalDateTime start);
+
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.assignedPharmacy.id = :pharmacyId AND o.status = :status AND o.createdAt >= :start")
+    long countByAssignedPharmacyIdAndStatusAndCreatedAtAfter(@Param("pharmacyId") Long pharmacyId, @Param("status") OrderStatus status, @Param("start") LocalDateTime start);
+
+    @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o WHERE o.assignedPharmacy.id = :pharmacyId AND o.status = :status AND o.createdAt >= :start")
+    java.math.BigDecimal sumRevenueByPharmacyIdAndStatusAndCreatedAtAfter(@Param("pharmacyId") Long pharmacyId, @Param("status") OrderStatus status, @Param("start") LocalDateTime start);
+
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.assignedPharmacist IS NOT NULL AND o.assignedPharmacist.branch.id = :branchId AND o.createdAt >= :start")
+    long countByAssignedPharmacistBranchIdAndCreatedAtAfter(@Param("branchId") Long branchId, @Param("start") LocalDateTime start);
+
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.assignedPharmacist IS NOT NULL AND o.assignedPharmacist.branch.id = :branchId AND o.status = :status AND o.createdAt >= :start")
+    long countByAssignedPharmacistBranchIdAndStatusAndCreatedAtAfter(@Param("branchId") Long branchId, @Param("status") OrderStatus status, @Param("start") LocalDateTime start);
+
+    @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o WHERE o.assignedPharmacist IS NOT NULL AND o.assignedPharmacist.branch.id = :branchId AND o.status = :status AND o.createdAt >= :start")
+    java.math.BigDecimal sumRevenueByBranchIdAndStatusAndCreatedAtAfter(@Param("branchId") Long branchId, @Param("status") OrderStatus status, @Param("start") LocalDateTime start);
+
+    @Query("SELECT COUNT(DISTINCT o.patientProfile.id) FROM Order o WHERE o.assignedPharmacist IS NOT NULL AND o.assignedPharmacist.branch.id = :branchId AND o.createdAt >= :start")
+    long countDistinctPatientsByBranchIdAndCreatedAtAfter(@Param("branchId") Long branchId, @Param("start") LocalDateTime start);
+
+    @Query("SELECT COALESCE(SUM(o.totalAmount), 0) FROM Order o WHERE o.status = :status AND o.createdAt >= :start")
+    java.math.BigDecimal sumTotalAmountByStatusAndCreatedAtAfter(@Param("status") OrderStatus status, @Param("start") LocalDateTime start);
+
+    @Query("SELECT COUNT(o) FROM Order o WHERE o.createdAt >= :start AND o.status = :status AND o.assignedPharmacy.id = :pharmacyId")
+    long countByAssignedPharmacyIdAndStatusAfter(@Param("pharmacyId") Long pharmacyId, @Param("status") OrderStatus status, @Param("start") LocalDateTime start);
 }

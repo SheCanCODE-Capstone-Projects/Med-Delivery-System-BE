@@ -226,9 +226,10 @@ public class BranchManagerController {
     @GetMapping("/reports/comprehensive")
     @Operation(summary = "Comprehensive branch manager report")
     public ResponseEntity<ApiResponse<BranchManagerReportResponse>> getComprehensiveReport(
-            @AuthenticationPrincipal User user) {
+            @AuthenticationPrincipal User user,
+            @RequestParam(defaultValue = "ALL_TIME") String period) {
         BranchManagerProfile profile = branchService.getBranchManagerProfile(user.getId());
         return ResponseEntity.ok(ApiResponse.success(
-                reportService.generateBranchManagerReport(profile.getBranch().getId(), user.getFullName())));
+                reportService.generateBranchManagerReport(profile.getBranch().getId(), user.getFullName(), period)));
     }
 }

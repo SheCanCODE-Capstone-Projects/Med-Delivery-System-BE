@@ -309,8 +309,9 @@ public class AdminController {
     @GetMapping("/reports/comprehensive")
     @Operation(summary = "Generate comprehensive platform report")
     public ResponseEntity<ApiResponse<SuperAdminReportResponse>> getComprehensiveReport(
-            @AuthenticationPrincipal User user) {
+            @AuthenticationPrincipal User user,
+            @RequestParam(defaultValue = "ALL_TIME") String period) {
         return ResponseEntity.ok(ApiResponse.success(
-                reportService.generateSuperAdminReport(user.getFullName())));
+                reportService.generateSuperAdminReport(user.getFullName(), period)));
     }
 }

@@ -15,6 +15,7 @@ public class PharmacistReportResponse {
     private String pharmacyName;
     private String reportDate;
     private String generatedDate;
+    private String reportPeriod;
 
     // Summary
     private long prescriptionsReviewed;

@@ -14,6 +14,7 @@ public class PatientReportResponse {
     private Long patientId;
     private String reportDate;
     private String generatedDate;
+    private String reportPeriod;
 
     // Summary
     private long totalOrders;

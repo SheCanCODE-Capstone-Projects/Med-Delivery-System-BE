@@ -138,10 +138,11 @@ public class PharmacyBranchController {
     @GetMapping("/reports/comprehensive")
     @Operation(summary = "Comprehensive pharmacy admin report")
     public ResponseEntity<ApiResponse<PharmacyAdminReportResponse>> getComprehensiveReport(
-            @AuthenticationPrincipal User user) {
+            @AuthenticationPrincipal User user,
+            @RequestParam(defaultValue = "ALL_TIME") String period) {
         Long pharmacyId = resolvePharmacyId(user);
         return ResponseEntity.ok(ApiResponse.success(
-                reportService.generatePharmacyAdminReport(pharmacyId, user.getFullName())));
+                reportService.generatePharmacyAdminReport(pharmacyId, user.getFullName(), period)));
     }
 
     private Long resolvePharmacyId(User user) {

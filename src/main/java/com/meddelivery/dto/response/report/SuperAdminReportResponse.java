@@ -13,6 +13,7 @@ public class SuperAdminReportResponse {
 
     private String generatedBy;
     private String generatedDate;
+    private String reportPeriod;
 
     // Summary
     private long totalPharmacies;

@@ -35,16 +35,42 @@ public class ReportService {
 
     private static final DateTimeFormatter FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm");
 
+    private LocalDateTime resolveStartDate(String period) {
+        if (period == null || period.equalsIgnoreCase("ALL_TIME")) return null;
+        return switch (period.toUpperCase()) {
+            case "DAILY"  -> LocalDateTime.now().minusDays(1);
+            case "WEEKLY" -> LocalDateTime.now().minusWeeks(1);
+            case "YEARLY" -> LocalDateTime.now().minusYears(1);
+            default       -> LocalDateTime.now().minusMonths(1); // MONTHLY
+        };
+    }
+
+    private String periodLabel(String period) {
+        return switch (period == null ? "ALL_TIME" : period.toUpperCase()) {
+            case "DAILY"  -> "Today";
+            case "WEEKLY" -> "This Week";
+            case "YEARLY" -> "This Year";
+            case "ALL_TIME" -> "All Time";
+            default       -> "This Month";
+        };
+    }
+
     // ── Super Admin ───────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
-    public SuperAdminReportResponse generateSuperAdminReport(String adminName) {
+    public SuperAdminReportResponse generateSuperAdminReport(String adminName, String period) {
+        LocalDateTime startDate = resolveStartDate(period);
+
         List<Pharmacy> pharmacies = pharmacyRepository.findAll();
         long totalBranches = branchRepository.count();
         long totalUsers = userRepository.count();
         long totalPatients = patientProfileRepository.count();
-        long totalOrders = orderRepository.count();
-        BigDecimal totalRevenue = orderRepository.sumTotalAmountByStatus(OrderStatus.COMPLETED);
+        long totalOrders = startDate != null
+                ? orderRepository.countByCreatedAtAfter(startDate)
+                : orderRepository.count();
+        BigDecimal totalRevenue = startDate != null
+                ? orderRepository.sumTotalAmountByStatusAndCreatedAtAfter(OrderStatus.COMPLETED, startDate)
+                : orderRepository.sumTotalAmountByStatus(OrderStatus.COMPLETED);
 
         Map<String, Long> usersByRole = Arrays.stream(UserRole.values())
                 .collect(Collectors.toMap(Enum::name, r -> (long) userRepository.findByRole(r, PageRequest.of(0, 1)).getTotalElements()));
@@ -53,9 +79,14 @@ public class ReportService {
                 .map(p -> {
                     long branches = branchRepository.findByPharmacyId(p.getId()).size();
                     long staff = pharmacistRepository.countByPharmacyId(p.getId());
-                    long orders = orderRepository.countByAssignedPharmacyIdAndStatus(p.getId(), OrderStatus.COMPLETED)
-                            + orderRepository.countByAssignedPharmacyIdAndStatus(p.getId(), OrderStatus.READY_FOR_PICKUP);
-                    BigDecimal rev = orderRepository.sumRevenueByPharmacyIdAndStatus(p.getId(), OrderStatus.COMPLETED);
+                    long orders = startDate != null
+                            ? orderRepository.countByAssignedPharmacyIdAndStatusAndCreatedAtAfter(p.getId(), OrderStatus.COMPLETED, startDate)
+                              + orderRepository.countByAssignedPharmacyIdAndStatusAndCreatedAtAfter(p.getId(), OrderStatus.READY_FOR_PICKUP, startDate)
+                            : orderRepository.countByAssignedPharmacyIdAndStatus(p.getId(), OrderStatus.COMPLETED)
+                              + orderRepository.countByAssignedPharmacyIdAndStatus(p.getId(), OrderStatus.READY_FOR_PICKUP);
+                    BigDecimal rev = startDate != null
+                            ? orderRepository.sumRevenueByPharmacyIdAndStatusAndCreatedAtAfter(p.getId(), OrderStatus.COMPLETED, startDate)
+                            : orderRepository.sumRevenueByPharmacyIdAndStatus(p.getId(), OrderStatus.COMPLETED);
                     return SuperAdminReportResponse.PharmacyPerformanceRow.builder()
                             .pharmacyName(p.getName())
                             .branches(branches)
@@ -80,6 +111,7 @@ public class ReportService {
         return SuperAdminReportResponse.builder()
                 .generatedBy(adminName)
                 .generatedDate(LocalDateTime.now().format(FMT))
+                .reportPeriod(periodLabel(period))
                 .totalPharmacies(pharmacies.size())
                 .totalBranches(totalBranches)
                 .totalUsers(totalUsers)
@@ -95,22 +127,32 @@ public class ReportService {
     // ── Pharmacy Admin ────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
-    public PharmacyAdminReportResponse generatePharmacyAdminReport(Long pharmacyId, String managerName) {
+    public PharmacyAdminReportResponse generatePharmacyAdminReport(Long pharmacyId, String managerName, String period) {
+        LocalDateTime startDate = resolveStartDate(period);
+
         Pharmacy pharmacy = pharmacyRepository.findById(pharmacyId)
                 .orElseThrow(() -> new ResourceNotFoundException("Pharmacy not found: " + pharmacyId));
 
         List<Branch> branches = branchRepository.findByPharmacyId(pharmacyId);
         long totalStaff = pharmacistRepository.countByPharmacyId(pharmacyId);
         List<PharmacyInventory> allInventory = inventoryRepository.findByPharmacyId(pharmacyId);
-        BigDecimal revenue = orderRepository.sumRevenueByPharmacyIdAndStatus(pharmacyId, OrderStatus.COMPLETED);
-        long totalOrders = orderRepository.countByAssignedPharmacyIdAndStatus(pharmacyId, OrderStatus.COMPLETED)
-                + orderRepository.countByAssignedPharmacyIdAndStatus(pharmacyId, OrderStatus.READY_FOR_PICKUP)
-                + orderRepository.countByAssignedPharmacyIdAndStatus(pharmacyId, OrderStatus.CANCELLED);
+        BigDecimal revenue = startDate != null
+                ? orderRepository.sumRevenueByPharmacyIdAndStatusAndCreatedAtAfter(pharmacyId, OrderStatus.COMPLETED, startDate)
+                : orderRepository.sumRevenueByPharmacyIdAndStatus(pharmacyId, OrderStatus.COMPLETED);
+        long totalOrders = startDate != null
+                ? orderRepository.countByAssignedPharmacyIdAndStatusAndCreatedAtAfter(pharmacyId, OrderStatus.COMPLETED, startDate)
+                  + orderRepository.countByAssignedPharmacyIdAndStatusAndCreatedAtAfter(pharmacyId, OrderStatus.READY_FOR_PICKUP, startDate)
+                  + orderRepository.countByAssignedPharmacyIdAndStatusAndCreatedAtAfter(pharmacyId, OrderStatus.CANCELLED, startDate)
+                : orderRepository.countByAssignedPharmacyIdAndStatus(pharmacyId, OrderStatus.COMPLETED)
+                  + orderRepository.countByAssignedPharmacyIdAndStatus(pharmacyId, OrderStatus.READY_FOR_PICKUP)
+                  + orderRepository.countByAssignedPharmacyIdAndStatus(pharmacyId, OrderStatus.CANCELLED);
 
         List<PharmacyAdminReportResponse.BranchPerformanceRow> branchRows = branches.stream()
                 .map(b -> PharmacyAdminReportResponse.BranchPerformanceRow.builder()
                         .branchName(b.getName())
-                        .orders(orderRepository.countByAssignedPharmacistBranchId(b.getId()))
+                        .orders(startDate != null
+                                ? orderRepository.countByAssignedPharmacistBranchIdAndCreatedAtAfter(b.getId(), startDate)
+                                : orderRepository.countByAssignedPharmacistBranchId(b.getId()))
                         .pharmacists(pharmacistRepository.countByBranchId(b.getId()))
                         .inventoryItems(inventoryRepository.findByBranchId(b.getId()).size())
                         .status(b.getStatus() != null ? b.getStatus().name() : "ACTIVE")
@@ -148,7 +190,7 @@ public class ReportService {
 
         return PharmacyAdminReportResponse.builder()
                 .pharmacyName(pharmacy.getName())
-                .reportPeriod("All Time")
+                .reportPeriod(periodLabel(period))
                 .generatedBy(managerName)
                 .generatedDate(LocalDateTime.now().format(FMT))
                 .totalBranches(branches.size())
@@ -166,19 +208,35 @@ public class ReportService {
     // ── Branch Manager ────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
-    public BranchManagerReportResponse generateBranchManagerReport(Long branchId, String managerName) {
+    public BranchManagerReportResponse generateBranchManagerReport(Long branchId, String managerName, String period) {
+        LocalDateTime startDate = resolveStartDate(period);
+
         Branch branch = branchRepository.findById(branchId)
                 .orElseThrow(() -> new ResourceNotFoundException("Branch not found: " + branchId));
 
-        long totalOrders = orderRepository.countByAssignedPharmacistBranchId(branchId);
+        long totalOrders = startDate != null
+                ? orderRepository.countByAssignedPharmacistBranchIdAndCreatedAtAfter(branchId, startDate)
+                : orderRepository.countByAssignedPharmacistBranchId(branchId);
         long prescriptionOrders = 0;
-        long delivered = orderRepository.countByAssignedPharmacistBranchIdAndStatus(branchId, OrderStatus.COMPLETED);
-        long pending = orderRepository.countByAssignedPharmacistBranchIdAndStatus(branchId, OrderStatus.ASSIGNED)
-                + orderRepository.countByAssignedPharmacistBranchIdAndStatus(branchId, OrderStatus.STOCK_CONFIRMED)
-                + orderRepository.countByAssignedPharmacistBranchIdAndStatus(branchId, OrderStatus.READY_FOR_PICKUP);
-        long cancelled = orderRepository.countByAssignedPharmacistBranchIdAndStatus(branchId, OrderStatus.CANCELLED);
-        long patientsServed = orderRepository.countDistinctPatientsByBranchId(branchId);
-        BigDecimal revenue = orderRepository.sumRevenueByBranchIdAndStatus(branchId, OrderStatus.COMPLETED);
+        long delivered = startDate != null
+                ? orderRepository.countByAssignedPharmacistBranchIdAndStatusAndCreatedAtAfter(branchId, OrderStatus.COMPLETED, startDate)
+                : orderRepository.countByAssignedPharmacistBranchIdAndStatus(branchId, OrderStatus.COMPLETED);
+        long pending = startDate != null
+                ? orderRepository.countByAssignedPharmacistBranchIdAndStatusAndCreatedAtAfter(branchId, OrderStatus.ASSIGNED, startDate)
+                  + orderRepository.countByAssignedPharmacistBranchIdAndStatusAndCreatedAtAfter(branchId, OrderStatus.STOCK_CONFIRMED, startDate)
+                  + orderRepository.countByAssignedPharmacistBranchIdAndStatusAndCreatedAtAfter(branchId, OrderStatus.READY_FOR_PICKUP, startDate)
+                : orderRepository.countByAssignedPharmacistBranchIdAndStatus(branchId, OrderStatus.ASSIGNED)
+                  + orderRepository.countByAssignedPharmacistBranchIdAndStatus(branchId, OrderStatus.STOCK_CONFIRMED)
+                  + orderRepository.countByAssignedPharmacistBranchIdAndStatus(branchId, OrderStatus.READY_FOR_PICKUP);
+        long cancelled = startDate != null
+                ? orderRepository.countByAssignedPharmacistBranchIdAndStatusAndCreatedAtAfter(branchId, OrderStatus.CANCELLED, startDate)
+                : orderRepository.countByAssignedPharmacistBranchIdAndStatus(branchId, OrderStatus.CANCELLED);
+        long patientsServed = startDate != null
+                ? orderRepository.countDistinctPatientsByBranchIdAndCreatedAtAfter(branchId, startDate)
+                : orderRepository.countDistinctPatientsByBranchId(branchId);
+        BigDecimal revenue = startDate != null
+                ? orderRepository.sumRevenueByBranchIdAndStatusAndCreatedAtAfter(branchId, OrderStatus.COMPLETED, startDate)
+                : orderRepository.sumRevenueByBranchIdAndStatus(branchId, OrderStatus.COMPLETED);
         int pharmacistCount = (int) pharmacistRepository.countByBranchId(branchId);
 
         List<PharmacistProfile> pharmacists = pharmacistRepository.findAllByBranchId(branchId);
@@ -189,7 +247,9 @@ public class ReportService {
         Map<String, Long> medicineSales = new LinkedHashMap<>();
 
         for (PharmacistProfile ph : pharmacists) {
-            List<Order> phOrders = orderRepository.findByAssignedPharmacistId(ph.getId());
+            List<Order> phOrders = startDate != null
+                    ? orderRepository.findByAssignedPharmacistIdAndCreatedAtAfter(ph.getId(), startDate)
+                    : orderRepository.findByAssignedPharmacistId(ph.getId());
             long handled = phOrders.size();
             staffRows.add(BranchManagerReportResponse.StaffActivityRow.builder()
                     .pharmacistName(ph.getUser().getFullName())
@@ -235,7 +295,7 @@ public class ReportService {
         return BranchManagerReportResponse.builder()
                 .branchName(branch.getName())
                 .managerName(managerName)
-                .reportPeriod("All Time")
+                .reportPeriod(periodLabel(period))
                 .generatedDate(LocalDateTime.now().format(FMT))
                 .revenue(revenue != null ? revenue : BigDecimal.ZERO)
                 .totalOrders(totalOrders)
@@ -255,11 +315,15 @@ public class ReportService {
     // ── Pharmacist ────────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
-    public PharmacistReportResponse generatePharmacistReport(Long pharmacistProfileId, String pharmacistName) {
+    public PharmacistReportResponse generatePharmacistReport(Long pharmacistProfileId, String pharmacistName, String period) {
+        LocalDateTime startDate = resolveStartDate(period);
+
         PharmacistProfile ph = pharmacistRepository.findById(pharmacistProfileId)
                 .orElseThrow(() -> new ResourceNotFoundException("Pharmacist profile not found: " + pharmacistProfileId));
 
-        List<Order> orders = orderRepository.findByAssignedPharmacistId(pharmacistProfileId);
+        List<Order> orders = startDate != null
+                ? orderRepository.findByAssignedPharmacistIdAndCreatedAtAfter(pharmacistProfileId, startDate)
+                : orderRepository.findByAssignedPharmacistId(pharmacistProfileId);
 
         long approved = orders.stream()
                 .filter(o -> o.getPrescription() != null && "VALIDATED".equals(o.getPrescription().getValidationStatus()))
@@ -323,6 +387,7 @@ public class ReportService {
                 .pharmacyName(ph.getPharmacy() != null ? ph.getPharmacy().getName() : "—")
                 .reportDate(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")))
                 .generatedDate(LocalDateTime.now().format(FMT))
+                .reportPeriod(periodLabel(period))
                 .prescriptionsReviewed(reviewed)
                 .prescriptionsApproved(approved)
                 .prescriptionsRejected(rejected)
@@ -334,17 +399,20 @@ public class ReportService {
     }
 
     @Transactional(readOnly = true)
-    public PatientReportResponse generatePatientReportByUserId(Long userId) {
+    public PatientReportResponse generatePatientReportByUserId(Long userId, String period) {
         PatientProfile profile = patientProfileRepository.findByUserId(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("Patient profile not found for user: " + userId));
-        return generatePatientReport(profile.getId(), profile.getUser().getFullName());
+        return generatePatientReport(profile.getId(), profile.getUser().getFullName(), period);
     }
 
     // ── Patient ───────────────────────────────────────────────────────────────
 
     @Transactional(readOnly = true)
-    public PatientReportResponse generatePatientReport(Long patientProfileId, String patientName) {
-        List<Order> orders = orderRepository.findByPatientProfileId(patientProfileId);
+    public PatientReportResponse generatePatientReport(Long patientProfileId, String patientName, String period) {
+        LocalDateTime startDate = resolveStartDate(period);
+        List<Order> orders = startDate != null
+                ? orderRepository.findByPatientProfileIdAndCreatedAtAfter(patientProfileId, startDate)
+                : orderRepository.findByPatientProfileId(patientProfileId);
         PatientProfile patient = patientProfileRepository.findById(patientProfileId)
                 .orElseThrow(() -> new ResourceNotFoundException("Patient profile not found: " + patientProfileId));
 
@@ -406,6 +474,7 @@ public class ReportService {
                 .patientId(patientProfileId)
                 .reportDate(LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")))
                 .generatedDate(LocalDateTime.now().format(FMT))
+                .reportPeriod(periodLabel(period))
                 .totalOrders(orders.size())
                 .totalPrescriptions(totalPrescriptions)
                 .totalAmountSpent(totalSpent)

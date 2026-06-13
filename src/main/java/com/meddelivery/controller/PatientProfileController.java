@@ -168,8 +168,9 @@ public class PatientProfileController {
      @Operation(summary = "Generate comprehensive patient medical report")
      @GetMapping("/reports/comprehensive")
      public ResponseEntity<ApiResponse<PatientReportResponse>> getComprehensiveReport(
-             @AuthenticationPrincipal User user) {
+             @AuthenticationPrincipal User user,
+             @RequestParam(defaultValue = "ALL_TIME") String period) {
          return ResponseEntity.ok(ApiResponse.success(
-                 reportService.generatePatientReportByUserId(user.getId())));
+                 reportService.generatePatientReportByUserId(user.getId(), period)));
      }
   }
