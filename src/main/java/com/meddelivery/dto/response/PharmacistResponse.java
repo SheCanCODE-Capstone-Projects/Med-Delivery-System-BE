@@ -1,5 +1,6 @@
 package com.meddelivery.dto.response;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Data;
 
@@ -26,7 +27,9 @@ public class PharmacistResponse {
     private String branchName;
 
     // Account status — false until pharmacist clicks activation link
+    @JsonProperty("isActive")
     private boolean isActive;
+    @JsonProperty("isVerified")
     private boolean isVerified;
 
     private LocalDateTime createdAt;
