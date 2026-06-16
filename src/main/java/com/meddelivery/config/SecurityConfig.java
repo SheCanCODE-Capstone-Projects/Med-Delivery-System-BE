@@ -53,6 +53,7 @@ public class SecurityConfig {
             "/v3/api-docs/**",
             "/login/oauth2/**",
             "/oauth2/**",
+            "/ws/**",
             "/actuator/health",
             "/health",
             "/error"
