@@ -35,6 +35,7 @@ public class SecurityConfig {
     private final JwtAuthFilter jwtAuthFilter;
     private final UserDetailsService userDetailsService;
     private final OAuth2SuccessHandler oauth2SuccessHandler;
+    private final OAuth2FailureHandler oauth2FailureHandler;
 
     @Value("${app.cors.allowed-origins:http://localhost:3000,http://localhost:4200,http://localhost:5173}")
     private String[] allowedOrigins;
@@ -103,6 +104,7 @@ public class SecurityConfig {
             // ── OAuth2 ───────────────────────────
             .oauth2Login(oauth2 -> oauth2
                 .successHandler(oauth2SuccessHandler)
+                .failureHandler(oauth2FailureHandler)
             )
 
             // ── JWT Filter ───────────────────────

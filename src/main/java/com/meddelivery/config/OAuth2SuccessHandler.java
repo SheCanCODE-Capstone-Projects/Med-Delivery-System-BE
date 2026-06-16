@@ -56,8 +56,15 @@ public class OAuth2SuccessHandler
         log.info("OAuth2 login: {} via {}", email, provider);
 
         // ── Find or create user ──────────────────
-        User user = findOrCreateUser(
-                email, name, providerId, provider);
+        User user;
+        try {
+            user = findOrCreateUser(email, name, providerId, provider);
+        } catch (BadCredentialsException ex) {
+            log.warn("OAuth2 login blocked for {}: {}", email, ex.getMessage());
+            String errorMsg = URLEncoder.encode(ex.getMessage(), StandardCharsets.UTF_8);
+            response.sendRedirect(frontendUrl + "/auth/login?error=" + errorMsg);
+            return;
+        }
 
         // ── Generate JWT & Refresh Token ────────────
         String token = jwtService.generateToken(user);
