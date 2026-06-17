@@ -5,6 +5,7 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 @Data
 @Builder
@@ -26,6 +27,11 @@ public class PatientReportResponse {
     private List<PrescriptionHistoryRow> prescriptionHistory;
     private List<PurchasedMedicineRow> purchasedMedicines;
     private List<DeliveryRow> deliveryHistory;
+
+    // Analytics (last 6 months)
+    private List<MonthlyPoint> ordersByMonth;
+    private List<MonthlyPoint> revenueByMonth;
+    private Map<String, Long> ordersByStatus;
 
     @Data
     @Builder

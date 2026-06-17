@@ -4,6 +4,7 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.util.List;
+import java.util.Map;
 
 @Data
 @Builder
@@ -27,6 +28,11 @@ public class PharmacistReportResponse {
     private List<PrescriptionRow> processedPrescriptions;
     private List<DispensedMedicineRow> dispensedMedicines;
     private List<RejectedPrescriptionRow> rejectedPrescriptions;
+
+    // Analytics (last 6 months)
+    private List<MonthlyPoint> ordersByMonth;
+    private List<MonthlyPoint> revenueByMonth;
+    private Map<String, Long> ordersByStatus;
 
     @Data
     @Builder

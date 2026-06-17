@@ -1,13 +1,16 @@
 package com.meddelivery.controller;
 
 import com.meddelivery.dto.request.BranchSetupRequest;
+import com.meddelivery.dto.request.PharmacistSetupRequest;
 import com.meddelivery.dto.request.PharmacyAdminSetupRequest;
 import com.meddelivery.dto.response.ApiResponse;
+import com.meddelivery.dto.response.AuthResponse;
 import com.meddelivery.dto.response.BranchResponse;
 import com.meddelivery.dto.response.PharmacyResponse;
 import com.meddelivery.model.InvitationToken;
 import com.meddelivery.service.BranchService;
 import com.meddelivery.service.InvitationService;
+import com.meddelivery.service.PharmacistSetupService;
 import com.meddelivery.service.PharmacyAdminSetupService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -27,6 +30,7 @@ public class InvitationController {
     private final InvitationService invitationService;
     private final BranchService branchService;
     private final PharmacyAdminSetupService pharmacyAdminSetupService;
+    private final PharmacistSetupService pharmacistSetupService;
 
     @GetMapping("/validate")
     @Operation(summary = "Validate invitation token and return pre-filled info")
@@ -58,5 +62,14 @@ public class InvitationController {
         BranchResponse response = branchService.setupBranchFromInvitation(request);
         return ResponseEntity.ok(ApiResponse.success(
                 "Branch created and account activated. You can now log in.", response));
+    }
+
+    @PostMapping("/pharmacist-setup")
+    @Operation(summary = "Complete pharmacist setup from invitation")
+    public ResponseEntity<ApiResponse<AuthResponse>> setupPharmacist(
+            @Valid @RequestBody PharmacistSetupRequest request) {
+        AuthResponse response = pharmacistSetupService.setupFromInvitation(request);
+        return ResponseEntity.ok(ApiResponse.success(
+                "Account activated successfully. You are now signed in.", response));
     }
 }

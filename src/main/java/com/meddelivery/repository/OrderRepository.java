@@ -92,6 +92,15 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     @Query("SELECT o FROM Order o WHERE o.assignedPharmacist.id = :pharmacistId AND o.createdAt >= :start")
     List<Order> findByAssignedPharmacistIdAndCreatedAtAfter(@Param("pharmacistId") Long pharmacistId, @Param("start") LocalDateTime start);
 
+    // ── Analytics time-series source lists (last N months) ────────────────────
+    @EntityGraph(attributePaths = {"orderItems", "orderItems.medicine"})
+    @Query("SELECT o FROM Order o WHERE o.assignedPharmacy.id = :pharmacyId AND o.createdAt >= :start")
+    List<Order> findByAssignedPharmacyIdAndCreatedAtAfter(@Param("pharmacyId") Long pharmacyId, @Param("start") LocalDateTime start);
+
+    @EntityGraph(attributePaths = {"orderItems", "orderItems.medicine"})
+    @Query("SELECT o FROM Order o WHERE o.assignedPharmacist IS NOT NULL AND o.assignedPharmacist.branch.id = :branchId AND o.createdAt >= :start")
+    List<Order> findByAssignedPharmacistBranchIdAndCreatedAtAfter(@Param("branchId") Long branchId, @Param("start") LocalDateTime start);
+
     @Query("SELECT COUNT(o) FROM Order o WHERE o.assignedPharmacy.id = :pharmacyId AND o.status = :status AND o.createdAt >= :start")
     long countByAssignedPharmacyIdAndStatusAndCreatedAtAfter(@Param("pharmacyId") Long pharmacyId, @Param("status") OrderStatus status, @Param("start") LocalDateTime start);
 

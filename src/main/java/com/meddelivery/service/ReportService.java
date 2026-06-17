@@ -15,7 +15,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
+import java.time.format.TextStyle;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -53,6 +55,65 @@ public class ReportService {
             case "ALL_TIME" -> "All Time";
             default       -> "This Month";
         };
+    }
+
+    // ── Analytics (last 6 months) helper ───────────────────────────────────────
+
+    private static final int ANALYTICS_MONTHS = 6;
+
+    /** Start of the analytics window: first day of the month {@code ANALYTICS_MONTHS - 1} months ago. */
+    LocalDateTime analyticsWindowStart() {
+        return YearMonth.now().minusMonths(ANALYTICS_MONTHS - 1L).atDay(1).atStartOfDay();
+    }
+
+    private record AnalyticsBundle(List<MonthlyPoint> ordersByMonth,
+                                   List<MonthlyPoint> revenueByMonth,
+                                   Map<String, Long> ordersByStatus) {}
+
+    /**
+     * Buckets a list of orders (already scoped to the last {@code ANALYTICS_MONTHS} months) into
+     * order-count-per-month, completed-revenue-per-month, and a status breakdown.
+     */
+    private AnalyticsBundle buildAnalytics(List<Order> orders) {
+        List<YearMonth> months = new ArrayList<>();
+        YearMonth current = YearMonth.now();
+        for (int i = ANALYTICS_MONTHS - 1; i >= 0; i--) months.add(current.minusMonths(i));
+
+        Map<YearMonth, Long> countByMonth = new LinkedHashMap<>();
+        Map<YearMonth, BigDecimal> revenueByMonth = new LinkedHashMap<>();
+        months.forEach(ym -> { countByMonth.put(ym, 0L); revenueByMonth.put(ym, BigDecimal.ZERO); });
+
+        Map<String, Long> ordersByStatus = new LinkedHashMap<>();
+        for (Order o : orders) {
+            if (o.getCreatedAt() != null) {
+                YearMonth ym = YearMonth.from(o.getCreatedAt());
+                if (countByMonth.containsKey(ym)) {
+                    countByMonth.merge(ym, 1L, Long::sum);
+                    if (o.getStatus() == OrderStatus.COMPLETED && o.getTotalAmount() != null) {
+                        revenueByMonth.merge(ym, o.getTotalAmount(), BigDecimal::add);
+                    }
+                }
+            }
+            if (o.getStatus() != null) {
+                ordersByStatus.merge(o.getStatus().name(), 1L, Long::sum);
+            }
+        }
+
+        List<MonthlyPoint> orderPoints = months.stream()
+                .map(ym -> MonthlyPoint.builder()
+                        .month(ym.getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH))
+                        .value(BigDecimal.valueOf(countByMonth.get(ym)))
+                        .build())
+                .collect(Collectors.toList());
+
+        List<MonthlyPoint> revenuePoints = months.stream()
+                .map(ym -> MonthlyPoint.builder()
+                        .month(ym.getMonth().getDisplayName(TextStyle.SHORT, Locale.ENGLISH))
+                        .value(revenueByMonth.get(ym))
+                        .build())
+                .collect(Collectors.toList());
+
+        return new AnalyticsBundle(orderPoints, revenuePoints, ordersByStatus);
     }
 
     // ── Super Admin ───────────────────────────────────────────────────────────
@@ -188,6 +249,9 @@ public class ReportService {
                         .build())
                 .collect(Collectors.toList());
 
+        AnalyticsBundle analytics = buildAnalytics(
+                orderRepository.findByAssignedPharmacyIdAndCreatedAtAfter(pharmacyId, analyticsWindowStart()));
+
         return PharmacyAdminReportResponse.builder()
                 .pharmacyName(pharmacy.getName())
                 .reportPeriod(periodLabel(period))
@@ -202,6 +266,9 @@ public class ReportService {
                 .staffSummary(staffRows)
                 .inventorySummary(inventoryRows)
                 .lowStockMedicines(lowStockRows)
+                .ordersByMonth(analytics.ordersByMonth())
+                .revenueByMonth(analytics.revenueByMonth())
+                .ordersByStatus(analytics.ordersByStatus())
                 .build();
     }
 
@@ -292,6 +359,9 @@ public class ReportService {
                         .build())
                 .collect(Collectors.toList());
 
+        AnalyticsBundle analytics = buildAnalytics(
+                orderRepository.findByAssignedPharmacistBranchIdAndCreatedAtAfter(branchId, analyticsWindowStart()));
+
         return BranchManagerReportResponse.builder()
                 .branchName(branch.getName())
                 .managerName(managerName)
@@ -309,6 +379,9 @@ public class ReportService {
                 .prescriptions(prescriptionRows)
                 .inventoryReport(inventoryRows)
                 .staffActivities(staffRows)
+                .ordersByMonth(analytics.ordersByMonth())
+                .revenueByMonth(analytics.revenueByMonth())
+                .ordersByStatus(analytics.ordersByStatus())
                 .build();
     }
 
@@ -380,6 +453,9 @@ public class ReportService {
                 })
                 .collect(Collectors.toList());
 
+        AnalyticsBundle analytics = buildAnalytics(
+                orderRepository.findByAssignedPharmacistIdAndCreatedAtAfter(pharmacistProfileId, analyticsWindowStart()));
+
         return PharmacistReportResponse.builder()
                 .pharmacistName(pharmacistName)
                 .pharmacistId(ph.getPharmacistUniqueId())
@@ -395,6 +471,9 @@ public class ReportService {
                 .processedPrescriptions(prescriptionRows)
                 .dispensedMedicines(dispensedRows)
                 .rejectedPrescriptions(rejectedRows)
+                .ordersByMonth(analytics.ordersByMonth())
+                .revenueByMonth(analytics.revenueByMonth())
+                .ordersByStatus(analytics.ordersByStatus())
                 .build();
     }
 
@@ -469,6 +548,9 @@ public class ReportService {
                         .build())
                 .collect(Collectors.toList());
 
+        AnalyticsBundle analytics = buildAnalytics(
+                orderRepository.findByPatientProfileIdAndCreatedAtAfter(patientProfileId, analyticsWindowStart()));
+
         return PatientReportResponse.builder()
                 .patientName(patientName)
                 .patientId(patientProfileId)
@@ -482,6 +564,9 @@ public class ReportService {
                 .prescriptionHistory(rxRows)
                 .purchasedMedicines(medicineRows)
                 .deliveryHistory(deliveryRows)
+                .ordersByMonth(analytics.ordersByMonth())
+                .revenueByMonth(analytics.revenueByMonth())
+                .ordersByStatus(analytics.ordersByStatus())
                 .build();
     }
 }

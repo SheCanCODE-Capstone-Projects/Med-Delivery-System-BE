@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -27,6 +28,7 @@ public class InvitationService {
 
     public static final String TYPE_PHARMACY_ADMIN = "PHARMACY_ADMIN";
     public static final String TYPE_BRANCH_MANAGER = "BRANCH_MANAGER";
+    public static final String TYPE_PHARMACIST = "PHARMACIST";
 
     @Transactional
     public void createPharmacyAdminInvitation(String email) {
@@ -76,6 +78,34 @@ public class InvitationService {
             emailService.sendEmail(email, "You've been invited to manage a branch on MedDelivery", html);
         } catch (Exception e) {
             log.warn("Failed to send branch manager invite email to {}: {}", email, e.getMessage());
+        }
+    }
+
+    @Transactional
+    public void createPharmacistInvitation(String email, String locationName) {
+        // Invalidate any existing unused token for the same email
+        invitationTokenRepository.findByEmailAndTypeAndUsedFalse(email, TYPE_PHARMACIST)
+                .ifPresent(t -> { t.setUsed(true); invitationTokenRepository.save(t); });
+
+        String token = UUID.randomUUID().toString();
+        String safeName = locationName == null ? "" : locationName.replace("\"", "\\\"");
+        String payload = "{\"locationName\":\"" + safeName + "\"}";
+        InvitationToken invitation = InvitationToken.builder()
+                .token(token)
+                .email(email)
+                .type(TYPE_PHARMACIST)
+                .payload(payload)
+                .expiresAt(LocalDateTime.now().plusHours(48))
+                .build();
+        invitationTokenRepository.save(invitation);
+
+        String link = frontendUrl + "/auth/pharmacist-setup?token=" + token;
+        log.info("📧 [PHARMACIST INVITE] Email: {} | Location: {} | Link: {}", email, locationName, link);
+        try {
+            String html = buildPharmacistInviteEmail(locationName, link);
+            emailService.sendEmail(email, "You've been invited to set up your MedDelivery pharmacist account", html);
+        } catch (Exception e) {
+            log.warn("Failed to send pharmacist invite email to {}: {}", email, e.getMessage());
         }
     }
 
@@ -158,6 +188,23 @@ public class InvitationService {
                   <p style="margin-top:16px;color:#666;font-size:12px;">This link expires in 48 hours. If you did not expect this email, please ignore it.</p>
                 </div>
                 """.formatted(setupLink);
+    }
+
+    private String buildPharmacistInviteEmail(String locationName, String setupLink) {
+        String where = StringUtils.hasText(locationName)
+                ? " as a pharmacist at <strong>" + locationName + "</strong>"
+                : " as a pharmacist";
+        return """
+                <div style="font-family:Arial,sans-serif;max-width:600px;margin:0 auto;padding:24px;">
+                  <h2 style="color:#0E9384;">Welcome to MedDelivery</h2>
+                  <p>You have been invited to join MedDelivery%s.</p>
+                  <p>Click the button below to set your name and password and activate your account:</p>
+                  <a href="%s" style="display:inline-block;background:#0E9384;color:#fff;padding:12px 24px;border-radius:8px;text-decoration:none;font-weight:bold;">
+                    Set Up My Account
+                  </a>
+                  <p style="margin-top:16px;color:#666;font-size:12px;">This link expires in 48 hours. If you did not expect this email, please ignore it.</p>
+                </div>
+                """.formatted(where, setupLink);
     }
 
     private String buildBranchManagerInviteEmail(String email, String branchName, String setupLink) {

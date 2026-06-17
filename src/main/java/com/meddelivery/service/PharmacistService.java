@@ -21,15 +21,12 @@ import com.meddelivery.repository.UserRepository;
 import com.meddelivery.service.OrderService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.util.StringUtils;
 import org.springframework.cache.annotation.Cacheable;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -45,10 +42,7 @@ public class PharmacistService {
     private final UserRepository userRepository;
     private final PrescriptionRepository prescriptionRepository;
     private final OrderService orderService;
-    private final SendGridEmailService emailService;
-
-    @Value("${app.frontend.url}")
-    private String frontendUrl;
+    private final InvitationService invitationService;
 
     @Transactional
     @CacheEvict(value = "pharmacists", key = "#pharmacyId")
@@ -89,15 +83,7 @@ public class PharmacistService {
 
         PharmacistProfile saved = pharmacistRepository.save(pharmacist);
 
-        String encodedEmail = URLEncoder.encode(request.getEmail(), StandardCharsets.UTF_8);
-        String setupLink = frontendUrl + "/auth/verify-otp?username=" + encodedEmail + "&after=pharmacist-setup";
-        log.info("🔗 [PHARMACIST SETUP LINK] Email: {} | Link: {}", request.getEmail(), setupLink);
-        try {
-            String html = buildSetupEmailHtml(request.getEmail(), pharmacy.getName(), setupLink);
-            emailService.sendEmail(request.getEmail(), "You've been invited to " + pharmacy.getName() + " — Set up your account", html);
-        } catch (Exception e) {
-            log.warn("Failed to send pharmacist setup email to {}: {}", request.getEmail(), e.getMessage());
-        }
+        invitationService.createPharmacistInvitation(request.getEmail(), pharmacy.getName());
 
         return mapToResponse(saved);
     }
@@ -160,47 +146,8 @@ public class PharmacistService {
         String locationName = pharmacist.getBranch() != null
                 ? pharmacist.getBranch().getName()
                 : pharmacist.getPharmacy().getName();
-        String encodedEmail = URLEncoder.encode(email, StandardCharsets.UTF_8);
-        String setupLink = frontendUrl + "/auth/verify-otp?username=" + encodedEmail + "&after=pharmacist-setup";
-        log.info("📧 [PHARMACIST RESEND] Resending setup email to {} for {}", email, locationName);
-        try {
-            String html = buildSetupEmailHtml(email, locationName, setupLink);
-            emailService.sendEmail(email, "Reminder: Set up your MedDelivery pharmacist account", html);
-        } catch (Exception e) {
-            throw new RuntimeException("Failed to resend setup email: " + e.getMessage());
-        }
-    }
-
-    private String buildSetupEmailHtml(String fullName, String pharmacyName, String setupLink) {
-        return "<!DOCTYPE html>" +
-               "<html lang='en'><head><meta charset='UTF-8'>" +
-               "<meta name='viewport' content='width=device-width, initial-scale=1.0'>" +
-               "<title>MedDelivery - Account Setup</title></head>" +
-               "<body style='margin:0;padding:0;font-family:-apple-system,BlinkMacSystemFont,\"Segoe UI\",Roboto,\"Helvetica Neue\",Arial,sans-serif;background-color:#f5f5f5;'>" +
-               "<table role='presentation' style='width:100%;border-collapse:collapse;'>" +
-               "<tr><td style='padding:40px 0;text-align:center;'>" +
-               "<table role='presentation' style='max-width:600px;margin:0 auto;background-color:#ffffff;border-radius:8px;box-shadow:0 2px 4px rgba(0,0,0,0.1);'>" +
-               "<tr><td style='padding:40px 30px;text-align:center;'>" +
-               "<h1 style='margin:0 0 10px 0;color:#1a73e8;font-size:24px;font-weight:600;'>MedDelivery</h1>" +
-               "<p style='margin:0 0 30px 0;color:#5f6368;font-size:16px;'>Account Setup Invitation</p>" +
-               "<p style='margin:0 0 20px 0;color:#202124;font-size:15px;line-height:1.5;text-align:left;'>" +
-               "Hello <strong>" + fullName + "</strong>,<br><br>" +
-               "You have been invited to join <strong>" + pharmacyName + "</strong> as a pharmacist on MedDelivery.<br><br>" +
-               "To activate your account, copy and open the link below in your browser:" +
-               "</p>" +
-               "<div style='background-color:#f8f9fa;border:2px solid #e8eaed;border-radius:8px;padding:20px;margin:20px 0;word-break:break-all;text-align:left;'>" +
-               "<p style='margin:0 0 8px 0;font-size:13px;color:#5f6368;'>Your setup link:</p>" +
-               "<a href='" + setupLink + "' style='font-size:13px;color:#1a73e8;'>" + setupLink + "</a>" +
-               "</div>" +
-               "<p style='margin:20px 0 0 0;color:#5f6368;font-size:14px;line-height:1.5;text-align:left;'>" +
-               "This link will take you to a verification page where you will receive a 6-digit code by email to confirm your identity and set your password.<br><br>" +
-               "If you did not expect this invitation, you can safely ignore this email." +
-               "</p>" +
-               "<p style='margin:30px 0 0 0;padding-top:20px;border-top:1px solid #e8eaed;color:#5f6368;font-size:12px;'>" +
-               "&copy; " + java.time.Year.now().getValue() + " MedDelivery. All rights reserved." +
-               "</p>" +
-               "</td></tr></table>" +
-               "</td></tr></table></body></html>";
+        log.info("📧 [PHARMACIST RESEND] Resending setup invite to {} for {}", email, locationName);
+        invitationService.createPharmacistInvitation(email, locationName);
     }
 
     private String generatePharmacistUniqueId(Pharmacy pharmacy) {
@@ -248,16 +195,8 @@ public class PharmacistService {
                 .build();
         PharmacistProfile saved = pharmacistRepository.save(pharmacist);
 
-        String encodedEmail = java.net.URLEncoder.encode(request.getEmail(), java.nio.charset.StandardCharsets.UTF_8);
-        String setupLink = frontendUrl + "/auth/verify-otp?username=" + encodedEmail + "&after=pharmacist-setup";
-        log.info("🔗 [PHARMACIST SETUP LINK] Email: {} | Branch: {} | Link: {}",
-                request.getEmail(), branch.getName(), setupLink);
-        try {
-            String html = buildSetupEmailHtml(request.getEmail(), branch.getName() + " (" + pharmacy.getName() + ")", setupLink);
-            emailService.sendEmail(request.getEmail(), "You've been invited to " + branch.getName() + " — Set up your account", html);
-        } catch (Exception e) {
-            log.warn("Failed to send pharmacist setup email to {}: {}", request.getEmail(), e.getMessage());
-        }
+        invitationService.createPharmacistInvitation(
+                request.getEmail(), branch.getName() + " (" + pharmacy.getName() + ")");
 
         return mapToResponse(saved);
     }

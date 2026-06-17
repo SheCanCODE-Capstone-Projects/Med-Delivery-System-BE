@@ -5,6 +5,7 @@ import lombok.Data;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 
 @Data
 @Builder
@@ -27,6 +28,11 @@ public class PharmacyAdminReportResponse {
     private List<StaffRow> staffSummary;
     private List<InventorySummaryRow> inventorySummary;
     private List<LowStockRow> lowStockMedicines;
+
+    // Analytics (last 6 months)
+    private List<MonthlyPoint> ordersByMonth;
+    private List<MonthlyPoint> revenueByMonth;
+    private Map<String, Long> ordersByStatus;
 
     @Data
     @Builder
