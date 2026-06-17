@@ -169,6 +169,9 @@ public class ReportService {
                         .build())
                 .collect(Collectors.toList());
 
+        AnalyticsBundle analytics = buildAnalytics(
+                orderRepository.findAllByCreatedAtAfter(analyticsWindowStart()));
+
         return SuperAdminReportResponse.builder()
                 .generatedBy(adminName)
                 .generatedDate(LocalDateTime.now().format(FMT))
@@ -182,6 +185,9 @@ public class ReportService {
                 .pharmacyPerformance(pharmacyRows)
                 .userStatsByRole(usersByRole)
                 .recentAuditActivities(auditRows)
+                .ordersByMonth(analytics.ordersByMonth())
+                .revenueByMonth(analytics.revenueByMonth())
+                .ordersByStatus(analytics.ordersByStatus())
                 .build();
     }
 

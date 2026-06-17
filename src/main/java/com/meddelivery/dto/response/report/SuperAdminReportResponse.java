@@ -28,6 +28,11 @@ public class SuperAdminReportResponse {
     private Map<String, Long> userStatsByRole;
     private List<AuditRow> recentAuditActivities;
 
+    // Analytics (last 6 months)
+    private List<MonthlyPoint> ordersByMonth;
+    private List<MonthlyPoint> revenueByMonth;
+    private Map<String, Long> ordersByStatus;
+
     @Data
     @Builder
     public static class PharmacyPerformanceRow {

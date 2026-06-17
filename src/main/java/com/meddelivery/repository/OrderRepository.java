@@ -93,6 +93,9 @@ public interface OrderRepository extends JpaRepository<Order, Long> {
     List<Order> findByAssignedPharmacistIdAndCreatedAtAfter(@Param("pharmacistId") Long pharmacistId, @Param("start") LocalDateTime start);
 
     // ── Analytics time-series source lists (last N months) ────────────────────
+    @Query("SELECT o FROM Order o WHERE o.createdAt >= :start")
+    List<Order> findAllByCreatedAtAfter(@Param("start") LocalDateTime start);
+
     @EntityGraph(attributePaths = {"orderItems", "orderItems.medicine"})
     @Query("SELECT o FROM Order o WHERE o.assignedPharmacy.id = :pharmacyId AND o.createdAt >= :start")
     List<Order> findByAssignedPharmacyIdAndCreatedAtAfter(@Param("pharmacyId") Long pharmacyId, @Param("start") LocalDateTime start);
