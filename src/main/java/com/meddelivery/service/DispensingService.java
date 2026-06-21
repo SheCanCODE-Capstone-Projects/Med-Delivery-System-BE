@@ -398,6 +398,10 @@ public class DispensingService {
     }
 
     private void logAction(Order order, PharmacistProfile pharmacist, PharmacistAction action, String description) {
+        // Attribute the order to the first pharmacist who acts on it so per-pharmacist reports populate.
+        if (order.getAssignedPharmacist() == null) {
+            order.setAssignedPharmacist(pharmacist);
+        }
         PharmacistActionLog log = PharmacistActionLog.builder()
                 .action(action)
                 .description(description)
