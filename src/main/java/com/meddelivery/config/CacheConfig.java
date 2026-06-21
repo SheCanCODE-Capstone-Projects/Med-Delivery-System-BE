@@ -32,7 +32,8 @@ public class CacheConfig {
                 cache("prescriptions",          5),
                 cache("prescription",           5),
                 cache("medicineRequests",       2),
-                cache("medicineRequest",        2)
+                cache("medicineRequest",        2),
+                cache("substitutions",          2)
         ));
         return manager;
     }

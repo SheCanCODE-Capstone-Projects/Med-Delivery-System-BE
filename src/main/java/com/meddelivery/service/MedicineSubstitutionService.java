@@ -107,6 +107,17 @@ public class MedicineSubstitutionService {
         com.meddelivery.model.SubstitutionRequest saved = substitutionRepository.save(substitution);
         log.info("Substitution {} approved by patient {}", substitutionId, patientId);
 
+        // Notify the pharmacist so the dispensing queue is actioned promptly
+        if (order.getAssignedPharmacist() != null && order.getAssignedPharmacist().getUser() != null) {
+            notificationService.send(
+                order.getAssignedPharmacist().getUser().getId(),
+                "Substitution Approved — Order #" + order.getId(),
+                "The patient approved your substitution for Order #" + order.getId() +
+                    ". You can continue dispensing the substitute medicine (" +
+                    substitution.getSuggestedMedicine().getName() + ").",
+                "ORDER");
+        }
+
         return mapToResponse(saved);
     }
 
