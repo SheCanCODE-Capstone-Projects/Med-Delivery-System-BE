@@ -15,18 +15,26 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 
 /**
- * Seeds demo USER ACCOUNTS (and the pharmacies/branches they belong to) so the
- * app can be tested/demoed without going through the email-based invitation and
- * OTP flows. Every account is created active/verified with a shared known
- * password — log in and use the system as normal (add stock, place orders, etc.).
+ * Seeds demo USER ACCOUNTS (and the pharmacies/branches they belong to) plus
+ * per-branch INVENTORY so the app can be tested/demoed without going through the
+ * email-based invitation and OTP flows. Every account is created active/verified
+ * with a shared known password — log in and use the system as normal.
  *
  * Opt-in only: set app.seed.demo.enabled=true (env APP_SEED_DEMO_ENABLED=true).
- * Idempotent: skips if the demo data already exists.
+ *
+ * Two independently-guarded phases (so inventory can be back-filled even when the
+ * accounts already exist from an earlier run):
+ *   1. seedAccounts()          — skipped if the KIPHARMA pharmacy already exists.
+ *   2. seedInventoryIfMissing()— stocks any demo branch that currently has no inventory.
+ * Both are idempotent, so it is safe to leave enabled across restarts.
  */
 @Slf4j
 @Component
@@ -40,6 +48,9 @@ public class DemoDataSeeder implements CommandLineRunner {
     private final PatientProfileRepository patientProfileRepository;
     private final PharmacistRepository pharmacistRepository;
     private final BranchManagerProfileRepository branchManagerProfileRepository;
+    private final MedicineRepository medicineRepository;
+    private final PharmacyInventoryRepository inventoryRepository;
+    private final StockEntryRepository stockEntryRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Value("${app.seed.demo.enabled:false}")
@@ -48,6 +59,8 @@ public class DemoDataSeeder implements CommandLineRunner {
     /** Shared password for every seeded demo account (documented for the defense). */
     private static final String DEMO_PASSWORD = "Demo@1234";
     private static final String MARKER_CODE = "KIPHARMA"; // pharmacy code used to detect prior seeding
+    private static final Set<String> DEMO_CODES =
+            Set.of("KIPHARMA", "BELVEDERE", "VINE", "CONSEIL", "MILLECOLLINES", "KASHA");
 
     @Override
     @Transactional
@@ -56,20 +69,23 @@ public class DemoDataSeeder implements CommandLineRunner {
             log.info("Demo seeding disabled (app.seed.demo.enabled=false) — skipping DemoDataSeeder");
             return;
         }
-        boolean alreadySeeded = pharmacyRepository.findAll().stream()
-                .anyMatch(p -> MARKER_CODE.equals(p.getPharmacyCode()));
-        if (alreadySeeded) {
-            log.info("Demo data already exists — skipping DemoDataSeeder");
-            return;
-        }
         try {
-            seedDemo();
+            boolean accountsExist = pharmacyRepository.findAll().stream()
+                    .anyMatch(p -> MARKER_CODE.equals(p.getPharmacyCode()));
+            if (accountsExist) {
+                log.info("Demo accounts already exist — skipping account seeding");
+            } else {
+                seedAccounts();
+            }
+            seedInventoryIfMissing();
         } catch (Exception e) {
             log.error("Demo seeding failed: {}", e.getMessage(), e);
         }
     }
 
-    private void seedDemo() {
+    // ── Phase 1: accounts (pharmacies, branches, staff, patients) ───────────────
+
+    private void seedAccounts() {
         List<String[]> creds = new ArrayList<>();
 
         // ── Kipharma — one pharmacy, TWO branches (City Centre + Kisimenti) ─
@@ -109,8 +125,6 @@ public class DemoDataSeeder implements CommandLineRunner {
         }
         log.info("══════════════════════════════════════════════════════════════");
     }
-
-    // ── builders ─────────────────────────────────────────────────────────────
 
     /** Creates an ACTIVE pharmacy and its single Pharmacy Admin (MANAGER). */
     private Pharmacy createPharmacy(String name, String code, String address, double lat, double lon, List<String[]> creds) {
@@ -160,6 +174,99 @@ public class DemoDataSeeder implements CommandLineRunner {
 
         creds.add(new String[]{pharmacy.getName() + " — " + area, "Branch Manager", bmUser.getEmail()});
         creds.add(new String[]{pharmacy.getName() + " — " + area, "Pharmacist", phUser.getEmail()});
+    }
+
+    // ── Phase 2: inventory (separately guarded, back-fills empty demo branches) ──
+
+    private void seedInventoryIfMissing() {
+        List<Medicine> catalog = ensureCatalog();
+
+        List<Pharmacy> demoPharmacies = pharmacyRepository.findAll().stream()
+                .filter(p -> p.getPharmacyCode() != null && DEMO_CODES.contains(p.getPharmacyCode()))
+                .toList();
+
+        int stockedBranches = 0;
+        for (Pharmacy pharmacy : demoPharmacies) {
+            for (Branch branch : branchRepository.findByPharmacyId(pharmacy.getId())) {
+                if (!inventoryRepository.findByBranchId(branch.getId()).isEmpty()) {
+                    continue; // already stocked — leave it untouched
+                }
+                stockBranch(pharmacy, branch, catalog);
+                stockedBranches++;
+            }
+        }
+
+        if (stockedBranches == 0) {
+            log.info("Demo inventory already present — skipping inventory seeding");
+        } else {
+            log.info("Demo inventory seeded for {} branch(es)", stockedBranches);
+        }
+    }
+
+    /** Stocks every catalog medicine into a branch (PharmacyInventory + one StockEntry batch). */
+    private void stockBranch(Pharmacy pharmacy, Branch branch, List<Medicine> catalog) {
+        boolean belvedere = "BELVEDERE".equals(pharmacy.getPharmacyCode());
+        for (Medicine m : catalog) {
+            int qty = 100;
+            // One deliberately low-stock item so the low-stock alert is demoable.
+            if (belvedere && m.getName().startsWith("Paracetamol")) qty = 5;
+
+            BigDecimal price = m.getSellingPrice() != null ? m.getSellingPrice() : BigDecimal.ZERO;
+            LocalDate expiry = LocalDate.now().plusYears(1);
+            int threshold = m.getLowStockAlert() != null ? m.getLowStockAlert() : 20;
+
+            inventoryRepository.save(PharmacyInventory.builder()
+                    .pharmacy(pharmacy)
+                    .branch(branch)
+                    .medicine(m)
+                    .quantity(qty)
+                    .price(price)
+                    .unit(m.getUnit())
+                    .lowStockThreshold(threshold)
+                    .expiryDate(expiry)
+                    .build());
+
+            stockEntryRepository.save(StockEntry.builder()
+                    .medicine(m)
+                    .branch(branch)
+                    .batchNumber("DEMO-" + branch.getId() + "-" + m.getId())
+                    .quantityReceived(qty)
+                    .purchasePrice(price)
+                    .supplier("Demo Supplier Ltd")
+                    .manufacturingDate(LocalDate.now().minusMonths(1))
+                    .expiryDate(expiry)
+                    .notes("Seeded demo stock")
+                    .build());
+        }
+        log.info("Stocked branch '{}' (id={}) with {} medicines", branch.getName(), branch.getId(), catalog.size());
+    }
+
+    /** Find-or-create the demo medicine catalogue (idempotent by name). */
+    private List<Medicine> ensureCatalog() {
+        return List.of(
+                ensureMedicine("Vitamin C 1000mg", "Ascorbic Acid", false, "Vitamins & Supplements", "Tablets", "2500", 20),
+                ensureMedicine("Paracetamol 500mg", "Paracetamol", false, "Pain Relievers", "Tablets", "1000", 20),
+                ensureMedicine("Amoxicillin 250mg", "Amoxicillin", true, "Antibiotics", "Capsules", "3500", 15),
+                ensureMedicine("ORS Rehydration Salts", "Oral Rehydration Salts", false, "Digestive Medicines", "Sachets", "800", 15),
+                ensureMedicine("Ibuprofen 400mg", "Ibuprofen", false, "Pain Relievers", "Tablets", "1500", 20),
+                ensureMedicine("Cetirizine 10mg", "Cetirizine", false, "Antihistamines", "Tablets", "1200", 20),
+                ensureMedicine("Omeprazole 20mg", "Omeprazole", false, "Digestive Medicines", "Capsules", "1800", 15)
+        );
+    }
+
+    private Medicine ensureMedicine(String name, String generic, boolean rx, String category,
+                                    String unit, String price, int lowStockAlert) {
+        return medicineRepository.findByNameIgnoreCase(name).orElseGet(() ->
+                medicineRepository.save(Medicine.builder()
+                        .name(name)
+                        .genericName(generic)
+                        .requiresPrescription(rx)
+                        .category(category)
+                        .unit(unit)
+                        .sellingPrice(new BigDecimal(price))
+                        .lowStockAlert(lowStockAlert)
+                        .description(name + " (demo)")
+                        .build()));
     }
 
     // ── helpers ────────────────────────────────────────────────────────────

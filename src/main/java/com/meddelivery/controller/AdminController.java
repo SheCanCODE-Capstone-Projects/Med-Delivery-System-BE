@@ -50,6 +50,7 @@ public class AdminController {
     private final InvitationService invitationService;
     private final SecurityMonitoringService securityMonitoringService;
     private final ReportService reportService;
+    private final com.meddelivery.service.BranchService branchService;
 
     @GetMapping("/me")
     @Operation(summary = "Get Admin Profile")
@@ -127,6 +128,12 @@ public class AdminController {
             @PathVariable Long id,
             @Valid @RequestBody ManagerUpdateRequest request) {
         return ResponseEntity.ok(adminService.replacePharmacyManager(id, request));
+    }
+
+    @GetMapping("/pharmacies/{id}/branches")
+    @Operation(summary = "List all branches of a pharmacy")
+    public ResponseEntity<ApiResponse<List<BranchResponse>>> getPharmacyBranches(@PathVariable Long id) {
+        return ResponseEntity.ok(ApiResponse.success(branchService.getBranchesForPharmacy(id)));
     }
 
     @GetMapping("/insurance-providers")
