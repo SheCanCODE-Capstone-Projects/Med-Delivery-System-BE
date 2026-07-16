@@ -51,6 +51,7 @@ public class DemoDataSeeder implements CommandLineRunner {
     private final MedicineRepository medicineRepository;
     private final PharmacyInventoryRepository inventoryRepository;
     private final StockEntryRepository stockEntryRepository;
+    private final InsuranceProviderRepository insuranceProviderRepository;
     private final PasswordEncoder passwordEncoder;
 
     @Value("${app.seed.demo.enabled:false}")
@@ -78,8 +79,48 @@ public class DemoDataSeeder implements CommandLineRunner {
                 seedAccounts();
             }
             seedInventoryIfMissing();
+            seedInsuranceProvidersIfMissing();
         } catch (Exception e) {
             log.error("Demo seeding failed: {}", e.getMessage(), e);
+        }
+    }
+
+    // ── Phase 3: real Rwandan health-insurance providers (idempotent per code) ──
+
+    /** name, code, coveragePercentage for each real Rwandan health insurer. */
+    private static final Object[][] INSURERS = {
+        {"Mutuelle de Santé (RSSB – CBHI)", "CBHI", 90.0},
+        {"RSSB Medical Scheme (ex-RAMA)", "RSSB", 85.0},
+        {"Military Medical Insurance (MMI)", "MMI", 85.0},
+        {"Radiant Insurance", "RADIANT", 80.0},
+        {"Prime Insurance", "PRIME", 80.0},
+        {"Britam Insurance Rwanda", "BRITAM", 80.0},
+        {"Sanlam Rwanda", "SANLAM", 80.0},
+        {"UAP Insurance Rwanda", "UAP", 80.0},
+        {"Eden Care Medical", "EDENCARE", 80.0},
+        {"Old Mutual Rwanda", "OLDMUTUAL", 80.0},
+    };
+
+    private void seedInsuranceProvidersIfMissing() {
+        int added = 0;
+        for (Object[] p : INSURERS) {
+            String name = (String) p[0];
+            String code = (String) p[1];
+            double coverage = (Double) p[2];
+            if (insuranceProviderRepository.existsByCodeIgnoreCase(code)) {
+                continue; // already present — leave it (and any manual edits) untouched
+            }
+            insuranceProviderRepository.save(InsuranceProvider.builder()
+                    .name(name)
+                    .code(code)
+                    .coveragePercentage(coverage)
+                    .build());
+            added++;
+        }
+        if (added == 0) {
+            log.info("Insurance providers already present — skipping insurance seeding");
+        } else {
+            log.info("Seeded {} insurance provider(s)", added);
         }
     }
 

@@ -14,6 +14,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
@@ -39,11 +41,13 @@ public class ReportService {
 
     private LocalDateTime resolveStartDate(String period) {
         if (period == null || period.equalsIgnoreCase("ALL_TIME")) return null;
+        LocalDate today = LocalDate.now();
         return switch (period.toUpperCase()) {
-            case "DAILY"  -> LocalDateTime.now().minusDays(1);
-            case "WEEKLY" -> LocalDateTime.now().minusWeeks(1);
-            case "YEARLY" -> LocalDateTime.now().minusYears(1);
-            default       -> LocalDateTime.now().minusMonths(1); // MONTHLY
+            // Calendar-aligned windows: "Today" = only today, "This Week" = current week, etc.
+            case "DAILY"  -> today.atStartOfDay();                              // 00:00 today
+            case "WEEKLY" -> today.with(DayOfWeek.MONDAY).atStartOfDay();       // Monday of this week
+            case "YEARLY" -> today.withDayOfYear(1).atStartOfDay();             // Jan 1 of this year
+            default       -> today.withDayOfMonth(1).atStartOfDay();            // MONTHLY → 1st of this month
         };
     }
 
