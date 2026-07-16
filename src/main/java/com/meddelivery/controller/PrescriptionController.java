@@ -44,6 +44,15 @@ public class PrescriptionController {
         String fileType = (fileTypeStr != null && !fileTypeStr.isBlank()) 
             ? fileTypeStr.toUpperCase() 
             : extractFileType(file.getOriginalFilename());
+        // Screen the actual uploaded image FIRST — is it a real prescription (not a selfie/ID),
+        // does it list medicines, and does it carry a stamp/signature? Analysed from the raw
+        // bytes so it works whether storage is local or Cloudinary. Never trust client-sent values.
+        AiPrescriptionService.PrescriptionAnalysisResult analysis =
+                aiPrescriptionService.analyzeUploadedPrescription(file);
+        if (analysis.error != null) {
+            throw new BusinessException(analysis.error); // reject before storing anything
+        }
+
         String storedPath = fileStorageService.storeFile(file, "prescriptions");
         // Cloudinary returns a full https:// URL; local storage returns a relative path
         String fileUrl = (storedPath != null && storedPath.startsWith("http"))
@@ -56,13 +65,6 @@ public class PrescriptionController {
         request.setNotes(notes);
         if (prescriptionDateStr != null && !prescriptionDateStr.isBlank()) {
             request.setPrescriptionDate(LocalDate.parse(prescriptionDateStr));
-        }
-        // Let AI detect stamp/signature from the actual image — never trust client-sent values
-        AiPrescriptionService.PrescriptionAnalysisResult analysis =
-                aiPrescriptionService.analyzeUploadedPrescription(fileUrl);
-        if (analysis.error != null) {
-            fileStorageService.deleteFile(storedPath);
-            throw new BusinessException(analysis.error);
         }
         // If AI ran, use its findings; if AI was unavailable fall back to client-provided values
         request.setHasStamp(analysis.aiChecked ? analysis.hasStamp : (hasStamp != null && hasStamp));

@@ -6,6 +6,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.reactive.function.client.WebClient;
 import org.springframework.web.reactive.function.client.WebClientResponseException;
 
@@ -155,7 +156,40 @@ public class AiPrescriptionService {
             Resource resource = fileStorageService.loadFileAsResource(storagePath);
             byte[] bytes = resource.getInputStream().readAllBytes();
             String base64Data = Base64.getEncoder().encodeToString(bytes);
+            return analyzeImage(base64Data, mediaType);
+        } catch (IOException e) {
+            log.error("Could not load prescription image for structure validation: {}", e.getMessage());
+            return PrescriptionAnalysisResult.aiUnavailable();
+        }
+    }
 
+    /**
+     * Analyses a freshly-uploaded prescription image directly from its bytes. Unlike the
+     * URL-based overload, this works regardless of where the file is finally stored (local
+     * OR Cloudinary), because it never re-loads from a URL — so it must be called at upload
+     * time with the {@link MultipartFile} still in hand.
+     */
+    public PrescriptionAnalysisResult analyzeUploadedPrescription(MultipartFile file) {
+        if (!aiEnabled || anthropicApiKey == null || anthropicApiKey.isBlank() || file == null || file.isEmpty()) {
+            return PrescriptionAnalysisResult.aiUnavailable();
+        }
+        String mediaType = mediaTypeFor(file.getContentType(), file.getOriginalFilename());
+        if (mediaType == null) {
+            log.info("File format not supported for vision structure check — skipping.");
+            return PrescriptionAnalysisResult.aiUnavailable();
+        }
+        try {
+            String base64Data = Base64.getEncoder().encodeToString(file.getBytes());
+            return analyzeImage(base64Data, mediaType);
+        } catch (IOException e) {
+            log.error("Could not read uploaded prescription bytes: {}", e.getMessage());
+            return PrescriptionAnalysisResult.aiUnavailable();
+        }
+    }
+
+    /** Sends a base64 image to Claude's vision API for the 5-point structure/authenticity check. */
+    private PrescriptionAnalysisResult analyzeImage(String base64Data, String mediaType) {
+        try {
             String prompt =
                 "You are a medical prescription validator. Examine this image carefully.\n\n" +
                 "Answer each question with YES or NO on its own line in exactly this format:\n" +
@@ -205,9 +239,6 @@ public class AiPrescriptionService {
 
             return parsePrescriptionAnalysis(text);
 
-        } catch (IOException e) {
-            log.error("Could not load prescription image for structure validation: {}", e.getMessage());
-            return PrescriptionAnalysisResult.aiUnavailable();
         } catch (WebClientResponseException e) {
             log.error("Claude API error during structure validation — status: {}, body: {}",
                     e.getStatusCode(), e.getResponseBodyAsString());
@@ -216,6 +247,23 @@ public class AiPrescriptionService {
             log.error("AI prescription structure validation failed: {}", e.getMessage(), e);
             return PrescriptionAnalysisResult.aiUnavailable();
         }
+    }
+
+    /** Maps an upload's content-type / filename to a Claude-supported image media type, or null (unsupported, e.g. PDF). */
+    private String mediaTypeFor(String contentType, String filename) {
+        if (contentType != null) {
+            String c = contentType.toLowerCase();
+            if (c.contains("jpeg") || c.contains("jpg")) return "image/jpeg";
+            if (c.contains("png"))  return "image/png";
+            if (c.contains("gif"))  return "image/gif";
+            if (c.contains("webp")) return "image/webp";
+        }
+        String f = filename == null ? "" : filename.toLowerCase();
+        if (f.endsWith(".jpg") || f.endsWith(".jpeg")) return "image/jpeg";
+        if (f.endsWith(".png"))  return "image/png";
+        if (f.endsWith(".gif"))  return "image/gif";
+        if (f.endsWith(".webp")) return "image/webp";
+        return null;
     }
 
     private PrescriptionAnalysisResult parsePrescriptionAnalysis(String text) {
