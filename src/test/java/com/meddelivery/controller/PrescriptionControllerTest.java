@@ -16,6 +16,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.test.context.ContextConfiguration;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -47,7 +48,7 @@ class PrescriptionControllerTest {
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(prescriptionController).build();
-        lenient().when(aiPrescriptionService.analyzeUploadedPrescription(any(String.class)))
+        lenient().when(aiPrescriptionService.analyzeUploadedPrescription(any(MultipartFile.class)))
                 .thenReturn(new AiPrescriptionService.PrescriptionAnalysisResult(null, false, false));
     }
 
