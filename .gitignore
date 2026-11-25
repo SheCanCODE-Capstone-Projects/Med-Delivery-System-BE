@@ -27,7 +27,6 @@ target/
 /.nb-gradle/
 build/
 !**/src/main/**/build/
-temp_auto_push.bat
 !**/src/test/**/build/
 
 ### VS Code ###
@@ -59,3 +58,4 @@ application-dev.properties
 uploads/
 .gitignore
 branch_structure.json
+.vscode/
