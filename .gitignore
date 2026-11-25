@@ -34,7 +34,6 @@ build/
 .iml
 
 ### Environment Variables ###
-.env
 
 ### Firebase ###
 src/main/resources/firebase-service-account.json
@@ -58,4 +57,5 @@ application-dev.properties
 uploads/
 .gitignore
 branch_structure.json
-.vscode/
+config.bat
+node_modules
